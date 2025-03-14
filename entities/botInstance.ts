@@ -50,7 +50,7 @@ export class BotInstance {
             new JsonFileStorage(options.name, options.storagePath);
         this.api = new TelegramApiService(
             this.name,
-            this.telegraf,
+            this.telegraf.telegram,
             this.storage,
             this.chats
         );
@@ -118,7 +118,7 @@ export class BotInstance {
     private async runScheduled() {
         for (const [chatName, chatId] of this.chats.entries()) {
             for (const trig of this.scheduled) {
-                const ctx = this.api.createContextForChat(chatId, trig.name);
+                const ctx = this.api.createContextForChat(chatId, trig.key);
 
                 try {
                     await trig.exec(ctx);
@@ -128,7 +128,7 @@ export class BotInstance {
                         ctx.botName,
                         ctx.traceId,
                         chatName,
-                        error as string | Error,
+                        error,
                         ctx
                     );
                 }
@@ -140,7 +140,7 @@ export class BotInstance {
         const msg = this.messageQueue.pop()!;
 
         for (const cmd of this.commands) {
-            const ctx = this.api.createContextForMessage(msg);
+            const ctx = this.api.createContextForMessage(msg, cmd.key);
 
             try {
                 await cmd.exec(ctx);
@@ -149,7 +149,7 @@ export class BotInstance {
                     ctx.botName,
                     ctx.traceId,
                     ctx.chatName,
-                    error as string | Error,
+                    error,
                     ctx
                 );
             }

@@ -98,7 +98,10 @@ export class JsonFileStorage implements IStorageClient {
         return await this.lock(async () => {
             const data = await this.loadInternal(entity.key);
 
-            return (data[chatId] as TActionState) ?? entity.stateConstructor();
+            return Object.assign(
+                entity.stateConstructor(),
+                data[chatId]
+            ) as TActionState;
         });
     }
 
@@ -119,5 +122,23 @@ export class JsonFileStorage implements IStorageClient {
 
     async close(): Promise<void> {
         await this.semaphore.acquire();
+    }
+
+    async updateStateFor<TActionState extends IActionState>(
+        sourceActionKey: string,
+        chatId: number,
+        update: (state: TActionState) => Promise<void>
+    ) {
+        await this.lock(async () => {
+            const data = await this.loadInternal(sourceActionKey);
+            const state = Object.assign(
+                new ActionStateBase(),
+                data[chatId]
+            ) as TActionState;
+
+            await update(state);
+
+            await this.save(data, sourceActionKey);
+        });
     }
 }

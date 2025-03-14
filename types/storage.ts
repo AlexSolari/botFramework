@@ -3,6 +3,11 @@ import { IActionState } from './actionState';
 import { IActionWithState } from './actionWithState';
 
 export interface IStorageClient {
+    updateStateFor<TActionState extends IActionState>(
+        sourceActionKey: string,
+        chatId: number,
+        update: (state: TActionState) => Promise<void>
+    ): Promise<void>;
     close(): Promise<void>;
     load<TActionState extends IActionState>(
         key: string

@@ -23,6 +23,7 @@ export class MessageContext<
 
     constructor(
         botName: string,
+        scheduledKey: string,
         interactions: IBotApiInteractions,
         chatId: number,
         chatName: string,
@@ -33,7 +34,15 @@ export class MessageContext<
         fromUserName: string,
         storage: IStorageClient
     ) {
-        super(botName, interactions, chatId, chatName, traceId, storage);
+        super(
+            botName,
+            scheduledKey,
+            interactions,
+            chatId,
+            chatName,
+            traceId,
+            storage
+        );
 
         this.messageId = messageId;
         this.messageText = messageText;
@@ -59,45 +68,57 @@ export class MessageContext<
         );
     }
 
-    replyWithText(text: string, disableWebPreview?: boolean) {
+    replyWithText(text: string, disableWebPreview?: boolean, pinned?: boolean) {
         this.interactions.respond(
             new TextMessage(
                 text,
                 this.chatId,
                 this.messageId,
                 this.traceId,
-                disableWebPreview ?? false
+                disableWebPreview ?? false,
+                pinned ?? false,
+                this.actionKey
             )
         );
     }
 
-    replyWithImage(name: string) {
+    replyWithImage(name: string, pinned?: boolean) {
         const filePath = `./content/${name}.png`;
         this.interactions.respond(
             new ImageMessage(
                 { source: resolve(filePath) },
                 this.chatId,
                 this.messageId,
-                this.traceId
+                this.traceId,
+                pinned ?? false,
+                this.actionKey
             )
         );
     }
 
-    replyWithVideo(name: string) {
+    replyWithVideo(name: string, pinned?: boolean) {
         const filePath = `./content/${name}.mp4`;
         this.interactions.respond(
             new VideoMessage(
                 { source: resolve(filePath) },
                 this.chatId,
                 this.messageId,
-                this.traceId
+                this.traceId,
+                pinned ?? false,
+                this.actionKey
             )
         );
     }
 
     react(emoji: TelegramEmoji) {
         this.interactions.react(
-            new Reaction(this.traceId, this.chatId, this.messageId, emoji)
+            new Reaction(
+                this.traceId,
+                this.chatId,
+                this.messageId,
+                emoji,
+                this.actionKey
+            )
         );
     }
 }

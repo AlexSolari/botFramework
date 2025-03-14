@@ -1,4 +1,13 @@
 class JsonLogger {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private serializeError(error: any) {
+        const plainObject: Record<string, unknown> = {};
+        Object.getOwnPropertyNames(error).forEach(function (key) {
+            plainObject[key] = error[key];
+        });
+        return JSON.stringify(plainObject);
+    }
+
     logWithTraceId(
         botName: string,
         traceId: string | number,
@@ -12,7 +21,7 @@ class JsonLogger {
         botName: string,
         traceId: string | number,
         chatName: string,
-        errorObj: string | Error,
+        errorObj: unknown,
         extraData?: TData | undefined
     ) {
         console.error(
@@ -20,7 +29,7 @@ class JsonLogger {
                 botName,
                 traceId,
                 chatName,
-                errorObj,
+                error: this.serializeError(errorObj),
                 extraData
             })
         );

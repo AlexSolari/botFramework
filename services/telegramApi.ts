@@ -1,33 +1,34 @@
-import { Telegraf } from 'telegraf';
-import { InputFile } from 'telegraf/types';
+import { InputFile, Message } from 'telegraf/types';
 import { ChatContext } from '../entities/context/chatContext';
 import { MessageContext } from '../entities/context/messageContext';
-import { ImageMessage } from '../entities/responses/imageMessage';
-import { TextMessage } from '../entities/responses/textMessage';
-import { VideoMessage } from '../entities/responses/videoMessage';
 import { reverseMap } from '../helpers/reverseMap';
-import { IReplyMessage } from '../types/replyMessage';
 import { IStorageClient } from '../types/storage';
 import { Milliseconds } from '../types/timeValues';
 import { Scheduler } from './taskScheduler';
 import { Logger } from './logger';
 import { Reaction } from '../entities/responses/reaction';
 import { IncomingMessage } from '../entities/incomingMessage';
+import { BotResponse, IReplyMessage } from '../types/response';
+import { UnpinResponse } from '../entities/responses/unpin';
+import { TextMessage } from '../entities/responses/textMessage';
+import { VideoMessage } from '../entities/responses/videoMessage';
+import { ImageMessage } from '../entities/responses/imageMessage';
+import { Telegram } from 'telegraf/typings/telegram';
 
 export class TelegramApiService {
     botName: string;
-    telegraf: Telegraf;
+    telegram: Telegram;
     chats: Map<number, string>;
-    messageQueue: Array<IReplyMessage<unknown> | Reaction> = [];
+    messageQueue: Array<BotResponse> = [];
     storage: IStorageClient;
 
     constructor(
         botName: string,
-        telegraf: Telegraf,
+        telegram: Telegram,
         storage: IStorageClient,
         chats: Map<string, number>
     ) {
-        this.telegraf = telegraf;
+        this.telegram = telegram;
         this.botName = botName;
         this.chats = reverseMap(chats);
         this.storage = storage;
@@ -55,34 +56,39 @@ export class TelegramApiService {
                 this.botName,
                 message.traceId,
                 this.chats.get(message.chatId)!,
-                error as string | Error,
+                error,
                 message
             );
         }
     }
 
-    private async processResponse<TType>(
-        response: IReplyMessage<TType> | Reaction
+    private async pinIfShould<T>(
+        response: IReplyMessage<T>,
+        sentMessage: Message
     ) {
-        if ('emoji' in response) {
-            this.telegraf.telegram.setMessageReaction(
+        if (response.shouldPin) {
+            await this.telegram.pinChatMessage(
                 response.chatId,
-                response.messageId,
-                [
-                    {
-                        type: 'emoji',
-                        emoji: response.emoji
-                    }
-                ],
-                true
+                sentMessage.message_id,
+                { disable_notification: true }
             );
 
-            return;
+            await this.storage.updateStateFor(
+                response.sourceActionKey,
+                response.chatId,
+                async (state) => {
+                    state.pinnedMessages.push(sentMessage.message_id);
+                }
+            );
         }
+    }
 
-        switch (response.constructor) {
-            case TextMessage:
-                await this.telegraf.telegram.sendMessage(
+    private async processResponse(response: BotResponse) {
+        let sentMessage: Message;
+
+        switch (response.kind) {
+            case 'text':
+                sentMessage = await this.telegram.sendMessage(
                     response.chatId,
                     response.content as string,
                     {
@@ -92,9 +98,11 @@ export class TelegramApiService {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } as any
                 );
+
+                await this.pinIfShould(response, sentMessage);
                 break;
-            case ImageMessage:
-                await this.telegraf.telegram.sendPhoto(
+            case 'image':
+                sentMessage = await this.telegram.sendPhoto(
                     response.chatId,
                     response.content as InputFile,
                     response.replyId
@@ -102,9 +110,11 @@ export class TelegramApiService {
                           ({ reply_to_message_id: response.replyId } as any)
                         : undefined
                 );
+
+                await this.pinIfShould(response, sentMessage);
                 break;
-            case VideoMessage:
-                await this.telegraf.telegram.sendVideo(
+            case 'video':
+                sentMessage = await this.telegram.sendVideo(
                     response.chatId,
                     response.content as InputFile,
                     response.replyId
@@ -112,35 +122,58 @@ export class TelegramApiService {
                           ({ reply_to_message_id: response.replyId } as any)
                         : undefined
                 );
+
+                await this.pinIfShould(response, sentMessage);
                 break;
-            default:
-                Logger.errorWithTraceId(
-                    this.botName,
-                    response.traceId,
-                    this.chats.get(response.chatId)!,
-                    `Unknown message type: ${response.constructor}`,
-                    response
+            case 'react':
+                await this.telegram.setMessageReaction(
+                    response.chatId,
+                    response.messageId,
+                    [
+                        {
+                            type: 'emoji',
+                            emoji: response.emoji
+                        }
+                    ],
+                    true
+                );
+
+                return;
+            case 'unpin':
+                await this.telegram.unpinChatMessage(
+                    response.chatId,
+                    response.messageId
+                );
+
+                await this.storage.updateStateFor(
+                    response.sourceActionKey,
+                    response.chatId,
+                    async (state) => {
+                        state.pinnedMessages = state.pinnedMessages.filter(
+                            (x) => x != response.messageId
+                        );
+                    }
                 );
                 break;
         }
     }
 
-    private enqueueResponse<TType>(response: IReplyMessage<TType>) {
-        this.messageQueue.push(response);
-    }
-
-    private enqueueReaction(reaction: Reaction) {
+    private enqueue(reaction: BotResponse) {
         this.messageQueue.push(reaction);
     }
 
     private getInteractions() {
         return {
-            react: (reaction) => this.enqueueReaction(reaction),
-            respond: (response) => this.enqueueResponse(response)
+            react: (reaction) => this.enqueue(reaction),
+            respond: (response) => this.enqueue(response),
+            unpin: (unpinMessage) => this.enqueue(unpinMessage)
         } as IBotApiInteractions;
     }
 
-    createContextForMessage(incomingMessage: IncomingMessage) {
+    createContextForMessage(
+        incomingMessage: IncomingMessage,
+        commandKey: string
+    ) {
         const firstName = incomingMessage.from?.first_name ?? 'Unknown user';
         const lastName = incomingMessage.from?.last_name
             ? ` ${incomingMessage.from?.last_name}`
@@ -148,6 +181,7 @@ export class TelegramApiService {
 
         return new MessageContext(
             this.botName,
+            commandKey,
             this.getInteractions(),
             incomingMessage.chat.id,
             incomingMessage.chatName,
@@ -160,19 +194,21 @@ export class TelegramApiService {
         );
     }
 
-    createContextForChat(chatId: number, scheduledName: string) {
+    createContextForChat(chatId: number, scheduledKey: string) {
         return new ChatContext(
             this.botName,
+            scheduledKey,
             this.getInteractions(),
             chatId,
             this.chats.get(chatId)!,
-            `Scheduled:${scheduledName}:${chatId}`,
+            `Scheduled:${scheduledKey}:${chatId}`,
             this.storage
         );
     }
 }
 
 export interface IBotApiInteractions {
-    respond: <TType>(response: IReplyMessage<TType>) => void;
+    respond: (response: TextMessage | VideoMessage | ImageMessage) => void;
     react: (reaction: Reaction) => void;
+    unpin: (unpinMessage: UnpinResponse) => void;
 }

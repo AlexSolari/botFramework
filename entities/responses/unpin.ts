@@ -1,25 +1,21 @@
-import { TelegramEmoji } from 'telegraf/types';
 import { BotResponseTypes, IChatResponse } from '../../types/response';
 
-export class Reaction implements IChatResponse {
-    kind = BotResponseTypes.react;
+export class UnpinResponse implements IChatResponse {
+    kind = BotResponseTypes.unpin;
 
-    chatId: number;
     messageId: number;
+    chatId: number;
     traceId: number | string;
-    emoji: TelegramEmoji;
     sourceActionKey: string;
 
     constructor(
-        traceId: number | string,
-        chatId: number,
         messageId: number,
-        emoji: TelegramEmoji,
+        chatId: number,
+        traceId: number | string,
         sourceActionKey: string
     ) {
-        this.chatId = chatId;
         this.messageId = messageId;
-        this.emoji = emoji;
+        this.chatId = chatId;
         this.traceId = traceId;
         this.sourceActionKey = sourceActionKey;
     }
