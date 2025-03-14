@@ -1,20 +1,26 @@
 import { ScheduledAction } from '../../entities/actions/scheduledAction';
 import { CachedStateFactory } from '../../entities/cachedStateFactory';
+import { ActionStateBase } from '../../entities/states/actionStateBase';
+import { IActionState } from '../../types/actionState';
 import { ScheduledHandler } from '../../types/handlers';
 import { Hours, HoursOfDay } from '../../types/timeValues';
 import { Noop } from '../noop';
 
-export class ScheduledActionBuilder {
+export class ScheduledActionBuilderWithState<
+    TActionState extends IActionState
+> {
     active = true;
     time: HoursOfDay = 0;
     cachedStateFactories = new Map<string, CachedStateFactory>();
     whitelist: number[] = [];
-    handler: ScheduledHandler = Noop.call;
+    stateConstructor: () => TActionState;
+    handler: ScheduledHandler<TActionState> = Noop.call;
 
     name: string;
 
-    constructor(name: string) {
+    constructor(name: string, stateConstructor: () => TActionState) {
         this.name = name;
+        this.stateConstructor = stateConstructor;
     }
 
     allowIn(chatId: number) {
@@ -29,7 +35,7 @@ export class ScheduledActionBuilder {
         return this;
     }
 
-    do(handler: ScheduledHandler) {
+    do(handler: ScheduledHandler<TActionState>) {
         this.handler = handler;
 
         return this;
@@ -55,13 +61,20 @@ export class ScheduledActionBuilder {
     }
 
     build() {
-        return new ScheduledAction(
+        return new ScheduledAction<TActionState>(
             this.name,
             this.handler,
             this.time,
             this.active,
             this.whitelist,
-            this.cachedStateFactories
+            this.cachedStateFactories,
+            this.stateConstructor
         );
+    }
+}
+
+export class ScheduledActionBuilder extends ScheduledActionBuilderWithState<ActionStateBase> {
+    constructor(name: string) {
+        super(name, () => new ActionStateBase());
     }
 }

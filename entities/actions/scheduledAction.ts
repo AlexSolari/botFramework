@@ -7,12 +7,13 @@ import { IActionState } from '../../types/actionState';
 import { IActionWithState } from '../../types/actionWithState';
 import { CachedStateFactory } from '../cachedStateFactory';
 import { ChatContext } from '../context/chatContext';
-import { ActionStateBase } from '../states/actionStateBase';
 import { ActionExecutionResult } from '../actionExecutionResult';
 import { Logger } from '../../services/logger';
 import { Scheduler } from '../../services/taskScheduler';
 
-export class ScheduledAction implements IActionWithState {
+export class ScheduledAction<TActionState extends IActionState>
+    implements IActionWithState
+{
     static semaphore = new Semaphore(1);
 
     name: string;
@@ -22,17 +23,18 @@ export class ScheduledAction implements IActionWithState {
     key: string;
 
     cachedState = new Map<string, unknown>();
-    stateConstructor = () => new ActionStateBase();
+    stateConstructor: () => TActionState;
     cachedStateFactories: Map<string, CachedStateFactory>;
-    handler: ScheduledHandler;
+    handler: ScheduledHandler<TActionState>;
 
     constructor(
         name: string,
-        handler: ScheduledHandler,
+        handler: ScheduledHandler<TActionState>,
         timeinHours: HoursOfDay,
         active: boolean,
         whitelist: number[],
-        cachedStateFactories: Map<string, CachedStateFactory>
+        cachedStateFactories: Map<string, CachedStateFactory>,
+        stateConstructor: () => TActionState
     ) {
         this.name = name;
         this.handler = handler;
@@ -41,12 +43,16 @@ export class ScheduledAction implements IActionWithState {
         this.chatsWhitelist = whitelist;
         this.cachedStateFactories = cachedStateFactories;
         this.key = `scheduled:${this.name.replace('.', '-')}`;
+        this.stateConstructor = stateConstructor;
     }
 
     async exec(ctx: ChatContext) {
         if (!this.active || !this.chatsWhitelist.includes(ctx.chatId)) return;
 
-        const state = await ctx.storage.getActionState(this, ctx.chatId);
+        const state = await ctx.storage.getActionState<TActionState>(
+            this,
+            ctx.chatId
+        );
         const isAllowedToTrigger = this.shouldTrigger(state);
 
         if (isAllowedToTrigger) {
@@ -57,8 +63,11 @@ export class ScheduledAction implements IActionWithState {
                 ` - Executing [${this.name}] in ${ctx.chatId}`
             );
 
-            await this.handler(ctx, <TResult>(key: string) =>
-                this.getCachedValue<TResult>(key, ctx.botName)
+            await this.handler(
+                ctx,
+                <TResult>(key: string) =>
+                    this.getCachedValue<TResult>(key, ctx.botName),
+                state
             );
 
             state.lastExecutedDate = moment().valueOf();

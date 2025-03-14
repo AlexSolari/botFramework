@@ -8,7 +8,8 @@ export type CommandHandler<TActionState extends IActionState> = (
     state: TActionState
 ) => Promise<void>;
 
-export type ScheduledHandler = (
+export type ScheduledHandler<TActionState extends IActionState> = (
     ctx: ChatContext,
-    getCached: CachedValueAccessor
+    getCached: CachedValueAccessor,
+    state: TActionState
 ) => Promise<void>;

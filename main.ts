@@ -17,7 +17,7 @@ async function startBot(options: {
     name: string;
     tokenFilePath: string;
     commands: CommandAction<IActionState>[];
-    scheduled: ScheduledAction[];
+    scheduled: ScheduledAction<IActionState>[];
     chats: Map<string, number>;
     storageClient?: IStorageClient;
     storagePath?: string;

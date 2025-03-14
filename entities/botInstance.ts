@@ -19,7 +19,7 @@ export class BotInstance {
     private api: TelegramApiService;
     private telegraf: Telegraf;
     private commands: CommandAction<IActionState>[];
-    private scheduled: ScheduledAction[];
+    private scheduled: ScheduledAction<IActionState>[];
     private chats: Map<string, number>;
     private messageQueue: IncomingMessage[] = [];
     storage: IStorageClient;
@@ -28,7 +28,7 @@ export class BotInstance {
         name: string;
         token: string;
         commands: CommandAction<IActionState>[];
-        scheduled: ScheduledAction[];
+        scheduled: ScheduledAction<IActionState>[];
         chats: Map<string, number>;
         storageClient?: IStorageClient;
         storagePath?: string;
