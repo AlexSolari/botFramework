@@ -1,0 +1,14 @@
+token.test
+node_modules/
+package-lock.json
+.vscode/
+token.prod
+token.lviv
+storage/
+start.ps1
+build/
+types/chatIds.ts
+types/userIds.ts
+types/creds.ts
+dist/
+bun.lockb
