@@ -5,6 +5,10 @@ import { ImageMessage } from '../responses/imageMessage';
 import { TextMessage } from '../responses/textMessage';
 import { VideoMessage } from '../responses/videoMessage';
 import { UnpinResponse } from '../responses/unpin';
+import {
+    MessageSendingOptions,
+    TextMessageSendingOptions
+} from '../../types/messageSendingOptions';
 
 export class ChatContext {
     botName: string;
@@ -33,25 +37,20 @@ export class ChatContext {
         this.storage = storage;
     }
 
-    sendTextToChat(
-        text: string,
-        disableWebPreview?: boolean,
-        pinned?: boolean
-    ) {
+    sendTextToChat(text: string, options?: TextMessageSendingOptions) {
         this.interactions.respond(
             new TextMessage(
                 text,
                 this.chatId,
                 undefined,
                 this.traceId,
-                disableWebPreview ?? false,
-                pinned ?? false,
-                this.actionKey
+                this.actionKey,
+                options
             )
         );
     }
 
-    sendImageToChat(name: string, pinned?: boolean) {
+    sendImageToChat(name: string, options?: MessageSendingOptions) {
         const filePath = `./content/${name}.png`;
         this.interactions.respond(
             new ImageMessage(
@@ -59,13 +58,13 @@ export class ChatContext {
                 this.chatId,
                 undefined,
                 this.traceId,
-                pinned ?? false,
-                this.actionKey
+                this.actionKey,
+                options
             )
         );
     }
 
-    sendVideoToChat(name: string, pinned?: boolean) {
+    sendVideoToChat(name: string, options?: MessageSendingOptions) {
         const filePath = `./content/${name}.mp4`;
         this.interactions.respond(
             new VideoMessage(
@@ -73,8 +72,8 @@ export class ChatContext {
                 this.chatId,
                 undefined,
                 this.traceId,
-                pinned ?? false,
-                this.actionKey
+                this.actionKey,
+                options
             )
         );
     }

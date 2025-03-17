@@ -1,5 +1,6 @@
 import { InputFile } from 'telegraf/types';
 import { BotResponseTypes, IReplyMessage } from '../../types/response';
+import { MessageSendingOptions } from '../../types/messageSendingOptions';
 
 export class ImageMessage implements IReplyMessage<InputFile> {
     kind = BotResponseTypes.image;
@@ -17,14 +18,14 @@ export class ImageMessage implements IReplyMessage<InputFile> {
         chatId: number,
         replyId: number | undefined,
         traceId: number | string,
-        pinned: boolean,
-        sourceActionKey: string
+        sourceActionKey: string,
+        options?: MessageSendingOptions
     ) {
         this.content = image;
         this.chatId = chatId;
         this.replyId = replyId;
         this.traceId = traceId;
-        this.shouldPin = pinned;
+        this.shouldPin = options?.pin ?? false;
         this.sourceActionKey = sourceActionKey;
     }
 }

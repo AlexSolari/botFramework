@@ -9,6 +9,10 @@ import { TextMessage } from '../responses/textMessage';
 import { VideoMessage } from '../responses/videoMessage';
 import { ActionStateBase } from '../states/actionStateBase';
 import { ChatContext } from './chatContext';
+import {
+    MessageSendingOptions,
+    TextMessageSendingOptions
+} from '../../types/messageSendingOptions';
 
 export class MessageContext<
     TActionState extends IActionState
@@ -68,21 +72,20 @@ export class MessageContext<
         );
     }
 
-    replyWithText(text: string, disableWebPreview?: boolean, pinned?: boolean) {
+    replyWithText(text: string, options?: TextMessageSendingOptions) {
         this.interactions.respond(
             new TextMessage(
                 text,
                 this.chatId,
                 this.messageId,
                 this.traceId,
-                disableWebPreview ?? false,
-                pinned ?? false,
-                this.actionKey
+                this.actionKey,
+                options
             )
         );
     }
 
-    replyWithImage(name: string, pinned?: boolean) {
+    replyWithImage(name: string, options?: MessageSendingOptions) {
         const filePath = `./content/${name}.png`;
         this.interactions.respond(
             new ImageMessage(
@@ -90,13 +93,13 @@ export class MessageContext<
                 this.chatId,
                 this.messageId,
                 this.traceId,
-                pinned ?? false,
-                this.actionKey
+                this.actionKey,
+                options
             )
         );
     }
 
-    replyWithVideo(name: string, pinned?: boolean) {
+    replyWithVideo(name: string, options?: MessageSendingOptions) {
         const filePath = `./content/${name}.mp4`;
         this.interactions.respond(
             new VideoMessage(
@@ -104,8 +107,8 @@ export class MessageContext<
                 this.chatId,
                 this.messageId,
                 this.traceId,
-                pinned ?? false,
-                this.actionKey
+                this.actionKey,
+                options
             )
         );
     }

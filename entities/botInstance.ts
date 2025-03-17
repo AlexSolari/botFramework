@@ -55,52 +55,63 @@ export class BotInstance {
             this.chats
         );
 
-        this.telegraf.on('message', async (ctx) => {
-            const msg = new IncomingMessage(ctx.update.message);
-            const messageContent = msg.text || '<non-text message>';
-
-            const messageFromName = msg.from?.first_name ?? 'Unknown';
-            const messageFromId = msg.from?.id ?? 'Unknown';
-            Logger.logWithTraceId(
-                this.name,
-                msg.traceId,
-                msg.chatName,
-                `${messageFromName} (${messageFromId}): ${messageContent}`
-            );
-
-            if (msg.text) {
-                this.messageQueue.push(msg);
-            }
-        });
-
-        this.telegraf.launch();
-
-        Scheduler.createTask(
-            'MessageProcessing',
-            async () => {
-                while (this.messageQueue.length > 0) {
-                    await this.processMessages();
-                }
-            },
-            secondsToMilliseconds(0.3 as Seconds),
-            false,
-            this.name
-        );
-
-        Scheduler.createTask(
-            'ScheduledProcessing',
-            async () => {
-                await this.runScheduled();
-            },
-            hoursToMilliseconds(0.5 as Hours),
-            true,
-            this.name
-        );
+        this.initializeMessageProcessing();
+        this.initializeScheduledProcessing();
 
         this.storage.saveMetadata(
             [...this.commands, ...this.scheduled],
             this.name
         );
+
+        this.telegraf.launch();
+    }
+
+    private initializeScheduledProcessing() {
+        if (this.scheduled.length > 0) {
+            Scheduler.createTask(
+                'ScheduledProcessing',
+                async () => {
+                    await this.runScheduled();
+                },
+                hoursToMilliseconds(0.5 as Hours),
+                true,
+                this.name
+            );
+        }
+    }
+
+    private initializeMessageProcessing() {
+        if (this.commands.length > 0) {
+            this.telegraf.on('message', async (ctx) => {
+                const msg = new IncomingMessage(ctx.update.message);
+                const messageContent = msg.text || '<non-text message>';
+
+                const messageFromName = msg.from?.first_name ?? 'Unknown';
+                const messageFromId = msg.from?.id ?? 'Unknown';
+                Logger.logWithTraceId(
+                    this.name,
+                    msg.traceId,
+                    msg.chatName,
+                    `${messageFromName} (${messageFromId}): ${messageContent}`
+                );
+
+                if (msg.text) {
+                    this.messageQueue.push(msg);
+                }
+            });
+
+            Scheduler.createTask(
+                'MessageProcessing',
+                async () => {
+                    while (this.messageQueue.length > 0) {
+                        await this.processMessages();
+                    }
+                },
+                secondsToMilliseconds(0.3 as Seconds),
+                false,
+                this.name
+            );
+        }
     }
 
     async stop(code: string) {
@@ -123,7 +134,6 @@ export class BotInstance {
                 try {
                     await trig.exec(ctx);
                 } catch (error) {
-                    console.dir(error);
                     Logger.errorWithTraceId(
                         ctx.botName,
                         ctx.traceId,

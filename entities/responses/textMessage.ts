@@ -1,3 +1,4 @@
+import { TextMessageSendingOptions } from '../../types/messageSendingOptions';
 import { BotResponseTypes, IReplyMessage } from '../../types/response';
 
 export class TextMessage implements IReplyMessage<string> {
@@ -16,16 +17,15 @@ export class TextMessage implements IReplyMessage<string> {
         chatId: number,
         replyId: number | undefined,
         traceId: string | number,
-        disableWebPreview: boolean,
-        pinned: boolean,
-        sourceActionKey: string
+        sourceActionKey: string,
+        options?: TextMessageSendingOptions
     ) {
         this.content = text;
         this.chatId = chatId;
         this.replyId = replyId;
         this.traceId = traceId;
-        this.disableWebPreview = disableWebPreview;
-        this.shouldPin = pinned;
+        this.disableWebPreview = options?.disableWebPreview ?? false;
+        this.shouldPin = options?.pin ?? false;
         this.sourceActionKey = sourceActionKey;
     }
 }
