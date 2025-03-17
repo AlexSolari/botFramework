@@ -3,8 +3,6 @@ import { ChatContext } from '../entities/context/chatContext';
 import { MessageContext } from '../entities/context/messageContext';
 import { reverseMap } from '../helpers/reverseMap';
 import { IStorageClient } from '../types/storage';
-import { Milliseconds } from '../types/timeValues';
-import { Scheduler } from './taskScheduler';
 import { Logger } from './logger';
 import { Reaction } from '../entities/responses/reaction';
 import { IncomingMessage } from '../entities/incomingMessage';
@@ -14,12 +12,16 @@ import { TextMessage } from '../entities/responses/textMessage';
 import { VideoMessage } from '../entities/responses/videoMessage';
 import { ImageMessage } from '../entities/responses/imageMessage';
 import { Telegram } from 'telegraf/typings/telegram';
+import { setTimeout } from 'timers/promises';
+import { Milliseconds } from '../types/timeValues';
 
 export class TelegramApiService {
+    isFlushing = false;
+    messageQueue: Array<BotResponse> = [];
+
     botName: string;
     telegram: Telegram;
     chats: Map<number, string>;
-    messageQueue: Array<BotResponse> = [];
     storage: IStorageClient;
 
     constructor(
@@ -32,34 +34,31 @@ export class TelegramApiService {
         this.botName = botName;
         this.chats = reverseMap(chats);
         this.storage = storage;
-
-        Scheduler.createTask(
-            'MessageSending',
-            () => {
-                this.dequeueResponse();
-            },
-            100 as Milliseconds,
-            false,
-            this.botName
-        );
     }
 
-    private async dequeueResponse() {
-        const message = this.messageQueue.pop();
+    async flushResponses() {
+        if (this.isFlushing) return;
 
-        if (!message) return;
+        while (this.messageQueue.length) {
+            const message = this.messageQueue.pop();
 
-        try {
-            await this.processResponse(message);
-        } catch (error) {
-            Logger.errorWithTraceId(
-                this.botName,
-                message.traceId,
-                this.chats.get(message.chatId)!,
-                error,
-                message
-            );
+            if (!message) break;
+
+            try {
+                await this.processResponse(message);
+                await setTimeout(100 as Milliseconds);
+            } catch (error) {
+                Logger.errorWithTraceId(
+                    this.botName,
+                    message.traceId,
+                    this.chats.get(message.chatId)!,
+                    error,
+                    message
+                );
+            }
         }
+
+        this.isFlushing = false;
     }
 
     private async pinIfShould<T>(
@@ -158,8 +157,8 @@ export class TelegramApiService {
         }
     }
 
-    private enqueue(reaction: BotResponse) {
-        this.messageQueue.push(reaction);
+    private enqueue(response: BotResponse) {
+        this.messageQueue.push(response);
     }
 
     private getInteractions() {

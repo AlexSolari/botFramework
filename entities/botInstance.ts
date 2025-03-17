@@ -1,9 +1,6 @@
 import { Telegraf } from 'telegraf';
-import {
-    hoursToMilliseconds,
-    secondsToMilliseconds
-} from '../helpers/timeConvertions';
-import { Hours, Seconds } from '../types/timeValues';
+import { hoursToMilliseconds } from '../helpers/timeConvertions';
+import { Hours } from '../types/timeValues';
 import { IStorageClient } from '../types/storage';
 import { JsonFileStorage } from '../services/jsonFileStorage';
 import { TelegramApiService } from '../services/telegramApi';
@@ -21,7 +18,6 @@ export class BotInstance {
     private commands: CommandAction<IActionState>[];
     private scheduled: ScheduledAction<IActionState>[];
     private chats: Map<string, number>;
-    private messageQueue: IncomingMessage[] = [];
     storage: IStorageClient;
 
     constructor(options: {
@@ -96,21 +92,9 @@ export class BotInstance {
                 );
 
                 if (msg.text) {
-                    this.messageQueue.push(msg);
+                    await this.processMessage(msg);
                 }
             });
-
-            Scheduler.createTask(
-                'MessageProcessing',
-                async () => {
-                    while (this.messageQueue.length > 0) {
-                        await this.processMessages();
-                    }
-                },
-                secondsToMilliseconds(0.3 as Seconds),
-                false,
-                this.name
-            );
         }
     }
 
@@ -146,9 +130,7 @@ export class BotInstance {
         }
     }
 
-    private async processMessages() {
-        const msg = this.messageQueue.pop()!;
-
+    private async processMessage(msg: IncomingMessage) {
         for (const cmd of this.commands) {
             const ctx = this.api.createContextForMessage(msg, cmd.key);
 
@@ -164,5 +146,7 @@ export class BotInstance {
                 );
             }
         }
+
+        this.api.flushResponses();
     }
 }
