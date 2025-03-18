@@ -128,6 +128,8 @@ export class BotInstance {
                 }
             }
         }
+
+        this.api.flushResponses();
     }
 
     private async processMessage(msg: IncomingMessage) {
