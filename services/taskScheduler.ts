@@ -1,6 +1,5 @@
 import { TaskRecord } from '../entities/taskRecord';
-import { secondsToMilliseconds } from '../helpers/timeConvertions';
-import { Milliseconds, Seconds } from '../types/timeValues';
+import { Milliseconds } from '../types/timeValues';
 import { Logger } from './logger';
 
 class TaskScheduler {
@@ -24,7 +23,7 @@ class TaskScheduler {
         const task = new TaskRecord(name, taskId, interval);
 
         if (executeRightAway) {
-            setTimeout(action, secondsToMilliseconds(1 as Seconds));
+            setImmediate(action);
         }
 
         Logger.logWithTraceId(

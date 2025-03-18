@@ -10,13 +10,21 @@ import {
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
 
+/**
+ * Context of action executed in chat.
+ */
 export class ChatContext {
-    botName: string;
-    actionKey: string;
-    interactions: IBotApiInteractions;
-    chatId: number;
-    chatName: string;
+    protected actionKey: string;
+    protected interactions: IBotApiInteractions;
+    /** Trace id of a action execution. */
     traceId: number | string;
+    /** Name of a bot that executes this action. */
+    botName: string;
+    /** Id of a chat that action is executed in. */
+    chatId: number;
+    /** Name of a chat that action is executed in. */
+    chatName: string;
+    /** Storage client instance for this bot. */
     storage: IStorageClient;
 
     constructor(
@@ -37,6 +45,11 @@ export class ChatContext {
         this.storage = storage;
     }
 
+    /**
+     * Sends text message to chat.
+     * @param text Message contents.
+     * @param options Message sending option.
+     */
     sendTextToChat(text: string, options?: TextMessageSendingOptions) {
         this.interactions.respond(
             new TextMessage(
@@ -50,6 +63,11 @@ export class ChatContext {
         );
     }
 
+    /**
+     * Sends image message to chat.
+     * @param name Message contents.
+     * @param options Message sending option.
+     */
     sendImageToChat(name: string, options?: MessageSendingOptions) {
         const filePath = `./content/${name}.png`;
         this.interactions.respond(
@@ -64,6 +82,11 @@ export class ChatContext {
         );
     }
 
+    /**
+     * Sends video/gif message to chat.
+     * @param name Message contents.
+     * @param options Message sending option.
+     */
     sendVideoToChat(name: string, options?: MessageSendingOptions) {
         const filePath = `./content/${name}.mp4`;
         this.interactions.respond(
@@ -78,6 +101,10 @@ export class ChatContext {
         );
     }
 
+    /**
+     * Unpins message.
+     * @param messageId Message id.
+     */
     unpinMessage(messageId: number) {
         this.interactions.unpin(
             new UnpinResponse(

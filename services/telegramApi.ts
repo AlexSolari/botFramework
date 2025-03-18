@@ -1,7 +1,7 @@
 import { InputFile, Message } from 'telegraf/types';
 import { ChatContext } from '../entities/context/chatContext';
 import { MessageContext } from '../entities/context/messageContext';
-import { reverseMap } from '../helpers/reverseMap';
+import { reverseRecord } from '../helpers/reverseRecord';
 import { IStorageClient } from '../types/storage';
 import { Logger } from './logger';
 import { Reaction } from '../entities/responses/reaction';
@@ -21,23 +21,25 @@ export class TelegramApiService {
 
     botName: string;
     telegram: Telegram;
-    chats: Map<number, string>;
+    chats: Record<number, string>;
     storage: IStorageClient;
 
     constructor(
         botName: string,
         telegram: Telegram,
         storage: IStorageClient,
-        chats: Map<string, number>
+        chats: Record<string, number>
     ) {
         this.telegram = telegram;
         this.botName = botName;
-        this.chats = reverseMap(chats);
+        this.chats = reverseRecord(chats);
         this.storage = storage;
     }
 
     async flushResponses() {
         if (this.isFlushing) return;
+
+        this.isFlushing = true;
 
         while (this.messageQueue.length) {
             const message = this.messageQueue.pop();
@@ -51,7 +53,7 @@ export class TelegramApiService {
                 Logger.errorWithTraceId(
                     this.botName,
                     message.traceId,
-                    this.chats.get(message.chatId)!,
+                    this.chats[message.chatId],
                     error,
                     message
                 );
@@ -199,7 +201,7 @@ export class TelegramApiService {
             scheduledKey,
             this.getInteractions(),
             chatId,
-            this.chats.get(chatId)!,
+            this.chats[chatId],
             `Scheduled:${scheduledKey}:${chatId}`,
             this.storage
         );

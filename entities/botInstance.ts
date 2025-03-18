@@ -1,6 +1,6 @@
 import { Telegraf } from 'telegraf';
 import { hoursToMilliseconds } from '../helpers/timeConvertions';
-import { Hours } from '../types/timeValues';
+import { Hours, Milliseconds } from '../types/timeValues';
 import { IStorageClient } from '../types/storage';
 import { JsonFileStorage } from '../services/jsonFileStorage';
 import { TelegramApiService } from '../services/telegramApi';
@@ -10,6 +10,7 @@ import { ScheduledAction } from './actions/scheduledAction';
 import { Logger } from '../services/logger';
 import { Scheduler } from '../services/taskScheduler';
 import { IncomingMessage } from './incomingMessage';
+import moment from 'moment';
 
 export class BotInstance {
     name: string;
@@ -17,7 +18,7 @@ export class BotInstance {
     private telegraf: Telegraf;
     private commands: CommandAction<IActionState>[];
     private scheduled: ScheduledAction<IActionState>[];
-    private chats: Map<string, number>;
+    private chats: Record<string, number>;
     storage: IStorageClient;
 
     constructor(options: {
@@ -25,7 +26,7 @@ export class BotInstance {
         token: string;
         commands: CommandAction<IActionState>[];
         scheduled: ScheduledAction<IActionState>[];
-        chats: Map<string, number>;
+        chats: Record<string, number>;
         storageClient?: IStorageClient;
         storagePath?: string;
     }) {
@@ -64,13 +65,44 @@ export class BotInstance {
 
     private initializeScheduledProcessing() {
         if (this.scheduled.length > 0) {
-            Scheduler.createTask(
-                'ScheduledProcessing',
+            const now = moment();
+
+            let nextExecutionTime = now.clone().startOf('hour');
+
+            if (now.minute() == 0 && now.second() == 0) {
+                Scheduler.createTask(
+                    'ScheduledProcessing',
+                    async () => {
+                        await this.runScheduled();
+                    },
+                    hoursToMilliseconds(1 as Hours),
+                    true,
+                    this.name
+                );
+
+                return;
+            }
+
+            if (now.minute() > 0 || now.second() > 0) {
+                nextExecutionTime = nextExecutionTime.add(1, 'hour');
+            }
+
+            const delay = nextExecutionTime.diff(now);
+
+            Scheduler.createOnetimeTask(
+                'ScheduledProcessing_OneTime',
                 async () => {
-                    await this.runScheduled();
+                    Scheduler.createTask(
+                        'ScheduledProcessing',
+                        async () => {
+                            await this.runScheduled();
+                        },
+                        hoursToMilliseconds(1 as Hours),
+                        true,
+                        this.name
+                    );
                 },
-                hoursToMilliseconds(0.5 as Hours),
-                true,
+                delay as Milliseconds,
                 this.name
             );
         }
@@ -111,7 +143,7 @@ export class BotInstance {
     }
 
     private async runScheduled() {
-        for (const [chatName, chatId] of this.chats.entries()) {
+        for (const [chatName, chatId] of Object.entries(this.chats)) {
             for (const trig of this.scheduled) {
                 const ctx = this.api.createContextForChat(chatId, trig.key);
 
@@ -129,7 +161,7 @@ export class BotInstance {
             }
         }
 
-        this.api.flushResponses();
+        await this.api.flushResponses();
     }
 
     private async processMessage(msg: IncomingMessage) {
@@ -149,6 +181,6 @@ export class BotInstance {
             }
         }
 
-        this.api.flushResponses();
+        await this.api.flushResponses();
     }
 }

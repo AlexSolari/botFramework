@@ -13,13 +13,23 @@ function log(text: string) {
     Logger.logWithTraceId('ALL BOTS', 'System:Bot', 'System', text);
 }
 
+/**
+ * Starts bot
+ */
 async function startBot(options: {
+    /** Bot name, used in logging */
     name: string;
+    /** Path to file containing Telegram Bot token. */
     tokenFilePath: string;
+    /** Collection of actions that will be executed as a response to message from used. Created using `CommandActionBuilder`.*/
     commands: CommandAction<IActionState>[];
+    /** Collection of actions that will be executed on timer. Created using `ScheduledActionBuilder`.*/
     scheduled: ScheduledAction<IActionState>[];
-    chats: Map<string, number>;
+    /** Object containing chat name and chat id pairs. Used for logging and execution of scheduled action. */
+    chats: Record<string, number>;
+    /** Storage client for bot state storage. If not provided, default `JsonFileStorage` will be used. */
     storageClient?: IStorageClient;
+    /** Storage path for default `JsonFileStorage` client. Will be used only if `storageClient` is not provided. If not provided, default value of `./storage/` will be used.*/
     storagePath?: string;
 }) {
     const token = await readFile(options.tokenFilePath, 'utf8');
@@ -37,6 +47,9 @@ async function startBot(options: {
     return bot;
 }
 
+/**
+ * Terminates all scheduled tasks, closes storage connections and stops all bots.
+ */
 async function stopBots(reason: string) {
     log(`Recieved termination code: ${reason}`);
     Scheduler.stopAll();
@@ -44,7 +57,7 @@ async function stopBots(reason: string) {
 
     log('Stopping bots...');
     for (const bot of bots) {
-        bot.stop(reason);
+        await bot.stop(reason);
     }
 }
 
