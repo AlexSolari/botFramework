@@ -46,7 +46,7 @@ export class ScheduledAction<TActionState extends IActionState>
         this.stateConstructor = stateConstructor;
     }
 
-    async exec(ctx: ChatContext) {
+    async exec(ctx: ChatContext<TActionState>) {
         if (!this.active || !this.chatsWhitelist.includes(ctx.chatId)) return;
 
         const state = await ctx.storage.getActionState<TActionState>(
@@ -72,6 +72,7 @@ export class ScheduledAction<TActionState extends IActionState>
 
             state.lastExecutedDate = moment().valueOf();
 
+            ctx.updateActions.forEach((action) => action(state));
             await ctx.storage.saveActionExecutionResult(
                 this,
                 ctx.chatId,

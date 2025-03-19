@@ -13,9 +13,10 @@ import {
 /**
  * Context of action executed in chat.
  */
-export class ChatContext {
+export class ChatContext<TActionState> {
     protected actionKey: string;
     protected interactions: IBotApiInteractions;
+    updateActions: Array<(state: TActionState) => void> = [];
     /** Trace id of a action execution. */
     traceId: number | string;
     /** Name of a bot that executes this action. */
@@ -43,6 +44,16 @@ export class ChatContext {
         this.chatName = chatName;
         this.traceId = traceId;
         this.storage = storage;
+    }
+
+    /**
+     * Manually update the state of an action.
+     * @param stateUpdateAction Function that will modify state.
+     */
+    updateState(stateUpdateAction: (state: TActionState) => void) {
+        this.updateActions.push(
+            stateUpdateAction as (state: TActionState) => void
+        );
     }
 
     /**

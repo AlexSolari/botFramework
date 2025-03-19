@@ -144,11 +144,14 @@ export class BotInstance {
 
     private async runScheduled() {
         for (const [chatName, chatId] of Object.entries(this.chats)) {
-            for (const trig of this.scheduled) {
-                const ctx = this.api.createContextForChat(chatId, trig.key);
+            for (const scheduledAction of this.scheduled) {
+                const ctx = this.api.createContextForChat(
+                    chatId,
+                    scheduledAction
+                );
 
                 try {
-                    await trig.exec(ctx);
+                    await scheduledAction.exec(ctx);
                 } catch (error) {
                     Logger.errorWithTraceId(
                         ctx.botName,
@@ -165,11 +168,11 @@ export class BotInstance {
     }
 
     private async processMessage(msg: IncomingMessage) {
-        for (const cmd of this.commands) {
-            const ctx = this.api.createContextForMessage(msg, cmd.key);
+        for (const commandAction of this.commands) {
+            const ctx = this.api.createContextForMessage(msg, commandAction);
 
             try {
-                await cmd.exec(ctx);
+                await commandAction.exec(ctx);
             } catch (error) {
                 Logger.errorWithTraceId(
                     ctx.botName,

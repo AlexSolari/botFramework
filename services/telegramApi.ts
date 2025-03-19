@@ -14,6 +14,9 @@ import { ImageMessage } from '../entities/responses/imageMessage';
 import { Telegram } from 'telegraf/typings/telegram';
 import { setTimeout } from 'timers/promises';
 import { Milliseconds } from '../types/timeValues';
+import { ScheduledAction } from '../entities/actions/scheduledAction';
+import { IActionState } from '../types/actionState';
+import { CommandAction } from '../entities/actions/commandAction';
 
 export class TelegramApiService {
     isFlushing = false;
@@ -171,18 +174,18 @@ export class TelegramApiService {
         } as IBotApiInteractions;
     }
 
-    createContextForMessage(
+    createContextForMessage<TActionState extends IActionState>(
         incomingMessage: IncomingMessage,
-        commandKey: string
+        command: CommandAction<TActionState>
     ) {
         const firstName = incomingMessage.from?.first_name ?? 'Unknown user';
         const lastName = incomingMessage.from?.last_name
             ? ` ${incomingMessage.from?.last_name}`
             : '';
 
-        return new MessageContext(
+        return new MessageContext<TActionState>(
             this.botName,
-            commandKey,
+            command.key,
             this.getInteractions(),
             incomingMessage.chat.id,
             incomingMessage.chatName,
@@ -195,14 +198,17 @@ export class TelegramApiService {
         );
     }
 
-    createContextForChat(chatId: number, scheduledKey: string) {
-        return new ChatContext(
+    createContextForChat<TActionState extends IActionState>(
+        chatId: number,
+        scheduledAction: ScheduledAction<TActionState>
+    ) {
+        return new ChatContext<TActionState>(
             this.botName,
-            scheduledKey,
+            scheduledAction.key,
             this.getInteractions(),
             chatId,
             this.chats[chatId],
-            `Scheduled:${scheduledKey}:${chatId}`,
+            `Scheduled:${scheduledAction.key}:${chatId}`,
             this.storage
         );
     }

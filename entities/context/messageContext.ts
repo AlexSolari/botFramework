@@ -19,8 +19,7 @@ import {
  */
 export class MessageContext<
     TActionState extends IActionState
-> extends ChatContext {
-    updateActions: Array<(state: TActionState) => void> = [];
+> extends ChatContext<TActionState> {
     /** Id of a message that triggered this action. */
     messageId: number;
     /** Text of a message that triggered this action. */
@@ -77,16 +76,6 @@ export class MessageContext<
                     `command:${commandName.replace('.', '-')}`
                 )
             )[this.chatId] as TAnotherActionState) ?? new ActionStateBase()
-        );
-    }
-
-    /**
-     * Manually update the state of an action.
-     * @param stateUpdateAction Function that will modify state.
-     */
-    updateState(stateUpdateAction: (state: TActionState) => void) {
-        this.updateActions.push(
-            stateUpdateAction as (state: TActionState) => void
         );
     }
 

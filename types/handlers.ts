@@ -12,7 +12,7 @@ export type CommandHandler<TActionState extends IActionState> = (
 
 export type ScheduledHandler<TActionState extends IActionState> = (
     /** Context of action executed in chat. */
-    ctx: ChatContext,
+    ctx: ChatContext<TActionState>,
     /** Function that will attempt to get value from cache. If there is no value found, corresponding cached state factory will be called. */
     getCached: CachedValueAccessor,
     /** State of an action being executed. */
