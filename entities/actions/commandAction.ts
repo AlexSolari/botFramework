@@ -26,13 +26,13 @@ export class CommandAction<TActionState extends IActionState>
     key: string;
 
     constructor(
-        trigger: string | RegExp | Array<string> | Array<RegExp>,
+        trigger: string | RegExp | string[] | RegExp[],
         handler: CommandHandler<TActionState>,
         name: string,
         active: boolean,
         cooldown: Seconds,
-        chatsBlacklist: Array<number>,
-        allowedUsers: Array<number>,
+        chatsBlacklist: number[],
+        allowedUsers: number[],
         condition: CommandCondition<TActionState>,
         stateConstructor: () => TActionState
     ) {
@@ -122,14 +122,22 @@ export class CommandAction<TActionState extends IActionState>
             if (typeof trigger == 'string') {
                 shouldTrigger = ctx.messageText.toLowerCase() == trigger;
             } else {
-                let matchCount = ctx.messageText.match(trigger)?.length ?? 0;
-                if (matchCount > 0) {
-                    for (; matchCount > 0; matchCount--) {
-                        const execResult = trigger.exec(ctx.messageText);
-                        if (execResult) matchResults.push(execResult);
+                trigger.lastIndex = 0;
+
+                const execResult = trigger.exec(ctx.messageText);
+                if (execResult != null) {
+                    matchResults.push(execResult);
+
+                    if (trigger.global) {
+                        while (true) {
+                            const nextResult = trigger.exec(ctx.messageText);
+                            if (nextResult == null) break;
+                            matchResults.push(nextResult);
+                        }
                     }
-                    shouldTrigger = true;
                 }
+
+                shouldTrigger = matchResults.length > 0;
             }
         }
 

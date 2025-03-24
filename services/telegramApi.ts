@@ -18,9 +18,11 @@ import { ScheduledAction } from '../entities/actions/scheduledAction';
 import { IActionState } from '../types/actionState';
 import { CommandAction } from '../entities/actions/commandAction';
 
+const TELEGRAM_RATELIMIT_DELAY = 35 as Milliseconds;
+
 export class TelegramApiService {
     isFlushing = false;
-    messageQueue: Array<BotResponse> = [];
+    messageQueue: BotResponse[] = [];
 
     botName: string;
     telegram: Telegram;
@@ -51,7 +53,7 @@ export class TelegramApiService {
 
             try {
                 await this.processResponse(message);
-                await setTimeout(100 as Milliseconds);
+                await setTimeout(TELEGRAM_RATELIMIT_DELAY);
             } catch (error) {
                 Logger.errorWithTraceId(
                     this.botName,
@@ -178,22 +180,11 @@ export class TelegramApiService {
         incomingMessage: IncomingMessage,
         command: CommandAction<TActionState>
     ) {
-        const firstName = incomingMessage.from?.first_name ?? 'Unknown user';
-        const lastName = incomingMessage.from?.last_name
-            ? ` ${incomingMessage.from?.last_name}`
-            : '';
-
         return new MessageContext<TActionState>(
             this.botName,
             command.key,
             this.getInteractions(),
-            incomingMessage.chat.id,
-            incomingMessage.chatName,
-            incomingMessage.message_id,
-            incomingMessage.text,
-            incomingMessage.from?.id,
-            incomingMessage.traceId,
-            firstName + lastName,
+            incomingMessage,
             this.storage
         );
     }

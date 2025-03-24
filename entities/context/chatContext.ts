@@ -51,9 +51,7 @@ export class ChatContext<TActionState> {
      * @param stateUpdateAction Function that will modify state.
      */
     updateState(stateUpdateAction: (state: TActionState) => void) {
-        this.updateActions.push(
-            stateUpdateAction as (state: TActionState) => void
-        );
+        this.updateActions.push(stateUpdateAction);
     }
 
     /**

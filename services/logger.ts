@@ -14,7 +14,9 @@ class JsonLogger {
         chatName: string,
         text: string
     ) {
-        console.log(JSON.stringify({ botName, traceId, chatName, text }));
+        console.log(
+            `{"botName":"${botName}","traceId":"${traceId}","chatName":"${chatName}","text":"${text}"}`
+        );
     }
 
     errorWithTraceId<TData>(
@@ -25,13 +27,9 @@ class JsonLogger {
         extraData?: TData | undefined
     ) {
         console.error(
-            JSON.stringify({
-                botName,
-                traceId,
-                chatName,
-                error: this.serializeError(errorObj),
-                extraData
-            })
+            `{"botName":"${botName}","traceId":"${traceId}","chatName":"${chatName}","error":${this.serializeError(
+                errorObj
+            )}${extraData ? `,"extraData":${JSON.stringify(extraData)}` : ''}}`
         );
     }
 }

@@ -9,6 +9,7 @@ import { TextMessage } from '../responses/textMessage';
 import { VideoMessage } from '../responses/videoMessage';
 import { ActionStateBase } from '../states/actionStateBase';
 import { ChatContext } from './chatContext';
+import { IncomingMessage } from '../incomingMessage';
 import {
     MessageSendingOptions,
     TextMessageSendingOptions
@@ -37,29 +38,25 @@ export class MessageContext<
         botName: string,
         scheduledKey: string,
         interactions: IBotApiInteractions,
-        chatId: number,
-        chatName: string,
-        messageId: number,
-        messageText: string,
-        fromUserId: number | undefined,
-        traceId: number | string,
-        fromUserName: string,
+        message: IncomingMessage,
         storage: IStorageClient
     ) {
         super(
             botName,
             scheduledKey,
             interactions,
-            chatId,
-            chatName,
-            traceId,
+            message.chat.id,
+            message.chatName,
+            message.traceId,
             storage
         );
 
-        this.messageId = messageId;
-        this.messageText = messageText;
-        this.fromUserId = fromUserId;
-        this.fromUserName = fromUserName;
+        this.messageId = message.message_id;
+        this.messageText = message.text ?? '';
+        this.fromUserId = message.from?.id;
+        this.fromUserName =
+            (message.from?.first_name ?? 'Unknown user') +
+            (message.from?.last_name ? ` ${message.from.last_name}` : '');
     }
 
     /**
@@ -70,13 +67,15 @@ export class MessageContext<
     async loadStateOf<TAnotherActionState extends IActionState>(
         commandName: string
     ): Promise<TAnotherActionState> {
-        return (
-            ((
-                await this.storage.load(
-                    `command:${commandName.replace('.', '-')}`
-                )
-            )[this.chatId] as TAnotherActionState) ?? new ActionStateBase()
-        );
+        const storageKey = `command:${commandName.replace('.', '-')}`;
+        const allStates = await this.storage.load(storageKey);
+        const stateForChat = allStates[this.chatId];
+
+        if (!stateForChat) {
+            return new ActionStateBase() as TAnotherActionState;
+        }
+
+        return stateForChat as TAnotherActionState;
     }
 
     /**

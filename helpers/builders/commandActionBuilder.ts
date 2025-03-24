@@ -12,7 +12,7 @@ import { Noop } from '../noop';
  */
 export class CommandActionBuilderWithState<TActionState extends IActionState> {
     name: string;
-    trigger: string | RegExp | Array<string> | Array<RegExp> = [];
+    trigger: string | RegExp | string[] | RegExp[] = [];
 
     active = true;
     cooldownSeconds: Seconds = 0 as Seconds;
@@ -38,7 +38,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
      *
      * If `RegExp` or `RegExp[]` is provided, will be triggered on successful match.
      */
-    on(trigger: string | RegExp | Array<string> | Array<RegExp>) {
+    on(trigger: string | RegExp | string[] | RegExp[]) {
         this.trigger = trigger;
 
         return this;
@@ -47,7 +47,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     /** Defines id (or ids) of users that are allowed to trigger this action.
      * @param id User id or ids
      */
-    from(id: number | Array<number>) {
+    from(id: number | number[]) {
         this.allowedUsers = toArray(id);
 
         return this;

@@ -18,7 +18,6 @@ class TaskScheduler {
         executeRightAway: boolean,
         ownerName: string
     ) {
-        executeRightAway = executeRightAway ?? false;
         const taskId = setInterval(action, interval);
         const task = new TaskRecord(name, taskId, interval);
 
