@@ -1,6 +1,8 @@
 import { IActionState } from './actionState';
 
+export type ActionKey = string & { __brand: 'actionKey' };
+
 export interface IActionWithState {
-    key: string;
+    key: ActionKey;
     stateConstructor: () => IActionState;
 }

@@ -4,7 +4,7 @@ import { ScheduledHandler } from '../../types/handlers';
 import { hoursToMilliseconds } from '../../helpers/timeConvertions';
 import { HoursOfDay } from '../../types/timeValues';
 import { IActionState } from '../../types/actionState';
-import { IActionWithState } from '../../types/actionWithState';
+import { IActionWithState, ActionKey } from '../../types/actionWithState';
 import { CachedStateFactory } from '../cachedStateFactory';
 import { ChatContext } from '../context/chatContext';
 import { ActionExecutionResult } from '../actionExecutionResult';
@@ -20,7 +20,7 @@ export class ScheduledAction<TActionState extends IActionState>
     timeinHours: HoursOfDay;
     active: boolean;
     chatsWhitelist: number[];
-    key: string;
+    key: ActionKey;
 
     cachedState = new Map<string, unknown>();
     stateConstructor: () => TActionState;
@@ -42,7 +42,7 @@ export class ScheduledAction<TActionState extends IActionState>
         this.active = active;
         this.chatsWhitelist = whitelist;
         this.cachedStateFactories = cachedStateFactories;
-        this.key = `scheduled:${this.name.replace('.', '-')}`;
+        this.key = `scheduled:${this.name.replace('.', '-')}` as ActionKey;
         this.stateConstructor = stateConstructor;
     }
 

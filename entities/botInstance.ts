@@ -35,6 +35,8 @@ export class BotInstance {
         this.scheduled = options.scheduled;
         this.chats = options.chats;
 
+        const actions = [...this.commands, ...this.scheduled];
+
         Logger.logWithTraceId(
             this.name,
             `System:Bot-${this.name}-Start`,
@@ -44,7 +46,7 @@ export class BotInstance {
         this.telegraf = new Telegraf(options.token);
         this.storage =
             options.storageClient ??
-            new JsonFileStorage(options.name, options.storagePath);
+            new JsonFileStorage(options.name, actions, options.storagePath);
         this.api = new TelegramApiService(
             this.name,
             this.telegraf.telegram,
@@ -55,10 +57,7 @@ export class BotInstance {
         this.initializeMessageProcessing();
         this.initializeScheduledProcessing();
 
-        this.storage.saveMetadata(
-            [...this.commands, ...this.scheduled],
-            this.name
-        );
+        this.storage.saveMetadata(actions, this.name);
 
         this.telegraf.launch();
     }

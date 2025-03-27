@@ -1,5 +1,6 @@
 import { TextMessageSendingOptions } from '../../types/messageSendingOptions';
 import { BotResponseTypes, IReplyMessage } from '../../types/response';
+import { IActionWithState } from '../../types/actionWithState';
 
 export class TextMessage implements IReplyMessage<string> {
     kind = BotResponseTypes.text;
@@ -10,14 +11,14 @@ export class TextMessage implements IReplyMessage<string> {
     traceId: string | number;
     disableWebPreview: boolean;
     shouldPin: boolean;
-    sourceActionKey: string;
+    action: IActionWithState;
 
     constructor(
         text: string,
         chatId: number,
         replyId: number | undefined,
         traceId: string | number,
-        sourceActionKey: string,
+        action: IActionWithState,
         options?: TextMessageSendingOptions
     ) {
         this.content = text;
@@ -26,6 +27,6 @@ export class TextMessage implements IReplyMessage<string> {
         this.traceId = traceId;
         this.disableWebPreview = options?.disableWebPreview ?? false;
         this.shouldPin = options?.pin ?? false;
-        this.sourceActionKey = sourceActionKey;
+        this.action = action;
     }
 }

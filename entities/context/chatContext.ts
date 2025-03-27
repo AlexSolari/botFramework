@@ -9,12 +9,13 @@ import {
     MessageSendingOptions,
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
+import { IActionWithState } from '../../types/actionWithState';
 
 /**
  * Context of action executed in chat.
  */
 export class ChatContext<TActionState> {
-    protected actionKey: string;
+    protected action: IActionWithState;
     protected interactions: IBotApiInteractions;
     updateActions: Array<(state: TActionState) => void> = [];
     /** Trace id of a action execution. */
@@ -30,7 +31,7 @@ export class ChatContext<TActionState> {
 
     constructor(
         botName: string,
-        actionKey: string,
+        action: IActionWithState,
         interactions: IBotApiInteractions,
         chatId: number,
         chatName: string,
@@ -38,7 +39,7 @@ export class ChatContext<TActionState> {
         storage: IStorageClient
     ) {
         this.botName = botName;
-        this.actionKey = actionKey;
+        this.action = action;
         this.interactions = interactions;
         this.chatId = chatId;
         this.chatName = chatName;
@@ -66,7 +67,7 @@ export class ChatContext<TActionState> {
                 this.chatId,
                 undefined,
                 this.traceId,
-                this.actionKey,
+                this.action,
                 options
             )
         );
@@ -85,7 +86,7 @@ export class ChatContext<TActionState> {
                 this.chatId,
                 undefined,
                 this.traceId,
-                this.actionKey,
+                this.action,
                 options
             )
         );
@@ -104,7 +105,7 @@ export class ChatContext<TActionState> {
                 this.chatId,
                 undefined,
                 this.traceId,
-                this.actionKey,
+                this.action,
                 options
             )
         );
@@ -116,12 +117,7 @@ export class ChatContext<TActionState> {
      */
     unpinMessage(messageId: number) {
         this.interactions.unpin(
-            new UnpinResponse(
-                messageId,
-                this.chatId,
-                this.traceId,
-                this.actionKey
-            )
+            new UnpinResponse(messageId, this.chatId, this.traceId, this.action)
         );
     }
 }

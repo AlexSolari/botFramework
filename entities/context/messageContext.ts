@@ -14,6 +14,7 @@ import {
     MessageSendingOptions,
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
+import { IActionWithState, ActionKey } from '../../types/actionWithState';
 
 /**
  * Context of action executed in chat, in response to a message
@@ -36,14 +37,14 @@ export class MessageContext<
 
     constructor(
         botName: string,
-        scheduledKey: string,
+        action: IActionWithState,
         interactions: IBotApiInteractions,
         message: IncomingMessage,
         storage: IStorageClient
     ) {
         super(
             botName,
-            scheduledKey,
+            action,
             interactions,
             message.chat.id,
             message.chatName,
@@ -67,7 +68,10 @@ export class MessageContext<
     async loadStateOf<TAnotherActionState extends IActionState>(
         commandName: string
     ): Promise<TAnotherActionState> {
-        const storageKey = `command:${commandName.replace('.', '-')}`;
+        const storageKey = `command:${commandName.replace(
+            '.',
+            '-'
+        )}` as ActionKey;
         const allStates = await this.storage.load(storageKey);
         const stateForChat = allStates[this.chatId];
 
@@ -90,7 +94,7 @@ export class MessageContext<
                 this.chatId,
                 this.messageId,
                 this.traceId,
-                this.actionKey,
+                this.action,
                 options
             )
         );
@@ -109,7 +113,7 @@ export class MessageContext<
                 this.chatId,
                 this.messageId,
                 this.traceId,
-                this.actionKey,
+                this.action,
                 options
             )
         );
@@ -128,7 +132,7 @@ export class MessageContext<
                 this.chatId,
                 this.messageId,
                 this.traceId,
-                this.actionKey,
+                this.action,
                 options
             )
         );
@@ -145,7 +149,7 @@ export class MessageContext<
                 this.chatId,
                 this.messageId,
                 emoji,
-                this.actionKey
+                this.action
             )
         );
     }

@@ -5,7 +5,7 @@ import { Seconds } from '../../types/timeValues';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { toArray } from '../../helpers/toArray';
 import { IActionState } from '../../types/actionState';
-import { IActionWithState } from '../../types/actionWithState';
+import { IActionWithState, ActionKey } from '../../types/actionWithState';
 import { CommandTriggerCheckResult } from '../commandTriggerCheckResult';
 import { MessageContext } from '../context/messageContext';
 import { Logger } from '../../services/logger';
@@ -23,7 +23,7 @@ export class CommandAction<TActionState extends IActionState>
     allowedUsers: number[];
     condition: CommandCondition<TActionState>;
     stateConstructor: () => TActionState;
-    key: string;
+    key: ActionKey;
 
     constructor(
         trigger: string | RegExp | string[] | RegExp[],
@@ -46,7 +46,7 @@ export class CommandAction<TActionState extends IActionState>
         this.condition = condition;
         this.stateConstructor = stateConstructor;
 
-        this.key = `command:${this.name.replace('.', '-')}`;
+        this.key = `command:${this.name.replace('.', '-')}` as ActionKey;
     }
 
     async exec(ctx: MessageContext<TActionState>) {

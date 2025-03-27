@@ -80,7 +80,7 @@ export class TelegramApiService {
             );
 
             await this.storage.updateStateFor(
-                response.sourceActionKey,
+                response.action,
                 response.chatId,
                 async (state) => {
                     state.pinnedMessages.push(sentMessage.message_id);
@@ -152,7 +152,7 @@ export class TelegramApiService {
                 );
 
                 await this.storage.updateStateFor(
-                    response.sourceActionKey,
+                    response.action,
                     response.chatId,
                     async (state) => {
                         state.pinnedMessages = state.pinnedMessages.filter(
@@ -182,7 +182,7 @@ export class TelegramApiService {
     ) {
         return new MessageContext<TActionState>(
             this.botName,
-            command.key,
+            command,
             this.getInteractions(),
             incomingMessage,
             this.storage
@@ -195,7 +195,7 @@ export class TelegramApiService {
     ) {
         return new ChatContext<TActionState>(
             this.botName,
-            scheduledAction.key,
+            scheduledAction,
             this.getInteractions(),
             chatId,
             this.chats[chatId],
