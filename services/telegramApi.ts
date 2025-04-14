@@ -1,7 +1,7 @@
-import { InputFile, Message } from 'telegraf/types';
+import { Message } from 'telegraf/types';
 import { ChatContext } from '../entities/context/chatContext';
 import { MessageContext } from '../entities/context/messageContext';
-import { reverseRecord } from '../helpers/reverseRecord';
+import { inverseRecord as inverseRecord } from '../helpers/inverseRecord';
 import { IStorageClient } from '../types/storage';
 import { Logger } from './logger';
 import { Reaction } from '../entities/responses/reaction';
@@ -28,6 +28,7 @@ export class TelegramApiService {
     telegram: Telegram;
     chats: Record<number, string>;
     storage: IStorageClient;
+    interactions: IBotApiInteractions;
 
     constructor(
         botName: string,
@@ -37,8 +38,14 @@ export class TelegramApiService {
     ) {
         this.telegram = telegram;
         this.botName = botName;
-        this.chats = reverseRecord(chats);
+        this.chats = inverseRecord(chats);
         this.storage = storage;
+
+        this.interactions = {
+            react: (reaction) => this.enqueue(reaction),
+            respond: (response) => this.enqueue(response),
+            unpin: (unpinMessage) => this.enqueue(unpinMessage)
+        } as IBotApiInteractions;
     }
 
     async flushResponses() {
@@ -96,7 +103,7 @@ export class TelegramApiService {
             case 'text':
                 sentMessage = await this.telegram.sendMessage(
                     response.chatId,
-                    response.content as string,
+                    response.content,
                     {
                         reply_to_message_id: response.replyId,
                         parse_mode: 'MarkdownV2',
@@ -110,7 +117,7 @@ export class TelegramApiService {
             case 'image':
                 sentMessage = await this.telegram.sendPhoto(
                     response.chatId,
-                    response.content as InputFile,
+                    response.content,
                     response.replyId
                         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           ({ reply_to_message_id: response.replyId } as any)
@@ -122,7 +129,7 @@ export class TelegramApiService {
             case 'video':
                 sentMessage = await this.telegram.sendVideo(
                     response.chatId,
-                    response.content as InputFile,
+                    response.content,
                     response.replyId
                         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           ({ reply_to_message_id: response.replyId } as any)
@@ -168,14 +175,6 @@ export class TelegramApiService {
         this.messageQueue.push(response);
     }
 
-    private getInteractions() {
-        return {
-            react: (reaction) => this.enqueue(reaction),
-            respond: (response) => this.enqueue(response),
-            unpin: (unpinMessage) => this.enqueue(unpinMessage)
-        } as IBotApiInteractions;
-    }
-
     createContextForMessage<TActionState extends IActionState>(
         incomingMessage: IncomingMessage,
         command: CommandAction<TActionState>
@@ -183,7 +182,7 @@ export class TelegramApiService {
         return new MessageContext<TActionState>(
             this.botName,
             command,
-            this.getInteractions(),
+            this.interactions,
             incomingMessage,
             this.storage
         );
@@ -196,7 +195,7 @@ export class TelegramApiService {
         return new ChatContext<TActionState>(
             this.botName,
             scheduledAction,
-            this.getInteractions(),
+            this.interactions,
             chatId,
             this.chats[chatId],
             `Scheduled:${scheduledAction.key}:${chatId}`,

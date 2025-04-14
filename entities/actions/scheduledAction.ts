@@ -122,7 +122,7 @@ export class ScheduledAction<TActionState extends IActionState>
         const today = moment().startOf('day').valueOf();
 
         const isAllowedToTrigger =
-            moment().hour().valueOf() >= this.timeinHours;
+            moment().add(1, 'minute').hour().valueOf() >= this.timeinHours;
         const hasTriggeredToday = state.lastExecutedDate >= today;
 
         return isAllowedToTrigger && !hasTriggeredToday;

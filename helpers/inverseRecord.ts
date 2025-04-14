@@ -1,4 +1,4 @@
-export function reverseRecord<T extends PropertyKey, U extends PropertyKey>(
+export function inverseRecord<T extends PropertyKey, U extends PropertyKey>(
     input: Record<T, U>
 ) {
     return Object.fromEntries(
