@@ -111,12 +111,13 @@ export class CommandAction<TActionState extends IActionState>
         const isUserAllowed =
             this.allowedUsers.length == 0 ||
             this.allowedUsers.includes(ctx.fromUserId);
+
+        const lastExecutedDate = moment(state.lastExecutedDate);
         const cooldownInMilliseconds = secondsToMilliseconds(
             this.cooldownInSeconds
         );
         const notOnCooldown =
-            moment().valueOf() - state.lastExecutedDate >=
-            cooldownInMilliseconds;
+            moment().diff(lastExecutedDate) >= cooldownInMilliseconds;
 
         if (isUserAllowed && notOnCooldown) {
             if (typeof trigger == 'string') {

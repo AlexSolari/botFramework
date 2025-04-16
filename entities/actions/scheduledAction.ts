@@ -119,11 +119,15 @@ export class ScheduledAction<TActionState extends IActionState>
     }
 
     private shouldTrigger(state: IActionState): boolean {
-        const today = moment().startOf('day').valueOf();
+        const startOfToday = moment().startOf('day').valueOf();
+        const lastExecutedDate = moment(state.lastExecutedDate);
+        const currentTime = moment();
+        const scheduledTime = moment()
+            .startOf('day')
+            .add(this.timeinHours, 'hours');
 
-        const isAllowedToTrigger =
-            moment().add(1, 'minute').hour().valueOf() >= this.timeinHours;
-        const hasTriggeredToday = state.lastExecutedDate >= today;
+        const isAllowedToTrigger = currentTime.isSameOrAfter(scheduledTime);
+        const hasTriggeredToday = lastExecutedDate.isAfter(startOfToday);
 
         return isAllowedToTrigger && !hasTriggeredToday;
     }
