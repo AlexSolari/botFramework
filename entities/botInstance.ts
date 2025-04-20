@@ -1,6 +1,9 @@
 import { Telegraf } from 'telegraf';
-import { hoursToMilliseconds } from '../helpers/timeConvertions';
-import { Hours, Milliseconds } from '../types/timeValues';
+import {
+    hoursToSeconds,
+    secondsToMilliseconds
+} from '../helpers/timeConvertions';
+import { Hours, Milliseconds, Seconds } from '../types/timeValues';
 import { IStorageClient } from '../types/storage';
 import { JsonFileStorage } from '../services/jsonFileStorage';
 import { TelegramApiService } from '../services/telegramApi';
@@ -29,6 +32,7 @@ export class BotInstance {
         chats: Record<string, number>;
         storageClient?: IStorageClient;
         storagePath?: string;
+        scheduledPeriod?: Seconds;
     }) {
         this.name = options.name;
         this.commands = options.commands;
@@ -55,14 +59,16 @@ export class BotInstance {
         );
 
         this.initializeMessageProcessing();
-        this.initializeScheduledProcessing();
+        this.initializeScheduledProcessing(
+            options.scheduledPeriod ?? hoursToSeconds(1 as Hours)
+        );
 
         this.storage.saveMetadata(actions, this.name);
 
         this.telegraf.launch();
     }
 
-    private initializeScheduledProcessing() {
+    private initializeScheduledProcessing(period: Seconds) {
         if (this.scheduled.length > 0) {
             const now = moment();
 
@@ -74,7 +80,7 @@ export class BotInstance {
                     async () => {
                         await this.runScheduled();
                     },
-                    hoursToMilliseconds(1 as Hours),
+                    secondsToMilliseconds(period),
                     true,
                     this.name
                 );
@@ -96,7 +102,7 @@ export class BotInstance {
                         async () => {
                             await this.runScheduled();
                         },
-                        hoursToMilliseconds(1 as Hours),
+                        secondsToMilliseconds(period),
                         true,
                         this.name
                     );
