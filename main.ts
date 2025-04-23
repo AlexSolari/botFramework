@@ -6,6 +6,7 @@ import { ScheduledAction } from './entities/actions/scheduledAction';
 import { IActionState } from './types/actionState';
 import { Scheduler } from './services/taskScheduler';
 import { BotInstance } from './entities/botInstance';
+import { Seconds } from './types/timeValues';
 
 const bots: BotInstance[] = [];
 
@@ -31,6 +32,8 @@ async function startBot(options: {
     storageClient?: IStorageClient;
     /** Storage path for default `JsonFileStorage` client. Will be used only if `storageClient` is not provided. If not provided, default value of `./storage/` will be used.*/
     storagePath?: string;
+    /** Period of time between execution of scheduled actions. */
+    scheduledPeriod?: Seconds;
 }) {
     const token = await readFile(options.tokenFilePath, 'utf8');
     const bot = new BotInstance({
@@ -40,7 +43,8 @@ async function startBot(options: {
         scheduled: options.scheduled,
         chats: options.chats,
         storageClient: options.storageClient,
-        storagePath: options.storagePath
+        storagePath: options.storagePath,
+        scheduledPeriod: options.scheduledPeriod
     });
     bots.push(bot);
 

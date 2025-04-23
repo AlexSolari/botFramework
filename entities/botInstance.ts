@@ -72,8 +72,6 @@ export class BotInstance {
         if (this.scheduled.length > 0) {
             const now = moment();
 
-            let nextExecutionTime = now.clone().startOf('hour');
-
             if (now.minute() == 0 && now.second() == 0) {
                 Scheduler.createTask(
                     'ScheduledProcessing',
@@ -88,6 +86,7 @@ export class BotInstance {
                 return;
             }
 
+            let nextExecutionTime = now.clone().startOf('hour');
             if (now.minute() > 0 || now.second() > 0) {
                 nextExecutionTime = nextExecutionTime.add(1, 'hour');
             }

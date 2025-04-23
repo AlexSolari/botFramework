@@ -112,40 +112,43 @@ export class CommandAction<TActionState extends IActionState>
             this.allowedUsers.length == 0 ||
             this.allowedUsers.includes(ctx.fromUserId);
 
+        if (!isUserAllowed)
+            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown;
+
         const lastExecutedDate = moment(state.lastExecutedDate);
         const cooldownInMilliseconds = secondsToMilliseconds(
             this.cooldownInSeconds
         );
-        const notOnCooldown =
-            moment().diff(lastExecutedDate) >= cooldownInMilliseconds;
+        const onCooldown =
+            moment().diff(lastExecutedDate) < cooldownInMilliseconds;
 
-        if (isUserAllowed && notOnCooldown) {
-            if (typeof trigger == 'string') {
-                shouldTrigger = ctx.messageText.toLowerCase() == trigger;
-            } else {
-                trigger.lastIndex = 0;
+        if (onCooldown) return CommandTriggerCheckResult.DoNotTrigger;
 
-                const execResult = trigger.exec(ctx.messageText);
-                if (execResult != null) {
-                    matchResults.push(execResult);
+        if (typeof trigger == 'string') {
+            shouldTrigger = ctx.messageText.toLowerCase() == trigger;
+        } else {
+            trigger.lastIndex = 0;
 
-                    if (trigger.global) {
-                        while (true) {
-                            const nextResult = trigger.exec(ctx.messageText);
-                            if (nextResult == null) break;
-                            matchResults.push(nextResult);
-                        }
+            const execResult = trigger.exec(ctx.messageText);
+            if (execResult != null) {
+                matchResults.push(execResult);
+
+                if (trigger.global) {
+                    while (true) {
+                        const nextResult = trigger.exec(ctx.messageText);
+                        if (nextResult == null) break;
+                        matchResults.push(nextResult);
                     }
                 }
-
-                shouldTrigger = matchResults.length > 0;
             }
+
+            shouldTrigger = matchResults.length > 0;
         }
 
         return new CommandTriggerCheckResult(
             shouldTrigger,
             matchResults,
-            !isUserAllowed
+            false
         );
     }
 }
