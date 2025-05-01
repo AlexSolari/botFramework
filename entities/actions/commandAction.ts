@@ -10,11 +10,12 @@ import { CommandTriggerCheckResult } from '../commandTriggerCheckResult';
 import { MessageContext } from '../context/messageContext';
 import { Logger } from '../../services/logger';
 import { ActionExecutionResult } from '../actionExecutionResult';
+import { CommandTrigger, NonTextMessage } from '../../types/commandTrigger';
 
 export class CommandAction<TActionState extends IActionState>
     implements IActionWithState
 {
-    triggers: (string | RegExp)[];
+    triggers: CommandTrigger[];
     handler: CommandHandler<TActionState>;
     name: string;
     cooldownInSeconds: Seconds;
@@ -26,7 +27,7 @@ export class CommandAction<TActionState extends IActionState>
     key: ActionKey;
 
     constructor(
-        trigger: string | RegExp | string[] | RegExp[],
+        trigger: CommandTrigger | CommandTrigger[],
         handler: CommandHandler<TActionState>,
         name: string,
         active: boolean,
@@ -99,7 +100,7 @@ export class CommandAction<TActionState extends IActionState>
 
     private checkTrigger(
         ctx: MessageContext<TActionState>,
-        trigger: RegExp | string,
+        trigger: CommandTrigger,
         state: IActionState
     ) {
         let shouldTrigger = false;
@@ -124,7 +125,9 @@ export class CommandAction<TActionState extends IActionState>
 
         if (onCooldown) return CommandTriggerCheckResult.DoNotTrigger;
 
-        if (typeof trigger == 'string') {
+        if (trigger == NonTextMessage.Any) {
+            shouldTrigger = ctx.messageText == '';
+        } else if (typeof trigger == 'string') {
             shouldTrigger = ctx.messageText.toLowerCase() == trigger;
         } else {
             trigger.lastIndex = 0;

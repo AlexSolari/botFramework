@@ -6,13 +6,14 @@ import { ActionStateBase } from '../../entities/states/actionStateBase';
 import { IActionState } from '../../types/actionState';
 import { toArray } from '../toArray';
 import { Noop } from '../noop';
+import { CommandTrigger } from '../../types/commandTrigger';
 
 /**
  * Builder for `CommandAction` with state represented by `TActionState`
  */
 export class CommandActionBuilderWithState<TActionState extends IActionState> {
     name: string;
-    trigger: string | RegExp | string[] | RegExp[] = [];
+    trigger: CommandTrigger | CommandTrigger[] = [];
 
     active = true;
     cooldownSeconds: Seconds = 0 as Seconds;
@@ -38,7 +39,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
      *
      * If `RegExp` or `RegExp[]` is provided, will be triggered on successful match.
      */
-    on(trigger: string | RegExp | string[] | RegExp[]) {
+    on(trigger: CommandTrigger | CommandTrigger[]) {
         this.trigger = trigger;
 
         return this;
