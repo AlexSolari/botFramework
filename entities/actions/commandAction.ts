@@ -10,7 +10,7 @@ import { CommandTriggerCheckResult } from '../commandTriggerCheckResult';
 import { MessageContext } from '../context/messageContext';
 import { Logger } from '../../services/logger';
 import { ActionExecutionResult } from '../actionExecutionResult';
-import { CommandTrigger, NonTextMessage } from '../../types/commandTrigger';
+import { CommandTrigger } from '../../types/commandTrigger';
 
 export class CommandAction<TActionState extends IActionState>
     implements IActionWithState
@@ -125,8 +125,8 @@ export class CommandAction<TActionState extends IActionState>
 
         if (onCooldown) return CommandTriggerCheckResult.DoNotTrigger;
 
-        if (trigger == NonTextMessage.Any) {
-            shouldTrigger = ctx.messageText == '';
+        if (trigger == ctx.messageType) {
+            shouldTrigger = true;
         } else if (typeof trigger == 'string') {
             shouldTrigger = ctx.messageText.toLowerCase() == trigger;
         } else {

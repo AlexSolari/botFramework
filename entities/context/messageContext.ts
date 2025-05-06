@@ -15,6 +15,7 @@ import {
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
 import { IActionWithState, ActionKey } from '../../types/actionWithState';
+import { MessageType } from '../../types/messageTypes';
 
 /**
  * Context of action executed in chat, in response to a message
@@ -34,6 +35,8 @@ export class MessageContext<
     startCooldown: boolean = true;
     /** Name of a user that sent a message that triggered this action. */
     fromUserName: string;
+    /** Type of message being received */
+    messageType: (typeof MessageType)[keyof typeof MessageType];
 
     constructor(
         botName: string,
@@ -54,6 +57,7 @@ export class MessageContext<
 
         this.messageId = message.message_id;
         this.messageText = message.text ?? '';
+        this.messageType = message.type;
         this.fromUserId = message.from?.id;
         this.fromUserName =
             (message.from?.first_name ?? 'Unknown user') +

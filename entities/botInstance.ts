@@ -111,12 +111,13 @@ export class BotInstance {
             );
         }
     }
-
     private initializeMessageProcessing() {
         if (this.commands.length > 0) {
             this.telegraf.on('message', async (ctx) => {
+                console.dir(ctx.update);
                 const msg = new IncomingMessage(ctx.update.message);
-                const messageContent = msg.text || '<non-text message>';
+                const messageContent =
+                    msg.text || `<non-text message: ${msg.type}>`;
 
                 const messageFromName = msg.from?.first_name ?? 'Unknown';
                 const messageFromId = msg.from?.id ?? 'Unknown';
@@ -127,9 +128,7 @@ export class BotInstance {
                     `${messageFromName} (${messageFromId}): ${messageContent}`
                 );
 
-                if (msg.text) {
-                    await this.processMessage(msg);
-                }
+                await this.processMessage(msg);
             });
         }
     }

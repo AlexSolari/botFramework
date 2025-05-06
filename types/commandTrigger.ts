@@ -1,5 +1,6 @@
-export enum NonTextMessage {
-    Any
-}
+import { MessageType } from './messageTypes';
 
-export type CommandTrigger = string | RegExp | NonTextMessage.Any;
+export type CommandTrigger =
+    | (typeof MessageType)[keyof typeof MessageType]
+    | string
+    | RegExp;
