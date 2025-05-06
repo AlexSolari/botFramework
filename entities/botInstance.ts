@@ -114,7 +114,6 @@ export class BotInstance {
     private initializeMessageProcessing() {
         if (this.commands.length > 0) {
             this.telegraf.on('message', async (ctx) => {
-                console.dir(ctx.update);
                 const msg = new IncomingMessage(ctx.update.message);
                 const messageContent =
                     msg.text || `<non-text message: ${msg.type}>`;
