@@ -9,5 +9,8 @@ export const MessageType = {
     NewChatMember: '__msg:NewChatMember',
     Poll: '__msg:Poll',
     Location: '__msg:Location',
+    Photo: '__msg:Photo',
     Unknown: '__msg:Unknown'
 } as const;
+
+export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];

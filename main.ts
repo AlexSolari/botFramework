@@ -34,6 +34,8 @@ async function startBot(options: {
     storagePath?: string;
     /** Period of time between execution of scheduled actions. */
     scheduledPeriod?: Seconds;
+    /** If true, telegram API objects will be logged instead of message content. */
+    verboseLoggingForIncomingMessage?: boolean;
 }) {
     const token = await readFile(options.tokenFilePath, 'utf8');
     const bot = new BotInstance({
@@ -44,7 +46,9 @@ async function startBot(options: {
         chats: options.chats,
         storageClient: options.storageClient,
         storagePath: options.storagePath,
-        scheduledPeriod: options.scheduledPeriod
+        scheduledPeriod: options.scheduledPeriod,
+        verboseLoggingForIncomingMessage:
+            options.verboseLoggingForIncomingMessage
     });
     bots.push(bot);
 

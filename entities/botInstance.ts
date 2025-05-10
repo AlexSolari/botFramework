@@ -33,6 +33,7 @@ export class BotInstance {
         storageClient?: IStorageClient;
         storagePath?: string;
         scheduledPeriod?: Seconds;
+        verboseLoggingForIncomingMessage?: boolean;
     }) {
         this.name = options.name;
         this.commands = options.commands;
@@ -58,7 +59,9 @@ export class BotInstance {
             this.chats
         );
 
-        this.initializeMessageProcessing();
+        this.initializeMessageProcessing(
+            options.verboseLoggingForIncomingMessage ?? false
+        );
         this.initializeScheduledProcessing(
             options.scheduledPeriod ?? hoursToSeconds(1 as Hours)
         );
@@ -111,7 +114,9 @@ export class BotInstance {
             );
         }
     }
-    private initializeMessageProcessing() {
+    private initializeMessageProcessing(
+        verboseLoggingForIncomingMessage: boolean
+    ) {
         if (this.commands.length > 0) {
             this.telegraf.on('message', async (ctx) => {
                 const msg = new IncomingMessage(ctx.update.message);
@@ -120,12 +125,22 @@ export class BotInstance {
 
                 const messageFromName = msg.from?.first_name ?? 'Unknown';
                 const messageFromId = msg.from?.id ?? 'Unknown';
-                Logger.logWithTraceId(
-                    this.name,
-                    msg.traceId,
-                    msg.chatName,
-                    `${messageFromName} (${messageFromId}): ${messageContent}`
-                );
+
+                if (verboseLoggingForIncomingMessage) {
+                    Logger.logObjectWithTraceId(
+                        this.name,
+                        msg.traceId,
+                        msg.chatName,
+                        ctx.update.message
+                    );
+                } else {
+                    Logger.logWithTraceId(
+                        this.name,
+                        msg.traceId,
+                        msg.chatName,
+                        `${messageFromName} (${messageFromId}): ${messageContent}`
+                    );
+                }
 
                 await this.processMessage(msg);
             });

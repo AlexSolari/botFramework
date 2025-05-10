@@ -1,6 +1,3 @@
-import { MessageType } from './messageTypes';
+import { MessageTypeValue } from './messageTypes';
 
-export type CommandTrigger =
-    | (typeof MessageType)[keyof typeof MessageType]
-    | string
-    | RegExp;
+export type CommandTrigger = MessageTypeValue | string | RegExp;

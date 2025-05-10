@@ -8,6 +8,19 @@ class JsonLogger {
         return JSON.stringify(plainObject);
     }
 
+    logObjectWithTraceId(
+        botName: string,
+        traceId: string | number,
+        chatName: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data: any
+    ) {
+        data.botName = botName;
+        data.traceId = traceId;
+        data.chatName = chatName;
+        console.log(data);
+    }
+
     logWithTraceId(
         botName: string,
         traceId: string | number,

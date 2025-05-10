@@ -1,6 +1,6 @@
 import { Chat, Message, Update, User } from 'telegraf/types';
 import { randomInt } from 'crypto';
-import { MessageType } from '../types/messageTypes';
+import { MessageType, MessageTypeValue } from '../types/messageTypes';
 
 export class IncomingMessage {
     message_id: number;
@@ -8,17 +8,18 @@ export class IncomingMessage {
     from: User | undefined;
     text: string;
     chatName: string;
-    type: (typeof MessageType)[keyof typeof MessageType];
+    type: MessageTypeValue;
     traceId = randomInt(10000, 99999);
 
     private detectMessageType(
         message: Update.New & (Update.NonChannel & Message)
     ) {
+        if ('photo' in message) return MessageType.Photo;
         if ('sticker' in message) return MessageType.Sticker;
         if ('animation' in message) return MessageType.Animation;
-        if ('document' in message) return MessageType.Document;
         if ('voice' in message) return MessageType.Voice;
         if ('audio' in message) return MessageType.Audio;
+        if ('document' in message) return MessageType.Document;
         if ('left_chat_member' in message) return MessageType.LeftChatMember;
         if ('new_chat_member' in message) return MessageType.NewChatMember;
         if ('poll' in message) return MessageType.Poll;

@@ -15,7 +15,7 @@ import {
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
 import { IActionWithState, ActionKey } from '../../types/actionWithState';
-import { MessageType } from '../../types/messageTypes';
+import { MessageTypeValue } from '../../types/messageTypes';
 
 /**
  * Context of action executed in chat, in response to a message
@@ -36,7 +36,7 @@ export class MessageContext<
     /** Name of a user that sent a message that triggered this action. */
     fromUserName: string;
     /** Type of message being received */
-    messageType: (typeof MessageType)[keyof typeof MessageType];
+    messageType: MessageTypeValue;
 
     constructor(
         botName: string,
