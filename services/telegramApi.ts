@@ -175,11 +175,12 @@ export class TelegramApiService {
         this.messageQueue.push(response);
     }
 
-    createContextForMessage<TActionState extends IActionState>(
+    initializeContextForMessage<TActionState extends IActionState>(
+        ctx: MessageContext<TActionState>,
         incomingMessage: IncomingMessage,
         command: CommandAction<TActionState>
     ) {
-        return new MessageContext<TActionState>(
+        return ctx.initializeMessageContext(
             this.botName,
             command,
             this.interactions,
@@ -188,11 +189,12 @@ export class TelegramApiService {
         );
     }
 
-    createContextForChat<TActionState extends IActionState>(
+    initializeContextForChat<TActionState extends IActionState>(
+        ctx: ChatContext<TActionState>,
         chatId: number,
         scheduledAction: ScheduledAction<TActionState>
     ) {
-        return new ChatContext<TActionState>(
+        return ctx.initializeChatContext(
             this.botName,
             scheduledAction,
             this.interactions,

@@ -15,21 +15,25 @@ import { IActionWithState } from '../../types/actionWithState';
  * Context of action executed in chat.
  */
 export class ChatContext<TActionState> {
-    protected action: IActionWithState;
-    protected interactions: IBotApiInteractions;
+    protected action!: IActionWithState;
+    protected interactions!: IBotApiInteractions;
     updateActions: Array<(state: TActionState) => void> = [];
     /** Trace id of a action execution. */
-    traceId: number | string;
+    traceId!: number | string;
     /** Name of a bot that executes this action. */
-    botName: string;
+    botName!: string;
     /** Id of a chat that action is executed in. */
-    chatId: number;
+    chatId!: number;
     /** Name of a chat that action is executed in. */
-    chatName: string;
+    chatName!: string;
     /** Storage client instance for this bot. */
-    storage: IStorageClient;
+    storage!: IStorageClient;
 
-    constructor(
+    isInitialized = false;
+
+    constructor() {}
+
+    initializeChatContext(
         botName: string,
         action: IActionWithState,
         interactions: IBotApiInteractions,
@@ -45,6 +49,11 @@ export class ChatContext<TActionState> {
         this.chatName = chatName;
         this.traceId = traceId;
         this.storage = storage;
+
+        this.updateActions = [];
+        this.isInitialized = true;
+
+        return this;
     }
 
     /**

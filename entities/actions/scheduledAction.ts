@@ -14,7 +14,7 @@ import { Scheduler } from '../../services/taskScheduler';
 export class ScheduledAction<TActionState extends IActionState>
     implements IActionWithState
 {
-    static semaphore = new Semaphore(1);
+    static locks = new Map<string, Semaphore>();
 
     name: string;
     timeinHours: HoursOfDay;
@@ -47,6 +47,8 @@ export class ScheduledAction<TActionState extends IActionState>
     }
 
     async exec(ctx: ChatContext<TActionState>) {
+        if (!ctx.isInitialized) throw new Error('Context is not initialized');
+
         if (!this.active || !this.chatsWhitelist.includes(ctx.chatId)) return;
 
         const state = await ctx.storage.getActionState<TActionState>(
@@ -91,7 +93,16 @@ export class ScheduledAction<TActionState extends IActionState>
             );
         }
 
-        await ScheduledAction.semaphore.acquire();
+        const semaphoreKey = `${this.key}_cached:${key}`;
+        let semaphore: Semaphore;
+        if (ScheduledAction.locks.has(semaphoreKey)) {
+            semaphore = ScheduledAction.locks.get(semaphoreKey)!;
+        } else {
+            semaphore = new Semaphore(1);
+            ScheduledAction.locks.set(semaphoreKey, semaphore);
+        }
+
+        await semaphore.acquire();
 
         try {
             if (this.cachedState.has(key)) {
@@ -114,7 +125,7 @@ export class ScheduledAction<TActionState extends IActionState>
 
             return value as TResult;
         } finally {
-            ScheduledAction.semaphore.release();
+            semaphore.release();
         }
     }
 

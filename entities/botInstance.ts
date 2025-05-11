@@ -14,6 +14,8 @@ import { Logger } from '../services/logger';
 import { Scheduler } from '../services/taskScheduler';
 import { IncomingMessage } from './incomingMessage';
 import moment from 'moment';
+import { ChatContext } from './context/chatContext';
+import { MessageContext } from './context/messageContext';
 
 export class BotInstance {
     name: string;
@@ -160,12 +162,11 @@ export class BotInstance {
     }
 
     private async runScheduled() {
+        const ctx = new ChatContext<IActionState>();
+
         for (const [chatName, chatId] of Object.entries(this.chats)) {
             for (const scheduledAction of this.scheduled) {
-                const ctx = this.api.createContextForChat(
-                    chatId,
-                    scheduledAction
-                );
+                this.api.initializeContextForChat(ctx, chatId, scheduledAction);
 
                 try {
                     await scheduledAction.exec(ctx);
@@ -185,8 +186,10 @@ export class BotInstance {
     }
 
     private async processMessage(msg: IncomingMessage) {
+        const ctx = new MessageContext<IActionState>();
+
         for (const commandAction of this.commands) {
-            const ctx = this.api.createContextForMessage(msg, commandAction);
+            this.api.initializeContextForMessage(ctx, msg, commandAction);
 
             try {
                 await commandAction.exec(ctx);

@@ -24,9 +24,9 @@ export class MessageContext<
     TActionState extends IActionState
 > extends ChatContext<TActionState> {
     /** Id of a message that triggered this action. */
-    messageId: number;
+    messageId!: number;
     /** Text of a message that triggered this action. */
-    messageText: string;
+    messageText!: string;
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
     matchResults: RegExpMatchArray[] = [];
     /** Id of a user that sent a message that triggered this action. */
@@ -34,18 +34,33 @@ export class MessageContext<
     /** Indicates if cooldown should be started after action is executed. Set to `true` by default. */
     startCooldown: boolean = true;
     /** Name of a user that sent a message that triggered this action. */
-    fromUserName: string;
+    fromUserName!: string;
     /** Type of message being received */
-    messageType: MessageTypeValue;
+    messageType!: MessageTypeValue;
 
-    constructor(
+    constructor() {
+        super();
+    }
+
+    initializeMessageContext(
         botName: string,
         action: IActionWithState,
         interactions: IBotApiInteractions,
         message: IncomingMessage,
         storage: IStorageClient
     ) {
-        super(
+        this.messageId = message.message_id;
+        this.messageText = message.text ?? '';
+        this.messageType = message.type;
+        this.fromUserId = message.from?.id;
+        this.fromUserName =
+            (message.from?.first_name ?? 'Unknown user') +
+            (message.from?.last_name ? ` ${message.from.last_name}` : '');
+
+        this.matchResults = [];
+        this.startCooldown = true;
+
+        return this.initializeChatContext(
             botName,
             action,
             interactions,
@@ -54,14 +69,6 @@ export class MessageContext<
             message.traceId,
             storage
         );
-
-        this.messageId = message.message_id;
-        this.messageText = message.text ?? '';
-        this.messageType = message.type;
-        this.fromUserId = message.from?.id;
-        this.fromUserName =
-            (message.from?.first_name ?? 'Unknown user') +
-            (message.from?.last_name ? ` ${message.from.last_name}` : '');
     }
 
     /**

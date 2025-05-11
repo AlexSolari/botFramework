@@ -51,6 +51,8 @@ export class CommandAction<TActionState extends IActionState>
     }
 
     async exec(ctx: MessageContext<TActionState>) {
+        if (!ctx.isInitialized) throw new Error('Context is not initialized');
+
         if (!this.active || this.chatsBlacklist.includes(ctx.chatId)) return;
 
         const isConditionMet = await this.condition(ctx);
