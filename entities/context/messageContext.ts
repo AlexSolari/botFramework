@@ -44,7 +44,7 @@ export class MessageContext<
 
     initializeMessageContext(
         botName: string,
-        action: IActionWithState,
+        action: IActionWithState<TActionState>,
         interactions: IBotApiInteractions,
         message: IncomingMessage,
         storage: IStorageClient

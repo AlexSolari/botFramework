@@ -3,7 +3,6 @@ import { dirname } from 'path';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { Sema as Semaphore } from 'async-sema';
 import { IStorageClient } from '../types/storage';
-import { ActionStateBase } from '../entities/states/actionStateBase';
 import { ActionExecutionResult } from '../entities/actionExecutionResult';
 import { IActionState } from '../types/actionState';
 import { IActionWithState, ActionKey } from '../types/actionWithState';
@@ -14,7 +13,11 @@ export class JsonFileStorage implements IStorageClient {
     private storagePath: string;
     private botName: string;
 
-    constructor(botName: string, actions: IActionWithState[], path?: string) {
+    constructor(
+        botName: string,
+        actions: IActionWithState<IActionState>[],
+        path?: string
+    ) {
         this.cache = new Map<string, Record<number, IActionState>>();
         this.botName = botName;
         this.storagePath = path ?? 'storage';
@@ -67,8 +70,11 @@ export class JsonFileStorage implements IStorageClient {
         return (this.cache.get(key) ?? {}) as Record<number, TActionState>;
     }
 
-    private async save(data: Record<number, ActionStateBase>, key: ActionKey) {
-        this.cache.delete(key);
+    private async save<TActionState extends IActionState>(
+        data: Record<number, TActionState>,
+        key: ActionKey
+    ) {
+        this.cache.set(key, data);
 
         const targetPath = this.buidPathFromKey(key);
         const folderName = dirname(targetPath);
@@ -93,7 +99,10 @@ export class JsonFileStorage implements IStorageClient {
         });
     }
 
-    async saveMetadata(actions: IActionWithState[], botName: string) {
+    async saveMetadata(
+        actions: IActionWithState<IActionState>[],
+        botName: string
+    ) {
         const targetPath = this.buidPathFromKey(
             `Metadata-${botName}` as ActionKey
         );
@@ -104,7 +113,7 @@ export class JsonFileStorage implements IStorageClient {
     }
 
     async getActionState<TActionState extends IActionState>(
-        action: IActionWithState,
+        action: IActionWithState<TActionState>,
         chatId: number
     ) {
         return await this.lock(action.key, async () => {
@@ -117,13 +126,13 @@ export class JsonFileStorage implements IStorageClient {
         });
     }
 
-    async saveActionExecutionResult(
-        action: IActionWithState,
+    async saveActionExecutionResult<TActionState extends IActionState>(
+        action: IActionWithState<TActionState>,
         chatId: number,
-        transactionResult: ActionExecutionResult
+        transactionResult: ActionExecutionResult<TActionState>
     ) {
         await this.lock(action.key, async () => {
-            const data = await this.loadInternal(action.key);
+            const data = await this.loadInternal<TActionState>(action.key);
 
             if (transactionResult.shouldUpdate) {
                 data[chatId] = transactionResult.data;
@@ -139,16 +148,16 @@ export class JsonFileStorage implements IStorageClient {
     }
 
     async updateStateFor<TActionState extends IActionState>(
-        action: IActionWithState,
+        action: IActionWithState<TActionState>,
         chatId: number,
         update: (state: TActionState) => Promise<void>
     ) {
         await this.lock(action.key, async () => {
-            const data = await this.loadInternal(action.key);
+            const data = await this.loadInternal<TActionState>(action.key);
             const state = Object.assign(
                 action.stateConstructor(),
                 data[chatId]
-            ) as TActionState;
+            );
 
             await update(state);
 

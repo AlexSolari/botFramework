@@ -3,6 +3,7 @@ import { Reaction } from '../entities/responses/reaction';
 import { TextMessage } from '../entities/responses/textMessage';
 import { UnpinResponse } from '../entities/responses/unpin';
 import { VideoMessage } from '../entities/responses/videoMessage';
+import { IActionState } from './actionState';
 import { IActionWithState } from './actionWithState';
 
 export const BotResponseTypes = {
@@ -25,7 +26,7 @@ export interface IChatResponse {
     chatId: number;
     traceId: number | string;
 
-    action: IActionWithState;
+    action: IActionWithState<IActionState>;
 }
 
 export interface IReplyMessage<TType> extends IChatResponse {

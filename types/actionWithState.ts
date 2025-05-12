@@ -2,7 +2,7 @@ import { IActionState } from './actionState';
 
 export type ActionKey = string & { __brand: 'actionKey' };
 
-export interface IActionWithState {
+export interface IActionWithState<TActionState extends IActionState> {
     key: ActionKey;
-    stateConstructor: () => IActionState;
+    stateConstructor: () => TActionState;
 }

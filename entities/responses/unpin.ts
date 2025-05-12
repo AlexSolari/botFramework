@@ -1,5 +1,6 @@
 import { BotResponseTypes, IChatResponse } from '../../types/response';
 import { IActionWithState } from '../../types/actionWithState';
+import { IActionState } from '../../types/actionState';
 
 export class UnpinResponse implements IChatResponse {
     kind = BotResponseTypes.unpin;
@@ -7,13 +8,13 @@ export class UnpinResponse implements IChatResponse {
     messageId: number;
     chatId: number;
     traceId: number | string;
-    action: IActionWithState;
+    action: IActionWithState<IActionState>;
 
     constructor(
         messageId: number,
         chatId: number,
         traceId: number | string,
-        action: IActionWithState
+        action: IActionWithState<IActionState>
     ) {
         this.messageId = messageId;
         this.chatId = chatId;

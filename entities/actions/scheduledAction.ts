@@ -12,7 +12,7 @@ import { Logger } from '../../services/logger';
 import { Scheduler } from '../../services/taskScheduler';
 
 export class ScheduledAction<TActionState extends IActionState>
-    implements IActionWithState
+    implements IActionWithState<TActionState>
 {
     static locks = new Map<string, Semaphore>();
 
@@ -47,7 +47,10 @@ export class ScheduledAction<TActionState extends IActionState>
     }
 
     async exec(ctx: ChatContext<TActionState>) {
-        if (!ctx.isInitialized) throw new Error('Context is not initialized');
+        if (!ctx.isInitialized)
+            throw new Error(
+                `Context for ${this.key} is not initialized or already consumed`
+            );
 
         if (!this.active || !this.chatsWhitelist.includes(ctx.chatId)) return;
 
@@ -81,6 +84,8 @@ export class ScheduledAction<TActionState extends IActionState>
                 new ActionExecutionResult(state, isAllowedToTrigger)
             );
         }
+
+        ctx.isInitialized = false;
     }
 
     private async getCachedValue<TResult>(

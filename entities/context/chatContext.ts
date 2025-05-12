@@ -10,12 +10,13 @@ import {
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
 import { IActionWithState } from '../../types/actionWithState';
+import { IActionState } from '../../types/actionState';
 
 /**
  * Context of action executed in chat.
  */
-export class ChatContext<TActionState> {
-    protected action!: IActionWithState;
+export class ChatContext<TActionState extends IActionState> {
+    protected action!: IActionWithState<TActionState>;
     protected interactions!: IBotApiInteractions;
     updateActions: Array<(state: TActionState) => void> = [];
     /** Trace id of a action execution. */
@@ -35,7 +36,7 @@ export class ChatContext<TActionState> {
 
     initializeChatContext(
         botName: string,
-        action: IActionWithState,
+        action: IActionWithState<TActionState>,
         interactions: IBotApiInteractions,
         chatId: number,
         chatName: string,

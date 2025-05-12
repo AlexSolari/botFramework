@@ -13,7 +13,7 @@ import { ActionExecutionResult } from '../actionExecutionResult';
 import { CommandTrigger } from '../../types/commandTrigger';
 
 export class CommandAction<TActionState extends IActionState>
-    implements IActionWithState
+    implements IActionWithState<TActionState>
 {
     triggers: CommandTrigger[];
     handler: CommandHandler<TActionState>;
@@ -51,7 +51,10 @@ export class CommandAction<TActionState extends IActionState>
     }
 
     async exec(ctx: MessageContext<TActionState>) {
-        if (!ctx.isInitialized) throw new Error('Context is not initialized');
+        if (!ctx.isInitialized)
+            throw new Error(
+                `Context for ${this.key} is not initialized or already consumed`
+            );
 
         if (!this.active || this.chatsBlacklist.includes(ctx.chatId)) return;
 
@@ -98,6 +101,8 @@ export class CommandAction<TActionState extends IActionState>
             ctx.chatId,
             new ActionExecutionResult(state, ctx.startCooldown && shouldTrigger)
         );
+
+        ctx.isInitialized = false;
     }
 
     private checkTrigger(

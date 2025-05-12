@@ -2,6 +2,7 @@ import { InputFile } from 'telegraf/types';
 import { BotResponseTypes, IReplyMessage } from '../../types/response';
 import { MessageSendingOptions } from '../../types/messageSendingOptions';
 import { IActionWithState } from '../../types/actionWithState';
+import { IActionState } from '../../types/actionState';
 
 export class VideoMessage implements IReplyMessage<InputFile> {
     kind = BotResponseTypes.video;
@@ -12,14 +13,14 @@ export class VideoMessage implements IReplyMessage<InputFile> {
     traceId: string | number;
     disableWebPreview = false;
     shouldPin: boolean;
-    action: IActionWithState;
+    action: IActionWithState<IActionState>;
 
     constructor(
         video: InputFile,
         chatId: number,
         replyId: number | undefined,
         traceId: number | string,
-        action: IActionWithState,
+        action: IActionWithState<IActionState>,
         options?: MessageSendingOptions
     ) {
         this.content = video;
