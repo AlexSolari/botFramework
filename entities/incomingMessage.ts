@@ -14,6 +14,7 @@ export class IncomingMessage {
     private detectMessageType(
         message: Update.New & (Update.NonChannel & Message)
     ) {
+        if ('text' in message) return MessageType.Text;
         if ('photo' in message) return MessageType.Photo;
         if ('sticker' in message) return MessageType.Sticker;
         if ('animation' in message) return MessageType.Animation;
