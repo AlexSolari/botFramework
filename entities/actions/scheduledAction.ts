@@ -52,7 +52,8 @@ export class ScheduledAction<TActionState extends IActionState>
                 `Context for ${this.key} is not initialized or already consumed`
             );
 
-        if (!this.active || !this.chatsWhitelist.includes(ctx.chatId)) return;
+        if (!this.active || !this.chatsWhitelist.includes(ctx.chatId))
+            return [];
 
         const state = await ctx.storage.getActionState<TActionState>(
             this,
@@ -86,6 +87,8 @@ export class ScheduledAction<TActionState extends IActionState>
         }
 
         ctx.isInitialized = false;
+
+        return ctx.responses;
     }
 
     private async getCachedValue<TResult>(

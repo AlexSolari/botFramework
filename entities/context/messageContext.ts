@@ -1,5 +1,4 @@
 import { resolve } from 'path';
-import { IBotApiInteractions } from '../../services/telegramApi';
 import { TelegramEmoji } from 'telegraf/types';
 import { IStorageClient } from '../../types/storage';
 import { IActionState } from '../../types/actionState';
@@ -16,7 +15,6 @@ import {
 } from '../../types/messageSendingOptions';
 import { IActionWithState, ActionKey } from '../../types/actionWithState';
 import { MessageTypeValue } from '../../types/messageTypes';
-
 /**
  * Context of action executed in chat, in response to a message
  */
@@ -45,7 +43,6 @@ export class MessageContext<
     initializeMessageContext(
         botName: string,
         action: IActionWithState<TActionState>,
-        interactions: IBotApiInteractions,
         message: IncomingMessage,
         storage: IStorageClient
     ) {
@@ -63,7 +60,6 @@ export class MessageContext<
         return this.initializeChatContext(
             botName,
             action,
-            interactions,
             message.chat.id,
             message.chatName,
             message.traceId,
@@ -94,12 +90,13 @@ export class MessageContext<
     }
 
     /**
-     * Reply with text message to message that triggered this action.
+     * Reply with text message to message that triggered this action after action execution is finished.
+     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
      * @param text Message contents.
      * @param options Message sending option.
      */
     replyWithText(text: string, options?: TextMessageSendingOptions) {
-        this.interactions.respond(
+        this.responses.push(
             new TextMessage(
                 text,
                 this.chatId,
@@ -112,13 +109,14 @@ export class MessageContext<
     }
 
     /**
-     * Reply with image message to message that triggered this action.
+     * Reply with image message to message that triggered this action after action execution is finished.
+     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
      * @param text Message contents.
      * @param options Message sending option.
      */
     replyWithImage(name: string, options?: MessageSendingOptions) {
         const filePath = `./content/${name}.png`;
-        this.interactions.respond(
+        this.responses.push(
             new ImageMessage(
                 { source: resolve(filePath) },
                 this.chatId,
@@ -131,13 +129,14 @@ export class MessageContext<
     }
 
     /**
-     * Reply with video/gif message to message that triggered this action.
+     * Reply with video/gif message to message that triggered this action after action execution is finished.
+     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
      * @param text Message contents.
      * @param options Message sending option.
      */
     replyWithVideo(name: string, options?: MessageSendingOptions) {
         const filePath = `./content/${name}.mp4`;
-        this.interactions.respond(
+        this.responses.push(
             new VideoMessage(
                 { source: resolve(filePath) },
                 this.chatId,
@@ -150,11 +149,12 @@ export class MessageContext<
     }
 
     /**
-     * React to the message that triggered this action.
+     * React to the message that triggered this action after action execution is finished.
+     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
      * @param emoji Telegram emoji to react with.
      */
     react(emoji: TelegramEmoji) {
-        this.interactions.react(
+        this.responses.push(
             new Reaction(
                 this.traceId,
                 this.chatId,

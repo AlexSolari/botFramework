@@ -4,13 +4,8 @@ import { MessageContext } from '../entities/context/messageContext';
 import { inverseRecord as inverseRecord } from '../helpers/inverseRecord';
 import { IStorageClient } from '../types/storage';
 import { Logger } from './logger';
-import { Reaction } from '../entities/responses/reaction';
 import { IncomingMessage } from '../entities/incomingMessage';
 import { BotResponse, IReplyMessage } from '../types/response';
-import { UnpinResponse } from '../entities/responses/unpin';
-import { TextMessage } from '../entities/responses/textMessage';
-import { VideoMessage } from '../entities/responses/videoMessage';
-import { ImageMessage } from '../entities/responses/imageMessage';
 import { Telegram } from 'telegraf/typings/telegram';
 import { setTimeout } from 'timers/promises';
 import { Milliseconds } from '../types/timeValues';
@@ -28,7 +23,6 @@ export class TelegramApiService {
     telegram: Telegram;
     chats: Record<number, string>;
     storage: IStorageClient;
-    interactions: IBotApiInteractions;
 
     constructor(
         botName: string,
@@ -40,12 +34,12 @@ export class TelegramApiService {
         this.botName = botName;
         this.chats = inverseRecord(chats);
         this.storage = storage;
+    }
 
-        this.interactions = {
-            react: (reaction) => this.enqueue(reaction),
-            respond: (response) => this.enqueue(response),
-            unpin: (unpinMessage) => this.enqueue(unpinMessage)
-        } as IBotApiInteractions;
+    enqueueBatchedResponses(responses: BotResponse[]) {
+        for (const response of responses) {
+            this.messageQueue.push(response);
+        }
     }
 
     async flushResponses() {
@@ -54,7 +48,7 @@ export class TelegramApiService {
         this.isFlushing = true;
 
         while (this.messageQueue.length) {
-            const message = this.messageQueue.pop();
+            const message = this.messageQueue.shift();
 
             if (!message) break;
 
@@ -168,11 +162,11 @@ export class TelegramApiService {
                     }
                 );
                 break;
+            case 'delay':
+                if (response.delay > TELEGRAM_RATELIMIT_DELAY) {
+                    await setTimeout(response.delay - TELEGRAM_RATELIMIT_DELAY);
+                }
         }
-    }
-
-    private enqueue(response: BotResponse) {
-        this.messageQueue.push(response);
     }
 
     initializeContextForMessage<TActionState extends IActionState>(
@@ -183,7 +177,6 @@ export class TelegramApiService {
         return ctx.initializeMessageContext(
             this.botName,
             command,
-            this.interactions,
             incomingMessage,
             this.storage
         );
@@ -197,17 +190,10 @@ export class TelegramApiService {
         return ctx.initializeChatContext(
             this.botName,
             scheduledAction,
-            this.interactions,
             chatId,
             this.chats[chatId],
             `Scheduled:${scheduledAction.key}:${chatId}`,
             this.storage
         );
     }
-}
-
-export interface IBotApiInteractions {
-    respond: (response: TextMessage | VideoMessage | ImageMessage) => void;
-    react: (reaction: Reaction) => void;
-    unpin: (unpinMessage: UnpinResponse) => void;
 }

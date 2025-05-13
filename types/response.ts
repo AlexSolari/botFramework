@@ -1,3 +1,4 @@
+import { DelayResponse } from '../entities/responses/delay';
 import { ImageMessage } from '../entities/responses/imageMessage';
 import { Reaction } from '../entities/responses/reaction';
 import { TextMessage } from '../entities/responses/textMessage';
@@ -11,7 +12,8 @@ export const BotResponseTypes = {
     text: 'text',
     image: 'image',
     video: 'video',
-    react: 'react'
+    react: 'react',
+    delay: 'delay'
 } as const;
 
 export type BotResponse =
@@ -19,6 +21,7 @@ export type BotResponse =
     | Reaction
     | TextMessage
     | VideoMessage
+    | DelayResponse
     | ImageMessage;
 
 export interface IChatResponse {

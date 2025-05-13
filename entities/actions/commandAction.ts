@@ -56,11 +56,11 @@ export class CommandAction<TActionState extends IActionState>
                 `Context for ${this.key} is not initialized or already consumed`
             );
 
-        if (!this.active || this.chatsBlacklist.includes(ctx.chatId)) return;
+        if (!this.active || this.chatsBlacklist.includes(ctx.chatId)) return [];
 
         const isConditionMet = await this.condition(ctx);
 
-        if (!isConditionMet) return;
+        if (!isConditionMet) return [];
 
         const state = await ctx.storage.getActionState<TActionState>(
             this,
@@ -74,7 +74,7 @@ export class CommandAction<TActionState extends IActionState>
                 CommandTriggerCheckResult.DoNotTrigger
             );
 
-        if (!shouldTrigger) return;
+        if (!shouldTrigger) return [];
 
         Logger.logWithTraceId(
             ctx.botName,
@@ -103,6 +103,8 @@ export class CommandAction<TActionState extends IActionState>
         );
 
         ctx.isInitialized = false;
+
+        return ctx.responses;
     }
 
     private checkTrigger(

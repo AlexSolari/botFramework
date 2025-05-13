@@ -169,7 +169,8 @@ export class BotInstance {
                 this.api.initializeContextForChat(ctx, chatId, scheduledAction);
 
                 try {
-                    await scheduledAction.exec(ctx);
+                    const responses = await scheduledAction.exec(ctx);
+                    this.api.enqueueBatchedResponses(responses);
                 } catch (error) {
                     Logger.errorWithTraceId(
                         ctx.botName,
@@ -192,7 +193,8 @@ export class BotInstance {
             this.api.initializeContextForMessage(ctx, msg, commandAction);
 
             try {
-                await commandAction.exec(ctx);
+                const responses = await commandAction.exec(ctx);
+                this.api.enqueueBatchedResponses(responses);
             } catch (error) {
                 Logger.errorWithTraceId(
                     ctx.botName,
