@@ -3,28 +3,29 @@ import { BotResponseTypes, IReplyMessage } from '../../types/response';
 import { MessageSendingOptions } from '../../types/messageSendingOptions';
 import { IActionWithState } from '../../types/actionWithState';
 import { IActionState } from '../../types/actionState';
+import { ChatInfo } from '../chatInfo';
 
-export class ImageMessage implements IReplyMessage<InputFile> {
-    kind = BotResponseTypes.image;
+export class VideoMessage implements IReplyMessage<InputFile> {
+    readonly kind = BotResponseTypes.video;
 
-    content: InputFile;
-    chatId: number;
-    replyId: number | undefined;
-    traceId: string | number;
-    disableWebPreview = false;
-    shouldPin: boolean;
-    action: IActionWithState<IActionState>;
+    readonly content: InputFile;
+    readonly chatInfo: ChatInfo;
+    readonly replyId: number | undefined;
+    readonly traceId: string | number;
+    readonly disableWebPreview = false;
+    readonly shouldPin: boolean;
+    readonly action: IActionWithState<IActionState>;
 
     constructor(
-        image: InputFile,
-        chatId: number,
+        video: InputFile,
+        chatInfo: ChatInfo,
         replyId: number | undefined,
         traceId: number | string,
         action: IActionWithState<IActionState>,
         options?: MessageSendingOptions
     ) {
-        this.content = image;
-        this.chatId = chatId;
+        this.content = video;
+        this.chatInfo = chatInfo;
         this.replyId = replyId;
         this.traceId = traceId;
         this.shouldPin = options?.pin ?? false;

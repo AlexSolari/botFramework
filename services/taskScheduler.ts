@@ -3,7 +3,7 @@ import { Milliseconds } from '../types/timeValues';
 import { Logger } from './logger';
 
 class TaskScheduler {
-    activeTasks: TaskRecord[] = [];
+    readonly activeTasks: TaskRecord[] = [];
 
     stopAll() {
         this.activeTasks.forEach((task) => {

@@ -2,28 +2,29 @@ import { TextMessageSendingOptions } from '../../types/messageSendingOptions';
 import { BotResponseTypes, IReplyMessage } from '../../types/response';
 import { IActionWithState } from '../../types/actionWithState';
 import { IActionState } from '../../types/actionState';
+import { ChatInfo } from '../chatInfo';
 
 export class TextMessage implements IReplyMessage<string> {
-    kind = BotResponseTypes.text;
+    readonly kind = BotResponseTypes.text;
 
-    content: string;
-    chatId: number;
-    replyId: number | undefined;
-    traceId: string | number;
-    disableWebPreview: boolean;
-    shouldPin: boolean;
-    action: IActionWithState<IActionState>;
+    readonly content: string;
+    readonly chatInfo: ChatInfo;
+    readonly replyId: number | undefined;
+    readonly traceId: string | number;
+    readonly disableWebPreview: boolean;
+    readonly shouldPin: boolean;
+    readonly action: IActionWithState<IActionState>;
 
     constructor(
         text: string,
-        chatId: number,
+        chatInfo: ChatInfo,
         replyId: number | undefined,
         traceId: string | number,
         action: IActionWithState<IActionState>,
         options?: TextMessageSendingOptions
     ) {
         this.content = text;
-        this.chatId = chatId;
+        this.chatInfo = chatInfo;
         this.replyId = replyId;
         this.traceId = traceId;
         this.disableWebPreview = options?.disableWebPreview ?? false;

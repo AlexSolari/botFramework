@@ -12,19 +12,20 @@ import { CommandAction } from './actions/commandAction';
 import { ScheduledAction } from './actions/scheduledAction';
 import { Logger } from '../services/logger';
 import { Scheduler } from '../services/taskScheduler';
-import { IncomingMessage } from './incomingMessage';
+import { IncomingMessage } from '../dtos/incomingMessage';
 import moment from 'moment';
 import { ChatContext } from './context/chatContext';
 import { MessageContext } from './context/messageContext';
+import { ChatInfo } from '../dtos/chatInfo';
 
 export class BotInstance {
-    name: string;
-    private api: TelegramApiService;
-    private telegraf: Telegraf;
-    private commands: CommandAction<IActionState>[];
-    private scheduled: ScheduledAction<IActionState>[];
-    private chats: Record<string, number>;
-    storage: IStorageClient;
+    readonly name: string;
+    private readonly api: TelegramApiService;
+    private readonly telegraf: Telegraf;
+    private readonly commands: CommandAction<IActionState>[];
+    private readonly scheduled: ScheduledAction<IActionState>[];
+    private readonly chats: Record<string, number>;
+    readonly storage: IStorageClient;
 
     constructor(options: {
         name: string;
@@ -57,8 +58,7 @@ export class BotInstance {
         this.api = new TelegramApiService(
             this.name,
             this.telegraf.telegram,
-            this.storage,
-            this.chats
+            this.storage
         );
 
         this.initializeMessageProcessing(
@@ -132,14 +132,14 @@ export class BotInstance {
                     Logger.logObjectWithTraceId(
                         this.name,
                         msg.traceId,
-                        msg.chatName,
+                        msg.chatInfo.name,
                         ctx.update.message
                     );
                 } else {
                     Logger.logWithTraceId(
                         this.name,
                         msg.traceId,
-                        msg.chatName,
+                        msg.chatInfo.name,
                         `${messageFromName} (${messageFromId}): ${messageContent}`
                     );
                 }
@@ -166,7 +166,13 @@ export class BotInstance {
 
         for (const [chatName, chatId] of Object.entries(this.chats)) {
             for (const scheduledAction of this.scheduled) {
-                this.api.initializeContextForChat(ctx, chatId, scheduledAction);
+                ctx.initializeChatContext(
+                    this.name,
+                    scheduledAction,
+                    new ChatInfo(chatId, chatName),
+                    `Scheduled:${scheduledAction.key}:${chatId}`,
+                    this.storage
+                );
 
                 try {
                     const responses = await scheduledAction.exec(ctx);
@@ -190,7 +196,12 @@ export class BotInstance {
         const ctx = new MessageContext<IActionState>();
 
         for (const commandAction of this.commands) {
-            this.api.initializeContextForMessage(ctx, msg, commandAction);
+            ctx.initializeMessageContext(
+                this.name,
+                commandAction,
+                msg,
+                this.storage
+            );
 
             try {
                 const responses = await commandAction.exec(ctx);
@@ -199,7 +210,7 @@ export class BotInstance {
                 Logger.errorWithTraceId(
                     ctx.botName,
                     ctx.traceId,
-                    ctx.chatName,
+                    ctx.chatInfo.name,
                     error,
                     ctx
                 );

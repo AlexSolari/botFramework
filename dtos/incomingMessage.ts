@@ -1,13 +1,13 @@
-import { Chat, Message, Update, User } from 'telegraf/types';
+import { Message, Update, User } from 'telegraf/types';
 import { randomInt } from 'crypto';
 import { MessageType, MessageTypeValue } from '../types/messageTypes';
+import { ChatInfo } from './chatInfo';
 
 export class IncomingMessage {
     message_id: number;
-    chat: Chat;
+    chatInfo: ChatInfo;
     from: User | undefined;
     text: string;
-    chatName: string;
     type: MessageTypeValue;
     traceId = randomInt(10000, 99999);
 
@@ -31,13 +31,14 @@ export class IncomingMessage {
 
     constructor(ctxMessage: Update.New & (Update.NonChannel & Message)) {
         this.message_id = ctxMessage.message_id;
-        this.chat = ctxMessage.chat;
         this.from = ctxMessage.from;
         this.text = 'text' in ctxMessage ? ctxMessage.text : '';
-        this.type = this.detectMessageType(ctxMessage);
-        this.chatName =
+        this.chatInfo = new ChatInfo(
+            ctxMessage.chat.id,
             'title' in ctxMessage.chat
                 ? ctxMessage.chat.title + ' ' + ctxMessage.chat.id
-                : 'DM';
+                : 'DM'
+        );
+        this.type = this.detectMessageType(ctxMessage);
     }
 }

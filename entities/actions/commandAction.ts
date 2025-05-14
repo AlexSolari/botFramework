@@ -6,25 +6,25 @@ import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { toArray } from '../../helpers/toArray';
 import { IActionState } from '../../types/actionState';
 import { IActionWithState, ActionKey } from '../../types/actionWithState';
-import { CommandTriggerCheckResult } from '../commandTriggerCheckResult';
+import { CommandTriggerCheckResult } from '../../dtos/commandTriggerCheckResult';
 import { MessageContext } from '../context/messageContext';
 import { Logger } from '../../services/logger';
-import { ActionExecutionResult } from '../actionExecutionResult';
+import { ActionExecutionResult } from '../../dtos/actionExecutionResult';
 import { CommandTrigger } from '../../types/commandTrigger';
 
 export class CommandAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
 {
-    triggers: CommandTrigger[];
-    handler: CommandHandler<TActionState>;
-    name: string;
-    cooldownInSeconds: Seconds;
-    active: boolean;
-    chatsBlacklist: number[];
-    allowedUsers: number[];
-    condition: CommandCondition<TActionState>;
-    stateConstructor: () => TActionState;
-    key: ActionKey;
+    readonly triggers: CommandTrigger[];
+    readonly handler: CommandHandler<TActionState>;
+    readonly name: string;
+    readonly cooldownInSeconds: Seconds;
+    readonly active: boolean;
+    readonly chatsBlacklist: number[];
+    readonly allowedUsers: number[];
+    readonly condition: CommandCondition<TActionState>;
+    readonly stateConstructor: () => TActionState;
+    readonly key: ActionKey;
 
     constructor(
         trigger: CommandTrigger | CommandTrigger[],
@@ -56,7 +56,8 @@ export class CommandAction<TActionState extends IActionState>
                 `Context for ${this.key} is not initialized or already consumed`
             );
 
-        if (!this.active || this.chatsBlacklist.includes(ctx.chatId)) return [];
+        if (!this.active || this.chatsBlacklist.includes(ctx.chatInfo.id))
+            return [];
 
         const isConditionMet = await this.condition(ctx);
 
@@ -64,7 +65,7 @@ export class CommandAction<TActionState extends IActionState>
 
         const state = await ctx.storage.getActionState<TActionState>(
             this,
-            ctx.chatId
+            ctx.chatInfo.id
         );
 
         const { shouldTrigger, matchResults, skipCooldown } = this.triggers
@@ -79,8 +80,8 @@ export class CommandAction<TActionState extends IActionState>
         Logger.logWithTraceId(
             ctx.botName,
             ctx.traceId,
-            ctx.chatName,
-            ` - Executing [${this.name}] in ${ctx.chatId}`
+            ctx.chatInfo.name,
+            ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
         );
         ctx.matchResults = matchResults;
 
@@ -98,7 +99,7 @@ export class CommandAction<TActionState extends IActionState>
 
         await ctx.storage.saveActionExecutionResult(
             this,
-            ctx.chatId,
+            ctx.chatInfo.id,
             new ActionExecutionResult(state, ctx.startCooldown && shouldTrigger)
         );
 

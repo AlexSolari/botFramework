@@ -1,9 +1,9 @@
 import { resolve } from 'path';
 import { IStorageClient } from '../../types/storage';
-import { ImageMessage } from '../responses/imageMessage';
-import { TextMessage } from '../responses/textMessage';
-import { VideoMessage } from '../responses/videoMessage';
-import { UnpinResponse } from '../responses/unpin';
+import { ImageMessage } from '../../dtos/responses/imageMessage';
+import { TextMessage } from '../../dtos/responses/textMessage';
+import { VideoMessage } from '../../dtos/responses/videoMessage';
+import { UnpinResponse } from '../../dtos/responses/unpin';
 import {
     MessageSendingOptions,
     TextMessageSendingOptions
@@ -12,7 +12,8 @@ import { IActionWithState } from '../../types/actionWithState';
 import { IActionState } from '../../types/actionState';
 import { BotResponse } from '../../types/response';
 import { Milliseconds } from '../../types/timeValues';
-import { DelayResponse } from '../responses/delay';
+import { DelayResponse } from '../../dtos/responses/delay';
+import { ChatInfo } from '../../dtos/chatInfo';
 
 /**
  * Context of action executed in chat.
@@ -24,10 +25,8 @@ export class ChatContext<TActionState extends IActionState> {
     traceId!: number | string;
     /** Name of a bot that executes this action. */
     botName!: string;
-    /** Id of a chat that action is executed in. */
-    chatId!: number;
-    /** Name of a chat that action is executed in. */
-    chatName!: string;
+    /** Chat information. */
+    chatInfo!: ChatInfo;
     /** Storage client instance for this bot. */
     storage!: IStorageClient;
     /** Ordered collection of responses to be processed  */
@@ -40,15 +39,13 @@ export class ChatContext<TActionState extends IActionState> {
     initializeChatContext(
         botName: string,
         action: IActionWithState<TActionState>,
-        chatId: number,
-        chatName: string,
+        chatInfo: ChatInfo,
         traceId: number | string,
         storage: IStorageClient
     ) {
         this.botName = botName;
         this.action = action;
-        this.chatId = chatId;
-        this.chatName = chatName;
+        this.chatInfo = chatInfo;
         this.traceId = traceId;
         this.storage = storage;
 
@@ -77,7 +74,7 @@ export class ChatContext<TActionState extends IActionState> {
         this.responses.push(
             new TextMessage(
                 text,
-                this.chatId,
+                this.chatInfo,
                 undefined,
                 this.traceId,
                 this.action,
@@ -97,7 +94,7 @@ export class ChatContext<TActionState extends IActionState> {
         this.responses.push(
             new ImageMessage(
                 { source: resolve(filePath) },
-                this.chatId,
+                this.chatInfo,
                 undefined,
                 this.traceId,
                 this.action,
@@ -117,7 +114,7 @@ export class ChatContext<TActionState extends IActionState> {
         this.responses.push(
             new VideoMessage(
                 { source: resolve(filePath) },
-                this.chatId,
+                this.chatInfo,
                 undefined,
                 this.traceId,
                 this.action,
@@ -133,7 +130,12 @@ export class ChatContext<TActionState extends IActionState> {
      */
     unpinMessage(messageId: number) {
         this.responses.push(
-            new UnpinResponse(messageId, this.chatId, this.traceId, this.action)
+            new UnpinResponse(
+                messageId,
+                this.chatInfo,
+                this.traceId,
+                this.action
+            )
         );
     }
 
@@ -143,7 +145,7 @@ export class ChatContext<TActionState extends IActionState> {
      */
     delayNextResponse(delay: Milliseconds) {
         this.responses.push(
-            new DelayResponse(delay, this.chatId, this.traceId, this.action)
+            new DelayResponse(delay, this.chatInfo, this.traceId, this.action)
         );
     }
 }

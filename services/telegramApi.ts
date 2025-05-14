@@ -1,38 +1,24 @@
 import { Message } from 'telegraf/types';
-import { ChatContext } from '../entities/context/chatContext';
-import { MessageContext } from '../entities/context/messageContext';
-import { inverseRecord as inverseRecord } from '../helpers/inverseRecord';
 import { IStorageClient } from '../types/storage';
 import { Logger } from './logger';
-import { IncomingMessage } from '../entities/incomingMessage';
 import { BotResponse, IReplyMessage } from '../types/response';
 import { Telegram } from 'telegraf/typings/telegram';
 import { setTimeout } from 'timers/promises';
 import { Milliseconds } from '../types/timeValues';
-import { ScheduledAction } from '../entities/actions/scheduledAction';
-import { IActionState } from '../types/actionState';
-import { CommandAction } from '../entities/actions/commandAction';
 
 const TELEGRAM_RATELIMIT_DELAY = 35 as Milliseconds;
 
 export class TelegramApiService {
     isFlushing = false;
-    messageQueue: BotResponse[] = [];
+    readonly messageQueue: BotResponse[] = [];
 
-    botName: string;
-    telegram: Telegram;
-    chats: Record<number, string>;
-    storage: IStorageClient;
+    readonly botName: string;
+    readonly telegram: Telegram;
+    readonly storage: IStorageClient;
 
-    constructor(
-        botName: string,
-        telegram: Telegram,
-        storage: IStorageClient,
-        chats: Record<string, number>
-    ) {
+    constructor(botName: string, telegram: Telegram, storage: IStorageClient) {
         this.telegram = telegram;
         this.botName = botName;
-        this.chats = inverseRecord(chats);
         this.storage = storage;
     }
 
@@ -59,7 +45,7 @@ export class TelegramApiService {
                 Logger.errorWithTraceId(
                     this.botName,
                     message.traceId,
-                    this.chats[message.chatId],
+                    message.chatInfo.name,
                     error,
                     message
                 );
@@ -75,14 +61,14 @@ export class TelegramApiService {
     ) {
         if (response.shouldPin) {
             await this.telegram.pinChatMessage(
-                response.chatId,
+                response.chatInfo.id,
                 sentMessage.message_id,
                 { disable_notification: true }
             );
 
             await this.storage.updateStateFor(
                 response.action,
-                response.chatId,
+                response.chatInfo.id,
                 async (state) => {
                     state.pinnedMessages.push(sentMessage.message_id);
                 }
@@ -96,7 +82,7 @@ export class TelegramApiService {
         switch (response.kind) {
             case 'text':
                 sentMessage = await this.telegram.sendMessage(
-                    response.chatId,
+                    response.chatInfo.id,
                     response.content,
                     {
                         reply_to_message_id: response.replyId,
@@ -110,7 +96,7 @@ export class TelegramApiService {
                 break;
             case 'image':
                 sentMessage = await this.telegram.sendPhoto(
-                    response.chatId,
+                    response.chatInfo.id,
                     response.content,
                     response.replyId
                         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,7 +108,7 @@ export class TelegramApiService {
                 break;
             case 'video':
                 sentMessage = await this.telegram.sendVideo(
-                    response.chatId,
+                    response.chatInfo.id,
                     response.content,
                     response.replyId
                         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -134,7 +120,7 @@ export class TelegramApiService {
                 break;
             case 'react':
                 await this.telegram.setMessageReaction(
-                    response.chatId,
+                    response.chatInfo.id,
                     response.messageId,
                     [
                         {
@@ -148,13 +134,13 @@ export class TelegramApiService {
                 return;
             case 'unpin':
                 await this.telegram.unpinChatMessage(
-                    response.chatId,
+                    response.chatInfo.id,
                     response.messageId
                 );
 
                 await this.storage.updateStateFor(
                     response.action,
-                    response.chatId,
+                    response.chatInfo.id,
                     async (state) => {
                         state.pinnedMessages = state.pinnedMessages.filter(
                             (x) => x != response.messageId
@@ -167,33 +153,5 @@ export class TelegramApiService {
                     await setTimeout(response.delay - TELEGRAM_RATELIMIT_DELAY);
                 }
         }
-    }
-
-    initializeContextForMessage<TActionState extends IActionState>(
-        ctx: MessageContext<TActionState>,
-        incomingMessage: IncomingMessage,
-        command: CommandAction<TActionState>
-    ) {
-        return ctx.initializeMessageContext(
-            this.botName,
-            command,
-            incomingMessage,
-            this.storage
-        );
-    }
-
-    initializeContextForChat<TActionState extends IActionState>(
-        ctx: ChatContext<TActionState>,
-        chatId: number,
-        scheduledAction: ScheduledAction<TActionState>
-    ) {
-        return ctx.initializeChatContext(
-            this.botName,
-            scheduledAction,
-            chatId,
-            this.chats[chatId],
-            `Scheduled:${scheduledAction.key}:${chatId}`,
-            this.storage
-        );
     }
 }

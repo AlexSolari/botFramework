@@ -3,15 +3,15 @@ import { dirname } from 'path';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { Sema as Semaphore } from 'async-sema';
 import { IStorageClient } from '../types/storage';
-import { ActionExecutionResult } from '../entities/actionExecutionResult';
+import { ActionExecutionResult } from '../dtos/actionExecutionResult';
 import { IActionState } from '../types/actionState';
 import { IActionWithState, ActionKey } from '../types/actionWithState';
 
 export class JsonFileStorage implements IStorageClient {
-    private locks = new Map<ActionKey, Semaphore>();
-    private cache: Map<string, Record<number, IActionState>>;
-    private storagePath: string;
-    private botName: string;
+    private readonly locks = new Map<ActionKey, Semaphore>();
+    private readonly cache: Map<string, Record<number, IActionState>>;
+    private readonly storagePath: string;
+    private readonly botName: string;
 
     constructor(
         botName: string,

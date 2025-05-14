@@ -7,25 +7,25 @@ import { IActionState } from '../../types/actionState';
 import { IActionWithState, ActionKey } from '../../types/actionWithState';
 import { CachedStateFactory } from '../cachedStateFactory';
 import { ChatContext } from '../context/chatContext';
-import { ActionExecutionResult } from '../actionExecutionResult';
+import { ActionExecutionResult } from '../../dtos/actionExecutionResult';
 import { Logger } from '../../services/logger';
 import { Scheduler } from '../../services/taskScheduler';
 
 export class ScheduledAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
 {
-    static locks = new Map<string, Semaphore>();
+    static readonly locks = new Map<string, Semaphore>();
 
-    name: string;
-    timeinHours: HoursOfDay;
-    active: boolean;
-    chatsWhitelist: number[];
-    key: ActionKey;
+    readonly name: string;
+    readonly timeinHours: HoursOfDay;
+    readonly active: boolean;
+    readonly chatsWhitelist: number[];
+    readonly key: ActionKey;
 
-    cachedState = new Map<string, unknown>();
-    stateConstructor: () => TActionState;
-    cachedStateFactories: Map<string, CachedStateFactory>;
-    handler: ScheduledHandler<TActionState>;
+    readonly cachedState = new Map<string, unknown>();
+    readonly stateConstructor: () => TActionState;
+    readonly cachedStateFactories: Map<string, CachedStateFactory>;
+    readonly handler: ScheduledHandler<TActionState>;
 
     constructor(
         name: string,
@@ -52,12 +52,12 @@ export class ScheduledAction<TActionState extends IActionState>
                 `Context for ${this.key} is not initialized or already consumed`
             );
 
-        if (!this.active || !this.chatsWhitelist.includes(ctx.chatId))
+        if (!this.active || !this.chatsWhitelist.includes(ctx.chatInfo.id))
             return [];
 
         const state = await ctx.storage.getActionState<TActionState>(
             this,
-            ctx.chatId
+            ctx.chatInfo.id
         );
         const isAllowedToTrigger = this.shouldTrigger(state);
 
@@ -65,8 +65,8 @@ export class ScheduledAction<TActionState extends IActionState>
             Logger.logWithTraceId(
                 ctx.botName,
                 ctx.traceId,
-                ctx.chatName,
-                ` - Executing [${this.name}] in ${ctx.chatId}`
+                ctx.chatInfo.name,
+                ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
             );
 
             await this.handler(
@@ -81,7 +81,7 @@ export class ScheduledAction<TActionState extends IActionState>
             ctx.updateActions.forEach((action) => action(state));
             await ctx.storage.saveActionExecutionResult(
                 this,
-                ctx.chatId,
+                ctx.chatInfo.id,
                 new ActionExecutionResult(state, isAllowedToTrigger)
             );
         }

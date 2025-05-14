@@ -2,13 +2,13 @@ import { resolve } from 'path';
 import { TelegramEmoji } from 'telegraf/types';
 import { IStorageClient } from '../../types/storage';
 import { IActionState } from '../../types/actionState';
-import { ImageMessage } from '../responses/imageMessage';
-import { Reaction } from '../responses/reaction';
-import { TextMessage } from '../responses/textMessage';
-import { VideoMessage } from '../responses/videoMessage';
+import { ImageMessage } from '../../dtos/responses/imageMessage';
+import { Reaction } from '../../dtos/responses/reaction';
+import { TextMessage } from '../../dtos/responses/textMessage';
+import { VideoMessage } from '../../dtos/responses/videoMessage';
 import { ActionStateBase } from '../states/actionStateBase';
 import { ChatContext } from './chatContext';
-import { IncomingMessage } from '../incomingMessage';
+import { IncomingMessage } from '../../dtos/incomingMessage';
 import {
     MessageSendingOptions,
     TextMessageSendingOptions
@@ -60,8 +60,7 @@ export class MessageContext<
         return this.initializeChatContext(
             botName,
             action,
-            message.chat.id,
-            message.chatName,
+            message.chatInfo,
             message.traceId,
             storage
         );
@@ -80,7 +79,7 @@ export class MessageContext<
             '-'
         )}` as ActionKey;
         const allStates = await this.storage.load(storageKey);
-        const stateForChat = allStates[this.chatId];
+        const stateForChat = allStates[this.chatInfo.id];
 
         if (!stateForChat) {
             return new ActionStateBase() as TAnotherActionState;
@@ -99,7 +98,7 @@ export class MessageContext<
         this.responses.push(
             new TextMessage(
                 text,
-                this.chatId,
+                this.chatInfo,
                 this.messageId,
                 this.traceId,
                 this.action,
@@ -119,7 +118,7 @@ export class MessageContext<
         this.responses.push(
             new ImageMessage(
                 { source: resolve(filePath) },
-                this.chatId,
+                this.chatInfo,
                 this.messageId,
                 this.traceId,
                 this.action,
@@ -139,7 +138,7 @@ export class MessageContext<
         this.responses.push(
             new VideoMessage(
                 { source: resolve(filePath) },
-                this.chatId,
+                this.chatInfo,
                 this.messageId,
                 this.traceId,
                 this.action,
@@ -157,7 +156,7 @@ export class MessageContext<
         this.responses.push(
             new Reaction(
                 this.traceId,
-                this.chatId,
+                this.chatInfo,
                 this.messageId,
                 emoji,
                 this.action

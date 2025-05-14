@@ -1,4 +1,4 @@
-import { ActionExecutionResult } from '../entities/actionExecutionResult';
+import { ActionExecutionResult } from '../dtos/actionExecutionResult';
 import { IActionState } from './actionState';
 import { ActionKey, IActionWithState } from './actionWithState';
 

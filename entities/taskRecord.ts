@@ -1,9 +1,9 @@
 import { Milliseconds } from '../types/timeValues';
 
 export class TaskRecord {
-    name: string;
-    taskId: NodeJS.Timeout;
-    interval: Milliseconds;
+    readonly name: string;
+    readonly taskId: NodeJS.Timeout;
+    readonly interval: Milliseconds;
 
     constructor(name: string, taskId: NodeJS.Timeout, interval: Milliseconds) {
         this.name = name;

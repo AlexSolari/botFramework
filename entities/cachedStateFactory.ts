@@ -1,8 +1,8 @@
 import { Hours } from '../types/timeValues';
 
 export class CachedStateFactory {
-    getValue: () => Promise<unknown>;
-    invalidationTimeoutInHours: Hours;
+    readonly getValue: () => Promise<unknown>;
+    readonly invalidationTimeoutInHours: Hours;
 
     constructor(
         itemFactory: () => Promise<unknown>,

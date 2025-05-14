@@ -1,9 +1,10 @@
-import { DelayResponse } from '../entities/responses/delay';
-import { ImageMessage } from '../entities/responses/imageMessage';
-import { Reaction } from '../entities/responses/reaction';
-import { TextMessage } from '../entities/responses/textMessage';
-import { UnpinResponse } from '../entities/responses/unpin';
-import { VideoMessage } from '../entities/responses/videoMessage';
+import { ChatInfo } from '../dtos/chatInfo';
+import { DelayResponse } from '../dtos/responses/delay';
+import { ImageMessage } from '../dtos/responses/imageMessage';
+import { Reaction } from '../dtos/responses/reaction';
+import { TextMessage } from '../dtos/responses/textMessage';
+import { UnpinResponse } from '../dtos/responses/unpin';
+import { VideoMessage } from '../dtos/responses/videoMessage';
 import { IActionState } from './actionState';
 import { IActionWithState } from './actionWithState';
 
@@ -25,16 +26,16 @@ export type BotResponse =
     | ImageMessage;
 
 export interface IChatResponse {
-    kind: keyof typeof BotResponseTypes;
-    chatId: number;
-    traceId: number | string;
+    readonly kind: keyof typeof BotResponseTypes;
+    readonly chatInfo: ChatInfo;
+    readonly traceId: number | string;
 
-    action: IActionWithState<IActionState>;
+    readonly action: IActionWithState<IActionState>;
 }
 
 export interface IReplyMessage<TType> extends IChatResponse {
-    content: TType;
-    replyId: number | undefined;
-    disableWebPreview: boolean;
-    shouldPin: boolean;
+    readonly content: TType;
+    readonly replyId: number | undefined;
+    readonly disableWebPreview: boolean;
+    readonly shouldPin: boolean;
 }

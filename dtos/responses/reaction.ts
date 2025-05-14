@@ -2,24 +2,25 @@ import { TelegramEmoji } from 'telegraf/types';
 import { BotResponseTypes, IChatResponse } from '../../types/response';
 import { IActionWithState } from '../../types/actionWithState';
 import { IActionState } from '../../types/actionState';
+import { ChatInfo } from '../chatInfo';
 
 export class Reaction implements IChatResponse {
-    kind = BotResponseTypes.react;
+    readonly kind = BotResponseTypes.react;
 
-    chatId: number;
-    messageId: number;
-    traceId: number | string;
-    emoji: TelegramEmoji;
-    action: IActionWithState<IActionState>;
+    readonly chatInfo: ChatInfo;
+    readonly messageId: number;
+    readonly traceId: number | string;
+    readonly emoji: TelegramEmoji;
+    readonly action: IActionWithState<IActionState>;
 
     constructor(
         traceId: number | string,
-        chatId: number,
+        chatInfo: ChatInfo,
         messageId: number,
         emoji: TelegramEmoji,
         action: IActionWithState<IActionState>
     ) {
-        this.chatId = chatId;
+        this.chatInfo = chatInfo;
         this.messageId = messageId;
         this.emoji = emoji;
         this.traceId = traceId;
