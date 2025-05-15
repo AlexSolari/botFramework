@@ -1,25 +1,32 @@
 import { Message } from 'telegraf/types';
 import { IStorageClient } from '../types/storage';
-import { Logger } from './logger';
 import { BotResponse, IReplyMessage } from '../types/response';
 import { Telegram } from 'telegraf/typings/telegram';
 import { setTimeout } from 'timers/promises';
 import { Milliseconds } from '../types/timeValues';
+import { ILogger } from '../types/logger';
 
 const TELEGRAM_RATELIMIT_DELAY = 35 as Milliseconds;
 
 export class TelegramApiService {
+    private readonly telegram: Telegram;
+    private readonly storage: IStorageClient;
+    private readonly logger: ILogger;
+
+    private readonly botName: string;
+    private readonly messageQueue: BotResponse[] = [];
     isFlushing = false;
-    readonly messageQueue: BotResponse[] = [];
 
-    readonly botName: string;
-    readonly telegram: Telegram;
-    readonly storage: IStorageClient;
-
-    constructor(botName: string, telegram: Telegram, storage: IStorageClient) {
+    constructor(
+        botName: string,
+        telegram: Telegram,
+        storage: IStorageClient,
+        logger: ILogger
+    ) {
         this.telegram = telegram;
         this.botName = botName;
         this.storage = storage;
+        this.logger = logger;
     }
 
     enqueueBatchedResponses(responses: BotResponse[]) {
@@ -42,7 +49,7 @@ export class TelegramApiService {
                 await this.processResponse(message);
                 await setTimeout(TELEGRAM_RATELIMIT_DELAY);
             } catch (error) {
-                Logger.errorWithTraceId(
+                this.logger.errorWithTraceId(
                     this.botName,
                     message.traceId,
                     message.chatInfo.name,

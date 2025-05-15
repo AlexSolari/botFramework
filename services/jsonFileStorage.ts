@@ -3,7 +3,6 @@ import { dirname } from 'path';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { Sema as Semaphore } from 'async-sema';
 import { IStorageClient } from '../types/storage';
-import { ActionExecutionResult } from '../dtos/actionExecutionResult';
 import { IActionState } from '../types/actionState';
 import { IActionWithState, ActionKey } from '../types/actionWithState';
 
@@ -129,15 +128,14 @@ export class JsonFileStorage implements IStorageClient {
     async saveActionExecutionResult<TActionState extends IActionState>(
         action: IActionWithState<TActionState>,
         chatId: number,
-        transactionResult: ActionExecutionResult<TActionState>
+        state: TActionState
     ) {
         await this.lock(action.key, async () => {
             const data = await this.loadInternal<TActionState>(action.key);
 
-            if (transactionResult.shouldUpdate) {
-                data[chatId] = transactionResult.data;
-                await this.save(data, action.key);
-            }
+            data[chatId] = state;
+
+            await this.save(data, action.key);
         });
     }
 

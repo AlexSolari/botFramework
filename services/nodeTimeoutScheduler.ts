@@ -1,9 +1,16 @@
 import { TaskRecord } from '../entities/taskRecord';
+import { createTrace } from '../helpers/traceFactory';
+import { ILogger } from '../types/logger';
+import { IScheduler } from '../types/scheduler';
 import { Milliseconds } from '../types/timeValues';
-import { Logger } from './logger';
 
-class TaskScheduler {
+export class NodeTimeoutScheduler implements IScheduler {
+    private readonly logger!: ILogger;
     readonly activeTasks: TaskRecord[] = [];
+
+    constructor(logger: ILogger) {
+        this.logger = logger;
+    }
 
     stopAll() {
         this.activeTasks.forEach((task) => {
@@ -25,9 +32,9 @@ class TaskScheduler {
             setImmediate(action);
         }
 
-        Logger.logWithTraceId(
+        this.logger.logWithTraceId(
             ownerName,
-            `System:TaskScheduler-${ownerName}-${name}`,
+            createTrace(this, ownerName, name),
             'System',
             `Created task [${taskId}]${name}, that will run every ${interval}ms.`
         );
@@ -42,9 +49,9 @@ class TaskScheduler {
         ownerName: string
     ) {
         const actionWrapper = () => {
-            Logger.logWithTraceId(
+            this.logger.logWithTraceId(
                 ownerName,
-                `System:TaskScheduler-${ownerName}-${name}`,
+                createTrace(this, ownerName, name),
                 'System',
                 `Executing delayed oneshot [${taskId}]${name}`
             );
@@ -52,13 +59,11 @@ class TaskScheduler {
         };
         const taskId = setTimeout(actionWrapper, delay);
 
-        Logger.logWithTraceId(
+        this.logger.logWithTraceId(
             ownerName,
-            `System:TaskScheduler-${ownerName}-${name}`,
+            createTrace(this, ownerName, name),
             'System',
             `Created oneshot task [${taskId}]${name}, that will run in ${delay}ms.`
         );
     }
 }
-
-export const Scheduler = new TaskScheduler();

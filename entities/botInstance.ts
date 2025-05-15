@@ -10,22 +10,28 @@ import { TelegramApiService } from '../services/telegramApi';
 import { IActionState } from '../types/actionState';
 import { CommandAction } from './actions/commandAction';
 import { ScheduledAction } from './actions/scheduledAction';
-import { Logger } from '../services/logger';
-import { Scheduler } from '../services/taskScheduler';
+import { JsonLogger } from '../services/jsonLogger';
 import { IncomingMessage } from '../dtos/incomingMessage';
 import moment from 'moment';
 import { ChatContext } from './context/chatContext';
 import { MessageContext } from './context/messageContext';
 import { ChatInfo } from '../dtos/chatInfo';
+import { ILogger } from '../types/logger';
+import { IScheduler } from '../types/scheduler';
+import { NodeTimeoutScheduler } from '../services/nodeTimeoutScheduler';
+import { createTrace } from '../helpers/traceFactory';
 
 export class BotInstance {
-    readonly name: string;
     private readonly api: TelegramApiService;
+    private readonly storage: IStorageClient;
+    private readonly scheduler: IScheduler;
+    private readonly logger: ILogger;
+
+    readonly name: string;
     private readonly telegraf: Telegraf;
     private readonly commands: CommandAction<IActionState>[];
     private readonly scheduled: ScheduledAction<IActionState>[];
     private readonly chats: Record<string, number>;
-    readonly storage: IStorageClient;
 
     constructor(options: {
         name: string;
@@ -33,10 +39,14 @@ export class BotInstance {
         commands: CommandAction<IActionState>[];
         scheduled: ScheduledAction<IActionState>[];
         chats: Record<string, number>;
-        storageClient?: IStorageClient;
         storagePath?: string;
         scheduledPeriod?: Seconds;
         verboseLoggingForIncomingMessage?: boolean;
+        services?: {
+            storageClient?: IStorageClient;
+            logger?: ILogger;
+            scheduler?: IScheduler;
+        };
     }) {
         this.name = options.name;
         this.commands = options.commands;
@@ -44,21 +54,19 @@ export class BotInstance {
         this.chats = options.chats;
 
         const actions = [...this.commands, ...this.scheduled];
-
-        Logger.logWithTraceId(
-            this.name,
-            `System:Bot-${this.name}-Start`,
-            'System',
-            'Starting bot...'
-        );
         this.telegraf = new Telegraf(options.token);
+        this.logger = options.services?.logger ?? new JsonLogger();
+        this.scheduler =
+            options.services?.scheduler ??
+            new NodeTimeoutScheduler(this.logger);
         this.storage =
-            options.storageClient ??
+            options.services?.storageClient ??
             new JsonFileStorage(options.name, actions, options.storagePath);
         this.api = new TelegramApiService(
             this.name,
             this.telegraf.telegram,
-            this.storage
+            this.storage,
+            this.logger
         );
 
         this.initializeMessageProcessing(
@@ -70,6 +78,12 @@ export class BotInstance {
 
         this.storage.saveMetadata(actions, this.name);
 
+        this.logger.logWithTraceId(
+            this.name,
+            createTrace(this, this.name, 'Start'),
+            'System',
+            'Starting bot...'
+        );
         this.telegraf.launch();
     }
 
@@ -78,7 +92,7 @@ export class BotInstance {
             const now = moment();
 
             if (now.minute() == 0 && now.second() == 0) {
-                Scheduler.createTask(
+                this.scheduler.createTask(
                     'ScheduledProcessing',
                     async () => {
                         await this.runScheduled();
@@ -98,10 +112,10 @@ export class BotInstance {
 
             const delay = nextExecutionTime.diff(now);
 
-            Scheduler.createOnetimeTask(
+            this.scheduler.createOnetimeTask(
                 'ScheduledProcessing_OneTime',
                 async () => {
-                    Scheduler.createTask(
+                    this.scheduler.createTask(
                         'ScheduledProcessing',
                         async () => {
                             await this.runScheduled();
@@ -121,7 +135,7 @@ export class BotInstance {
     ) {
         if (this.commands.length > 0) {
             this.telegraf.on('message', async (ctx) => {
-                const msg = new IncomingMessage(ctx.update.message);
+                const msg = new IncomingMessage(ctx.update.message, this.name);
                 const messageContent =
                     msg.text || `<non-text message: ${msg.type}>`;
 
@@ -129,14 +143,14 @@ export class BotInstance {
                 const messageFromId = msg.from?.id ?? 'Unknown';
 
                 if (verboseLoggingForIncomingMessage) {
-                    Logger.logObjectWithTraceId(
+                    this.logger.logObjectWithTraceId(
                         this.name,
                         msg.traceId,
                         msg.chatInfo.name,
                         ctx.update.message
                     );
                 } else {
-                    Logger.logWithTraceId(
+                    this.logger.logWithTraceId(
                         this.name,
                         msg.traceId,
                         msg.chatInfo.name,
@@ -150,19 +164,24 @@ export class BotInstance {
     }
 
     async stop(code: string) {
-        Logger.logWithTraceId(
+        this.logger.logWithTraceId(
             this.name,
-            `System:Bot-${this.name}-Stop`,
+            createTrace(this, this.name, 'Stop'),
             'System',
             'Stopping bot...'
         );
 
+        this.scheduler.stopAll();
         await this.storage.close();
         this.telegraf.stop(code);
     }
 
     private async runScheduled() {
-        const ctx = new ChatContext<IActionState>();
+        const ctx = new ChatContext<IActionState>(
+            this.storage,
+            this.logger,
+            this.scheduler
+        );
 
         for (const [chatName, chatId] of Object.entries(this.chats)) {
             for (const scheduledAction of this.scheduled) {
@@ -170,15 +189,19 @@ export class BotInstance {
                     this.name,
                     scheduledAction,
                     new ChatInfo(chatId, chatName),
-                    `Scheduled:${scheduledAction.key}:${chatId}`,
-                    this.storage
+                    createTrace(
+                        scheduledAction,
+                        this.name,
+                        `${scheduledAction.key}-${chatId}`
+                    )
                 );
 
                 try {
                     const responses = await scheduledAction.exec(ctx);
                     this.api.enqueueBatchedResponses(responses);
+                    ctx.isInitialized = false;
                 } catch (error) {
-                    Logger.errorWithTraceId(
+                    this.logger.errorWithTraceId(
                         ctx.botName,
                         ctx.traceId,
                         chatName,
@@ -193,21 +216,21 @@ export class BotInstance {
     }
 
     private async processMessage(msg: IncomingMessage) {
-        const ctx = new MessageContext<IActionState>();
+        const ctx = new MessageContext<IActionState>(
+            this.storage,
+            this.logger,
+            this.scheduler
+        );
 
         for (const commandAction of this.commands) {
-            ctx.initializeMessageContext(
-                this.name,
-                commandAction,
-                msg,
-                this.storage
-            );
+            ctx.initializeMessageContext(this.name, commandAction, msg);
 
             try {
                 const responses = await commandAction.exec(ctx);
                 this.api.enqueueBatchedResponses(responses);
+                ctx.isInitialized = false;
             } catch (error) {
-                Logger.errorWithTraceId(
+                this.logger.errorWithTraceId(
                     ctx.botName,
                     ctx.traceId,
                     ctx.chatInfo.name,

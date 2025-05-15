@@ -8,9 +8,8 @@ import { IActionState } from '../../types/actionState';
 import { IActionWithState, ActionKey } from '../../types/actionWithState';
 import { CommandTriggerCheckResult } from '../../dtos/commandTriggerCheckResult';
 import { MessageContext } from '../context/messageContext';
-import { Logger } from '../../services/logger';
-import { ActionExecutionResult } from '../../dtos/actionExecutionResult';
 import { CommandTrigger } from '../../types/commandTrigger';
+import { Noop } from '../../helpers/noop';
 
 export class CommandAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
@@ -57,27 +56,23 @@ export class CommandAction<TActionState extends IActionState>
             );
 
         if (!this.active || this.chatsBlacklist.includes(ctx.chatInfo.id))
-            return [];
-
-        const isConditionMet = await this.condition(ctx);
-
-        if (!isConditionMet) return [];
+            return Noop.NoResponse;
 
         const state = await ctx.storage.getActionState<TActionState>(
             this,
             ctx.chatInfo.id
         );
 
-        const { shouldTrigger, matchResults, skipCooldown } = this.triggers
-            .map((x) => this.checkTrigger(ctx, x, state))
+        const { shouldExecute, matchResults, skipCooldown } = this.triggers
+            .map((x) => this.checkIfShouldBeExecuted(ctx, x, state))
             .reduce(
                 (acc, curr) => acc.mergeWith(curr),
                 CommandTriggerCheckResult.DoNotTrigger
             );
 
-        if (!shouldTrigger) return [];
+        if (!shouldExecute) return Noop.NoResponse;
 
-        Logger.logWithTraceId(
+        ctx.logger.logWithTraceId(
             ctx.botName,
             ctx.traceId,
             ctx.chatInfo.name,
@@ -95,27 +90,20 @@ export class CommandAction<TActionState extends IActionState>
             state.lastExecutedDate = moment().valueOf();
         }
 
-        ctx.updateActions.forEach((action) => action(state));
-
         await ctx.storage.saveActionExecutionResult(
             this,
             ctx.chatInfo.id,
-            new ActionExecutionResult(state, ctx.startCooldown && shouldTrigger)
+            state
         );
-
-        ctx.isInitialized = false;
 
         return ctx.responses;
     }
 
-    private checkTrigger(
+    private checkIfShouldBeExecuted(
         ctx: MessageContext<TActionState>,
         trigger: CommandTrigger,
         state: IActionState
     ) {
-        let shouldTrigger = false;
-        const matchResults: RegExpExecArray[] = [];
-
         if (!ctx.fromUserId)
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown;
 
@@ -135,33 +123,52 @@ export class CommandAction<TActionState extends IActionState>
 
         if (onCooldown) return CommandTriggerCheckResult.DoNotTrigger;
 
-        if (trigger == ctx.messageType) {
-            shouldTrigger = true;
-        } else if (typeof trigger == 'string') {
-            shouldTrigger = ctx.messageText.toLowerCase() == trigger;
-        } else {
-            trigger.lastIndex = 0;
+        const isCustomConditionMet = this.condition(ctx);
+        if (!isCustomConditionMet)
+            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown;
 
-            const execResult = trigger.exec(ctx.messageText);
-            if (execResult != null) {
-                matchResults.push(execResult);
-
-                if (trigger.global) {
-                    while (true) {
-                        const nextResult = trigger.exec(ctx.messageText);
-                        if (nextResult == null) break;
-                        matchResults.push(nextResult);
-                    }
-                }
-            }
-
-            shouldTrigger = matchResults.length > 0;
-        }
+        const { shouldTrigger, matchResults } = this.checkTrigger(ctx, trigger);
 
         return new CommandTriggerCheckResult(
             shouldTrigger,
             matchResults,
             false
         );
+    }
+
+    private checkTrigger(
+        ctx: MessageContext<TActionState>,
+        trigger: CommandTrigger
+    ) {
+        if (trigger == ctx.messageType)
+            return { shouldTrigger: true, matchResults: [] };
+
+        if (typeof trigger == 'string')
+            return {
+                shouldTrigger: ctx.messageText.toLowerCase() == trigger,
+                matchResults: []
+            };
+
+        const matchResults: RegExpExecArray[] = [];
+
+        trigger.lastIndex = 0;
+
+        const execResult = trigger.exec(ctx.messageText);
+        if (execResult != null) {
+            matchResults.push(execResult);
+
+            if (trigger.global) {
+                while (true) {
+                    const nextResult = trigger.exec(ctx.messageText);
+                    if (nextResult == null) break;
+                    matchResults.push(nextResult);
+                }
+            }
+        }
+
+        return {
+            shouldTrigger: matchResults.length > 0,
+            matchResults
+        };
     }
 }

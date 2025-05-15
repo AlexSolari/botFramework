@@ -4,6 +4,7 @@ import { MessageSendingOptions } from '../../types/messageSendingOptions';
 import { IActionWithState } from '../../types/actionWithState';
 import { IActionState } from '../../types/actionState';
 import { ChatInfo } from '../chatInfo';
+import { TraceId } from '../../types/trace';
 
 export class ImageMessage implements IReplyMessage<InputFile> {
     readonly kind = BotResponseTypes.image;
@@ -11,7 +12,7 @@ export class ImageMessage implements IReplyMessage<InputFile> {
     readonly content: InputFile;
     readonly chatInfo: ChatInfo;
     readonly replyId: number | undefined;
-    readonly traceId: string | number;
+    readonly traceId: TraceId;
     readonly disableWebPreview = false;
     readonly shouldPin: boolean;
     readonly action: IActionWithState<IActionState>;
@@ -20,7 +21,7 @@ export class ImageMessage implements IReplyMessage<InputFile> {
         image: InputFile,
         chatInfo: ChatInfo,
         replyId: number | undefined,
-        traceId: number | string,
+        traceId: TraceId,
         action: IActionWithState<IActionState>,
         options?: MessageSendingOptions
     ) {

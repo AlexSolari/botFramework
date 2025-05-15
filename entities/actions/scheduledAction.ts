@@ -7,9 +7,8 @@ import { IActionState } from '../../types/actionState';
 import { IActionWithState, ActionKey } from '../../types/actionWithState';
 import { CachedStateFactory } from '../cachedStateFactory';
 import { ChatContext } from '../context/chatContext';
-import { ActionExecutionResult } from '../../dtos/actionExecutionResult';
-import { Logger } from '../../services/logger';
-import { Scheduler } from '../../services/taskScheduler';
+import { Noop } from '../../helpers/noop';
+import { IScheduler } from '../../types/scheduler';
 
 export class ScheduledAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
@@ -53,47 +52,45 @@ export class ScheduledAction<TActionState extends IActionState>
             );
 
         if (!this.active || !this.chatsWhitelist.includes(ctx.chatInfo.id))
-            return [];
+            return Noop.NoResponse;
 
         const state = await ctx.storage.getActionState<TActionState>(
             this,
             ctx.chatInfo.id
         );
-        const isAllowedToTrigger = this.shouldTrigger(state);
 
-        if (isAllowedToTrigger) {
-            Logger.logWithTraceId(
-                ctx.botName,
-                ctx.traceId,
-                ctx.chatInfo.name,
-                ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
-            );
+        const isAllowedToTrigger = this.checkIfShouldBeExecuted(state);
+        if (!isAllowedToTrigger) return Noop.NoResponse;
 
-            await this.handler(
-                ctx,
-                <TResult>(key: string) =>
-                    this.getCachedValue<TResult>(key, ctx.botName),
-                state
-            );
+        ctx.logger.logWithTraceId(
+            ctx.botName,
+            ctx.traceId,
+            ctx.chatInfo.name,
+            ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
+        );
 
-            state.lastExecutedDate = moment().valueOf();
+        await this.handler(
+            ctx,
+            <TResult>(key: string) =>
+                this.getCachedValue<TResult>(key, ctx.botName, ctx.scheduler),
+            state
+        );
 
-            ctx.updateActions.forEach((action) => action(state));
-            await ctx.storage.saveActionExecutionResult(
-                this,
-                ctx.chatInfo.id,
-                new ActionExecutionResult(state, isAllowedToTrigger)
-            );
-        }
+        state.lastExecutedDate = moment().valueOf();
 
-        ctx.isInitialized = false;
+        await ctx.storage.saveActionExecutionResult(
+            this,
+            ctx.chatInfo.id,
+            state
+        );
 
         return ctx.responses;
     }
 
     private async getCachedValue<TResult>(
         key: string,
-        botName: string
+        botName: string,
+        scheduler: IScheduler
     ): Promise<TResult> {
         if (!this.cachedStateFactories.has(key)) {
             throw new Error(
@@ -122,7 +119,7 @@ export class ScheduledAction<TActionState extends IActionState>
 
             this.cachedState.set(key, value);
 
-            Scheduler.createOnetimeTask(
+            scheduler.createOnetimeTask(
                 `Drop cached value [${this.name} : ${key}]`,
                 () => this.cachedState.delete(key),
                 hoursToMilliseconds(
@@ -137,7 +134,7 @@ export class ScheduledAction<TActionState extends IActionState>
         }
     }
 
-    private shouldTrigger(state: IActionState): boolean {
+    private checkIfShouldBeExecuted(state: IActionState): boolean {
         const startOfToday = moment().startOf('day').valueOf();
         const lastExecutedDate = moment(state.lastExecutedDate);
         const currentTime = moment();

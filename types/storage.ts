@@ -1,4 +1,3 @@
-import { ActionExecutionResult } from '../dtos/actionExecutionResult';
 import { IActionState } from './actionState';
 import { ActionKey, IActionWithState } from './actionWithState';
 
@@ -23,6 +22,6 @@ export interface IStorageClient {
     saveActionExecutionResult<TActionState extends IActionState>(
         action: IActionWithState<TActionState>,
         chatId: number,
-        transactionResult: ActionExecutionResult<TActionState>
+        state: TActionState
     ): Promise<void>;
 }

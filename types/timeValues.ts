@@ -1,6 +1,10 @@
-export type Milliseconds = number & { __brand: 'ms' };
-export type Seconds = number & { __brand: 's' };
-export type Hours = number & { __brand: 'h' };
+declare const millisecondsSymbol: unique symbol;
+declare const secondsSymbol: unique symbol;
+declare const hoursSymbol: unique symbol;
+
+export type Milliseconds = number & { [millisecondsSymbol]: void };
+export type Seconds = number & { [secondsSymbol]: void };
+export type Hours = number & { [hoursSymbol]: void };
 
 export type HoursOfDay =
     | 0

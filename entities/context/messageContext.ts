@@ -15,6 +15,8 @@ import {
 } from '../../types/messageSendingOptions';
 import { IActionWithState, ActionKey } from '../../types/actionWithState';
 import { MessageTypeValue } from '../../types/messageTypes';
+import { ILogger } from '../../types/logger';
+import { IScheduler } from '../../types/scheduler';
 /**
  * Context of action executed in chat, in response to a message
  */
@@ -36,15 +38,18 @@ export class MessageContext<
     /** Type of message being received */
     messageType!: MessageTypeValue;
 
-    constructor() {
-        super();
+    constructor(
+        storage: IStorageClient,
+        logger: ILogger,
+        scheduler: IScheduler
+    ) {
+        super(storage, logger, scheduler);
     }
 
     initializeMessageContext(
         botName: string,
         action: IActionWithState<TActionState>,
-        message: IncomingMessage,
-        storage: IStorageClient
+        message: IncomingMessage
     ) {
         this.messageId = message.message_id;
         this.messageText = message.text ?? '';
@@ -61,8 +66,7 @@ export class MessageContext<
             botName,
             action,
             message.chatInfo,
-            message.traceId,
-            storage
+            message.traceId
         );
     }
 

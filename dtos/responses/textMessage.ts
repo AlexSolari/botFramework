@@ -3,6 +3,7 @@ import { BotResponseTypes, IReplyMessage } from '../../types/response';
 import { IActionWithState } from '../../types/actionWithState';
 import { IActionState } from '../../types/actionState';
 import { ChatInfo } from '../chatInfo';
+import { TraceId } from '../../types/trace';
 
 export class TextMessage implements IReplyMessage<string> {
     readonly kind = BotResponseTypes.text;
@@ -10,7 +11,7 @@ export class TextMessage implements IReplyMessage<string> {
     readonly content: string;
     readonly chatInfo: ChatInfo;
     readonly replyId: number | undefined;
-    readonly traceId: string | number;
+    readonly traceId: TraceId;
     readonly disableWebPreview: boolean;
     readonly shouldPin: boolean;
     readonly action: IActionWithState<IActionState>;
@@ -19,7 +20,7 @@ export class TextMessage implements IReplyMessage<string> {
         text: string,
         chatInfo: ChatInfo,
         replyId: number | undefined,
-        traceId: string | number,
+        traceId: TraceId,
         action: IActionWithState<IActionState>,
         options?: TextMessageSendingOptions
     ) {

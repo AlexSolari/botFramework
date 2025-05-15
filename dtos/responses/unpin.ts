@@ -2,19 +2,20 @@ import { BotResponseTypes, IChatResponse } from '../../types/response';
 import { IActionWithState } from '../../types/actionWithState';
 import { IActionState } from '../../types/actionState';
 import { ChatInfo } from '../chatInfo';
+import { TraceId } from '../../types/trace';
 
 export class UnpinResponse implements IChatResponse {
     readonly kind = BotResponseTypes.unpin;
 
     readonly messageId: number;
     readonly chatInfo: ChatInfo;
-    readonly traceId: number | string;
+    readonly traceId: TraceId;
     readonly action: IActionWithState<IActionState>;
 
     constructor(
         messageId: number,
         chatInfo: ChatInfo,
-        traceId: number | string,
+        traceId: TraceId,
         action: IActionWithState<IActionState>
     ) {
         this.messageId = messageId;

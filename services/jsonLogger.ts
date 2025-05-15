@@ -1,4 +1,7 @@
-class JsonLogger {
+import { ILogger } from '../types/logger';
+import { TraceId } from '../types/trace';
+
+export class JsonLogger implements ILogger {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private serializeError(error: any) {
         const plainObject: Record<string, unknown> = {};
@@ -10,7 +13,7 @@ class JsonLogger {
 
     logObjectWithTraceId(
         botName: string,
-        traceId: string | number,
+        traceId: TraceId,
         chatName: string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data: any
@@ -23,7 +26,7 @@ class JsonLogger {
 
     logWithTraceId(
         botName: string,
-        traceId: string | number,
+        traceId: TraceId,
         chatName: string,
         text: string
     ) {
@@ -34,7 +37,7 @@ class JsonLogger {
 
     errorWithTraceId<TData>(
         botName: string,
-        traceId: string | number,
+        traceId: TraceId,
         chatName: string,
         errorObj: unknown,
         extraData?: TData | undefined
@@ -46,5 +49,3 @@ class JsonLogger {
         );
     }
 }
-
-export const Logger = new JsonLogger();

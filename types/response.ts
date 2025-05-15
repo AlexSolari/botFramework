@@ -7,6 +7,7 @@ import { UnpinResponse } from '../dtos/responses/unpin';
 import { VideoMessage } from '../dtos/responses/videoMessage';
 import { IActionState } from './actionState';
 import { IActionWithState } from './actionWithState';
+import { TraceId } from './trace';
 
 export const BotResponseTypes = {
     unpin: 'unpin',
@@ -28,7 +29,7 @@ export type BotResponse =
 export interface IChatResponse {
     readonly kind: keyof typeof BotResponseTypes;
     readonly chatInfo: ChatInfo;
-    readonly traceId: number | string;
+    readonly traceId: TraceId;
 
     readonly action: IActionWithState<IActionState>;
 }

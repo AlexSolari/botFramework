@@ -14,54 +14,59 @@ import { BotResponse } from '../../types/response';
 import { Milliseconds } from '../../types/timeValues';
 import { DelayResponse } from '../../dtos/responses/delay';
 import { ChatInfo } from '../../dtos/chatInfo';
+import { ILogger } from '../../types/logger';
+import { IScheduler } from '../../types/scheduler';
+import { TraceId } from '../../types/trace';
 
 /**
  * Context of action executed in chat.
  */
 export class ChatContext<TActionState extends IActionState> {
     protected action!: IActionWithState<TActionState>;
-    updateActions: Array<(state: TActionState) => void> = [];
+
+    /** Storage client instance for the bot executing this action. */
+    readonly storage!: IStorageClient;
+    /** Logger instance for the bot executing this action */
+    readonly logger!: ILogger;
+    /** Scheduler instance for the bot executing this action */
+    readonly scheduler!: IScheduler;
+
     /** Trace id of a action execution. */
-    traceId!: number | string;
+    traceId!: TraceId;
     /** Name of a bot that executes this action. */
     botName!: string;
     /** Chat information. */
     chatInfo!: ChatInfo;
-    /** Storage client instance for this bot. */
-    storage!: IStorageClient;
     /** Ordered collection of responses to be processed  */
     responses: BotResponse[] = [];
 
     isInitialized = false;
 
-    constructor() {}
+    constructor(
+        storage: IStorageClient,
+        logger: ILogger,
+        scheduler: IScheduler
+    ) {
+        this.storage = storage;
+        this.logger = logger;
+        this.scheduler = scheduler;
+    }
 
     initializeChatContext(
         botName: string,
         action: IActionWithState<TActionState>,
         chatInfo: ChatInfo,
-        traceId: number | string,
-        storage: IStorageClient
+        traceId: TraceId
     ) {
         this.botName = botName;
         this.action = action;
         this.chatInfo = chatInfo;
         this.traceId = traceId;
-        this.storage = storage;
 
-        this.updateActions = [];
         this.isInitialized = true;
         this.responses = [];
 
         return this;
-    }
-
-    /**
-     * Manually update the state of an action.
-     * @param stateUpdateAction Function that will modify state.
-     */
-    updateState(stateUpdateAction: (state: TActionState) => void) {
-        this.updateActions.push(stateUpdateAction);
     }
 
     /**
