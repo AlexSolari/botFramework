@@ -187,7 +187,7 @@ const counterCommand = new CommandActionBuilderWithState<MyCustomState>(
   .on('/count')
   .do(async (ctx, state) => {  
     state.counter++;  
-    await ctx.replyWithText(`Count: ${state.counter}`);  
+    ctx.replyWithText(`Count: ${state.counter}`);  
   })  
   .build();
 ```
