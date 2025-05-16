@@ -114,7 +114,7 @@ import { ScheduledActionBuilder, Hours } from 'chz-telegram-bot';
 const dailyNotification = new ScheduledActionBuilder('GM')  
   .runAt(9 as Hours) // Run at 9 AM  
   .do(async (ctx) => {  
-    await ctx.sendTextToChat('Good morning!');  
+    ctx.sendTextToChat('Good morning!');  
   })  
   .build();
 ```
