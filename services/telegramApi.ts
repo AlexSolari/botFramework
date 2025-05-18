@@ -2,20 +2,16 @@ import { Message } from 'telegraf/types';
 import { IStorageClient } from '../types/storage';
 import { BotResponse, IReplyMessage } from '../types/response';
 import { Telegram } from 'telegraf/typings/telegram';
-import { setTimeout } from 'timers/promises';
-import { Milliseconds } from '../types/timeValues';
 import { ILogger } from '../types/logger';
-
-const TELEGRAM_RATELIMIT_DELAY = 35 as Milliseconds;
+import { QueueItem, ResponseProcessingQueue } from './responseProcessingQueue';
 
 export class TelegramApiService {
+    private readonly queue = new ResponseProcessingQueue();
     private readonly telegram: Telegram;
     private readonly storage: IStorageClient;
     private readonly logger: ILogger;
 
     private readonly botName: string;
-    private readonly messageQueue: BotResponse[] = [];
-    isFlushing = false;
 
     constructor(
         botName: string,
@@ -30,36 +26,35 @@ export class TelegramApiService {
     }
 
     enqueueBatchedResponses(responses: BotResponse[]) {
+        let offset = 0;
         for (const response of responses) {
-            this.messageQueue.push(response);
+            if (response.kind == 'delay') {
+                offset += response.delay;
+                continue;
+            }
+
+            const queueItem: QueueItem = {
+                callback: async () => {
+                    try {
+                        await this.processResponse(response);
+                    } catch (error) {
+                        this.logger.errorWithTraceId(
+                            this.botName,
+                            response.traceId,
+                            response.chatInfo.name,
+                            error,
+                            response
+                        );
+                    }
+                },
+                priority: response.createdAt + offset
+            };
+            this.queue.enqueue(queueItem);
         }
     }
 
-    async flushResponses() {
-        if (this.isFlushing) return;
-
-        this.isFlushing = true;
-
-        while (this.messageQueue.length) {
-            const message = this.messageQueue.shift();
-
-            if (!message) break;
-
-            try {
-                await this.processResponse(message);
-                await setTimeout(TELEGRAM_RATELIMIT_DELAY);
-            } catch (error) {
-                this.logger.errorWithTraceId(
-                    this.botName,
-                    message.traceId,
-                    message.chatInfo.name,
-                    error,
-                    message
-                );
-            }
-        }
-
-        this.isFlushing = false;
+    flushResponses() {
+        this.queue.flushReadyItems();
     }
 
     private async pinIfShould<T>(
@@ -156,9 +151,7 @@ export class TelegramApiService {
                 );
                 break;
             case 'delay':
-                if (response.delay > TELEGRAM_RATELIMIT_DELAY) {
-                    await setTimeout(response.delay - TELEGRAM_RATELIMIT_DELAY);
-                }
+                break;
         }
     }
 }

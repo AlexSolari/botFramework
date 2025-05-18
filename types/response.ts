@@ -30,6 +30,7 @@ export interface IChatResponse {
     readonly kind: keyof typeof BotResponseTypes;
     readonly chatInfo: ChatInfo;
     readonly traceId: TraceId;
+    readonly createdAt: number;
 
     readonly action: IActionWithState<IActionState>;
 }

@@ -7,6 +7,7 @@ import { TraceId } from '../../types/trace';
 
 export class TextMessage implements IReplyMessage<string> {
     readonly kind = BotResponseTypes.text;
+    readonly createdAt = Date.now();
 
     readonly content: string;
     readonly chatInfo: ChatInfo;

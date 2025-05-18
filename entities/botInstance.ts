@@ -212,7 +212,7 @@ export class BotInstance {
             }
         }
 
-        await this.api.flushResponses();
+        this.api.flushResponses();
     }
 
     private async processMessage(msg: IncomingMessage) {
@@ -240,6 +240,6 @@ export class BotInstance {
             }
         }
 
-        await this.api.flushResponses();
+        this.api.flushResponses();
     }
 }

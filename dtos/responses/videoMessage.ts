@@ -8,6 +8,7 @@ import { TraceId } from '../../types/trace';
 
 export class VideoMessage implements IReplyMessage<InputFile> {
     readonly kind = BotResponseTypes.video;
+    readonly createdAt = Date.now();
 
     readonly content: InputFile;
     readonly chatInfo: ChatInfo;

@@ -8,6 +8,7 @@ import { TraceId } from '../../types/trace';
 
 export class ImageMessage implements IReplyMessage<InputFile> {
     readonly kind = BotResponseTypes.image;
+    readonly createdAt = Date.now();
 
     readonly content: InputFile;
     readonly chatInfo: ChatInfo;

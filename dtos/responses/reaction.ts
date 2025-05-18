@@ -7,6 +7,7 @@ import { TraceId } from '../../types/trace';
 
 export class Reaction implements IChatResponse {
     readonly kind = BotResponseTypes.react;
+    readonly createdAt = Date.now();
 
     readonly chatInfo: ChatInfo;
     readonly messageId: number;

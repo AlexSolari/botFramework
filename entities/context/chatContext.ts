@@ -145,10 +145,10 @@ export class ChatContext<TActionState extends IActionState> {
     }
 
     /**
-     * Delays next response by specified amount of time.
+     * Delays next responses by specified amount of time.
      * @param delay Delay in milliseconds.
      */
-    delayNextResponse(delay: Milliseconds) {
+    wait(delay: Milliseconds) {
         this.responses.push(
             new DelayResponse(delay, this.chatInfo, this.traceId, this.action)
         );
