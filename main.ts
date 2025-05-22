@@ -2,11 +2,11 @@ import { readFile } from 'fs/promises';
 import { IStorageClient } from './types/storage';
 import { CommandAction } from './entities/actions/commandAction';
 import { ScheduledAction } from './entities/actions/scheduledAction';
-import { IActionState } from './types/actionState';
 import { BotInstance } from './entities/botInstance';
 import { Seconds } from './types/timeValues';
 import { IScheduler } from './types/scheduler';
 import { ILogger } from './types/logger';
+import { ActionStateBase } from './entities/states/actionStateBase';
 
 const bots: BotInstance[] = [];
 
@@ -19,9 +19,9 @@ async function startBot(options: {
     /** Path to file containing Telegram Bot token. */
     tokenFilePath: string;
     /** Collection of actions that will be executed as a response to message from used. Created using `CommandActionBuilder`.*/
-    commands: CommandAction<IActionState>[];
+    commands: CommandAction<ActionStateBase>[];
     /** Collection of actions that will be executed on timer. Created using `ScheduledActionBuilder`.*/
-    scheduled: ScheduledAction<IActionState>[];
+    scheduled: ScheduledAction<ActionStateBase>[];
     /** Object containing chat name and chat id pairs. Used for logging and execution of scheduled action. */
     chats: Record<string, number>;
     /** Storage path for default `JsonFileStorage` client. Will be used only if `storageClient` is not provided. If not provided, default value of `./storage/` will be used.*/
