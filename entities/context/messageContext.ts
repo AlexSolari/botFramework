@@ -13,7 +13,7 @@ import {
     MessageSendingOptions,
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
-import { IActionWithState, ActionKey } from '../../types/actionWithState';
+import { IActionWithState, ActionKey } from '../../types/statefulAction';
 import { MessageTypeValue } from '../../types/messageTypes';
 import { ILogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';

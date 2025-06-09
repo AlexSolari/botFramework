@@ -41,7 +41,9 @@ export class TelegramApiService {
                         this.logger.errorWithTraceId(
                             this.botName,
                             response.traceId,
-                            response.chatInfo.name,
+                            'chatInfo' in response
+                                ? response.chatInfo.name
+                                : 'Unknown',
                             error,
                             response
                         );
@@ -148,6 +150,13 @@ export class TelegramApiService {
                             (x) => x != response.messageId
                         );
                     }
+                );
+                break;
+            case 'inlineQuery':
+                await this.telegram.answerInlineQuery(
+                    response.queryId,
+                    response.queryResults,
+                    { cache_time: 0 }
                 );
                 break;
             case 'delay':

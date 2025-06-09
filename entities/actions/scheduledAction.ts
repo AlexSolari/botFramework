@@ -4,7 +4,7 @@ import { ScheduledHandler } from '../../types/handlers';
 import { hoursToMilliseconds } from '../../helpers/timeConvertions';
 import { HoursOfDay } from '../../types/timeValues';
 import { IActionState } from '../../types/actionState';
-import { IActionWithState, ActionKey } from '../../types/actionWithState';
+import { IActionWithState, ActionKey } from '../../types/statefulAction';
 import { CachedStateFactory } from '../cachedStateFactory';
 import { ChatContext } from '../context/chatContext';
 import { Noop } from '../../helpers/noop';

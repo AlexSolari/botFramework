@@ -8,7 +8,7 @@ import {
     MessageSendingOptions,
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
-import { IActionWithState } from '../../types/actionWithState';
+import { IActionWithState } from '../../types/statefulAction';
 import { IActionState } from '../../types/actionState';
 import { BotResponse } from '../../types/response';
 import { Milliseconds } from '../../types/timeValues';
@@ -25,11 +25,11 @@ export class ChatContext<TActionState extends IActionState> {
     protected action!: IActionWithState<TActionState>;
 
     /** Storage client instance for the bot executing this action. */
-    readonly storage!: IStorageClient;
+    readonly storage: IStorageClient;
     /** Logger instance for the bot executing this action */
-    readonly logger!: ILogger;
+    readonly logger: ILogger;
     /** Scheduler instance for the bot executing this action */
-    readonly scheduler!: IScheduler;
+    readonly scheduler: IScheduler;
 
     /** Trace id of a action execution. */
     traceId!: TraceId;

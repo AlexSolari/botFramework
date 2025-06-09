@@ -1,4 +1,5 @@
-export { startBot, stopBots } from './main';
+export { botOrchestrator } from './main';
+export { InlineQueryActionBuilder } from './helpers/builders/inlineQueryActionBuilder';
 export { CommandActionBuilder } from './helpers/builders/commandActionBuilder';
 export { CommandActionBuilderWithState } from './helpers/builders/commandActionBuilder';
 export { IStorageClient } from './types/storage';

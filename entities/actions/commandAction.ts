@@ -5,7 +5,7 @@ import { Seconds } from '../../types/timeValues';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { toArray } from '../../helpers/toArray';
 import { IActionState } from '../../types/actionState';
-import { IActionWithState, ActionKey } from '../../types/actionWithState';
+import { IActionWithState, ActionKey } from '../../types/statefulAction';
 import { CommandTriggerCheckResult } from '../../dtos/commandTriggerCheckResult';
 import { MessageContext } from '../context/messageContext';
 import { CommandTrigger } from '../../types/commandTrigger';

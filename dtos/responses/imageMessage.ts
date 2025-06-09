@@ -1,7 +1,7 @@
 import { InputFile } from 'telegraf/types';
 import { BotResponseTypes, IReplyMessage } from '../../types/response';
 import { MessageSendingOptions } from '../../types/messageSendingOptions';
-import { IActionWithState } from '../../types/actionWithState';
+import { IActionWithState } from '../../types/statefulAction';
 import { IActionState } from '../../types/actionState';
 import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';

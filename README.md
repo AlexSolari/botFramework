@@ -4,14 +4,35 @@
 
 ## Overview
 
-botFramework is a TypeScript library that provides a structured approach to building Telegram bots. It handles the complexities of bot lifecycle management, message processing, scheduled tasks, and state persistence.
+botFramework is a TypeScript library that provides a structured approach to building Telegram bots. It offers a comprehensive set of features for managing bot lifecycles, message processing, scheduled tasks, and state persistence, built on top of the popular Telegraf library.
+
+## Features
+
+-   **Type-Safe Command Building**: Fully TypeScript-supported command builders
+-   **Stateful Actions**: Built-in state management for commands, scheduled actions, and inline queries
+-   **Flexible Triggering**: Support for exact matches, regex patterns, and message types
+-   **Scheduled Tasks**: Time-based actions with customizable execution schedules
+-   **Access Control**: Built-in user and chat-based permissions
+-   **Cooldown Management**: Configurable cooldown periods for commands
+-   **Cached Values**: Process-wide caching system for optimizing resource usage
+-   **Custom State Types**: Extensible state system for complex bot logic
+-   **Comprehensive Logging**: Built-in logging system with trace IDs
+-   **Persistent Storage**: JSON-based file storage with automatic state management
+-   **Inline Query Support**: Handle inline queries with type-safe builders
+-   **Response Queue**: Managed response processing queue for reliable message delivery
+-   **Rich Media Support**: Built-in support for text, images, videos, reactions, and inline results
 
 ## Installation
 
-```
+```bash
+# Using npm
 npm install chz-bot-framework
-# or
-bun install chz-bot-framework
+
+# Using yarn
+yarn add chz-bot-framework
+
+# Using bun
+bun add chz-bot-framework
 ```
 
 ## Quick Start
@@ -161,19 +182,27 @@ When starting a bot, you can provide the following configuration:
 | ----------------- | ------------------------ | --------------------------- | ----------------------------------------------------------------------------------------- |
 | `name`            | `string`                 | Yes                         | Bot name used in logging                                                                  |
 | `tokenFilePath`   | `string`                 | Yes                         | Path to file containing Telegram Bot token                                                |
-| `commands`        | `CommandAction[]  `      | Yes (can be empty)          | Collection of command actions                                                             |
-| `scheduled`       | `ScheduledAction[]`      | Yes (can be empty)          | Collection of scheduled actions                                                           |
+| `actions`         |                          | Yes                         | Object containing actions to be executed by bot                                           |
 | `chats`           | `Record<string, number>` | Yes                         | Object containing chat name-id pairs. Used for logging and execution of scheduled action. |
 | `storagePath`     | `string`                 | No                          | Custom storage path for default JsonFileStorage client                                    |
 | `scheduledPeriod` | `Seconds`                | No (will default to 1 hour) | Period between scheduled action executions                                                |
 | `services`        |                          | No                          | Custom services to be used instead of default ones                                        |
 
+Actions object should have following structure:
+
+| Option          | Type                  | Required           | Description                        |
+| --------------- | --------------------- | ------------------ | ---------------------------------- |
+| `commands`      | `CommandAction[]  `   | Yes (can be empty) | Collection of command actions      |
+| `scheduled`     | `ScheduledAction[]`   | Yes (can be empty) | Collection of scheduled actions    |
+| `inlineQueries` | `InlineQueryAction[]` | Yes (can be empty) | Collection of inline query actions |
+
 Services object should have following structure:
-| Option | Type | Required | Description |
-|------------------|--------------------------|----------|---------------------------------------------------------------|
-| `storageClient` | `IStorageClient` | No (will default to `JsonFileStorage`) | Persistance state provide |
-| `logger` | `ILogger` | No (will default to `JsonLogger`) | Logger service |
-| `scheduler` | `IScheduler` | No (will default to `NodeTimeoutScheduler`) | Scheduler used to scheduled action|
+
+| Option          | Type             | Required                                    | Description                        |
+| --------------- | ---------------- | ------------------------------------------- | ---------------------------------- |
+| `storageClient` | `IStorageClient` | No (will default to `JsonFileStorage`)      | Persistance state provide          |
+| `logger`        | `ILogger`        | No (will default to `JsonLogger`)           | Logger service                     |
+| `scheduler`     | `IScheduler`     | No (will default to `NodeTimeoutScheduler`) | Scheduler used to scheduled action |
 
 ## Advanced Usage
 
@@ -195,12 +224,45 @@ const counterCommand = new CommandActionBuilderWithState<MyCustomState>(
     .on('/count')
     .do(async (ctx, state) => {
         state.counter++;
-        await ctx.replyWithText(`Count: ${state.counter}`);
+        ctx.replyWithText(`Count: ${state.counter}`);
     })
     .build();
 ```
 
 State is mutable and all changes to it will be saved after execution of action is finished.
+
+### Inline Queries
+
+The framework provides support for handling inline queries with type-safe builders:
+
+```typescript
+import { InlineQueryActionBuilder } from 'chz-telegram-bot';
+
+const searchCommand = new InlineQueryActionBuilder('Search')
+    .do(async (ctx) => {
+        const query = ctx.queryText;
+        // Process the query and return inline results
+        ctx.showInlineQueryResult({
+            id: '1',
+            type: 'article',
+            title: `Search results for: ${query}`,
+            description: 'Click to send'
+        });
+    })
+    .build();
+```
+
+### Response Queue
+
+The framework includes a response processing queue that ensures reliable message delivery and proper ordering of responses:
+
+```typescript
+ctx.sendTextToChat('First message');
+ctx.sendImageToChat('image.jpg');
+ctx.react('👍');
+```
+
+All responses are queued and processed in order, ensuring proper sequencing of messages and reactions.
 
 ## Stopping the Bot
 

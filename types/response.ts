@@ -1,12 +1,13 @@
 import { ChatInfo } from '../dtos/chatInfo';
 import { DelayResponse } from '../dtos/responses/delay';
 import { ImageMessage } from '../dtos/responses/imageMessage';
+import { InlineQueryResponse } from '../dtos/responses/inlineQueryResponse';
 import { Reaction } from '../dtos/responses/reaction';
 import { TextMessage } from '../dtos/responses/textMessage';
 import { UnpinResponse } from '../dtos/responses/unpin';
 import { VideoMessage } from '../dtos/responses/videoMessage';
 import { IActionState } from './actionState';
-import { IActionWithState } from './actionWithState';
+import { IActionWithState } from './statefulAction';
 import { TraceId } from './trace';
 
 export const BotResponseTypes = {
@@ -15,7 +16,8 @@ export const BotResponseTypes = {
     image: 'image',
     video: 'video',
     react: 'react',
-    delay: 'delay'
+    delay: 'delay',
+    inlineQuery: 'inlineQuery'
 } as const;
 
 export type BotResponse =
@@ -24,6 +26,7 @@ export type BotResponse =
     | TextMessage
     | VideoMessage
     | DelayResponse
+    | InlineQueryResponse
     | ImageMessage;
 
 export interface IChatResponse {

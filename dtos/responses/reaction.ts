@@ -1,6 +1,6 @@
 import { TelegramEmoji } from 'telegraf/types';
 import { BotResponseTypes, IChatResponse } from '../../types/response';
-import { IActionWithState } from '../../types/actionWithState';
+import { IActionWithState } from '../../types/statefulAction';
 import { IActionState } from '../../types/actionState';
 import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';

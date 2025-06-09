@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import { Sema as Semaphore } from 'async-sema';
 import { IStorageClient } from '../types/storage';
 import { IActionState } from '../types/actionState';
-import { IActionWithState, ActionKey } from '../types/actionWithState';
+import { IActionWithState, ActionKey } from '../types/statefulAction';
 
 export class JsonFileStorage implements IStorageClient {
     private readonly locks = new Map<ActionKey, Semaphore>();

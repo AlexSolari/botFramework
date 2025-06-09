@@ -20,6 +20,9 @@ import { ILogger } from '../types/logger';
 import { IScheduler } from '../types/scheduler';
 import { NodeTimeoutScheduler } from '../services/nodeTimeoutScheduler';
 import { createTrace } from '../helpers/traceFactory';
+import { InlineQueryAction } from './actions/inlineQueryAction';
+import { IncomingInlineQuery } from '../dtos/incomingQuery';
+import { InlineQueryContext } from './context/inlineQueryContext';
 
 export class BotInstance {
     private readonly api: TelegramApiService;
@@ -31,13 +34,17 @@ export class BotInstance {
     private readonly telegraf: Telegraf;
     private readonly commands: CommandAction<IActionState>[];
     private readonly scheduled: ScheduledAction<IActionState>[];
+    private readonly inlineQueries: InlineQueryAction[];
     private readonly chats: Record<string, number>;
 
     constructor(options: {
         name: string;
         token: string;
-        commands: CommandAction<IActionState>[];
-        scheduled: ScheduledAction<IActionState>[];
+        actions: {
+            commands: CommandAction<IActionState>[];
+            scheduled: ScheduledAction<IActionState>[];
+            inlineQueries: InlineQueryAction[];
+        };
         chats: Record<string, number>;
         storagePath?: string;
         scheduledPeriod?: Seconds;
@@ -49,8 +56,9 @@ export class BotInstance {
         };
     }) {
         this.name = options.name;
-        this.commands = options.commands;
-        this.scheduled = options.scheduled;
+        this.commands = options.actions.commands;
+        this.scheduled = options.actions.scheduled;
+        this.inlineQueries = options.actions.inlineQueries;
         this.chats = options.chats;
 
         const actions = [...this.commands, ...this.scheduled];
@@ -72,6 +80,7 @@ export class BotInstance {
         this.initializeMessageProcessing(
             options.verboseLoggingForIncomingMessage ?? false
         );
+        this.initializeInlineQueryProcessing(1000 as Milliseconds);
         this.initializeScheduledProcessing(
             options.scheduledPeriod ?? hoursToSeconds(1 as Hours)
         );
@@ -130,6 +139,82 @@ export class BotInstance {
             );
         }
     }
+
+    private initializeInlineQueryProcessing(period: Milliseconds) {
+        let pendingInlineQueries: IncomingInlineQuery[] = [];
+
+        if (this.inlineQueries.length > 0) {
+            this.telegraf.on('inline_query', async (ctx) => {
+                const query = new IncomingInlineQuery(
+                    ctx.inlineQuery.id,
+                    ctx.inlineQuery.query,
+                    ctx.inlineQuery.from.id,
+                    createTrace('InlineQuery', this.name, ctx.inlineQuery.id)
+                );
+
+                this.logger.logWithTraceId(
+                    this.name,
+                    query.traceId,
+                    'Query',
+                    `${ctx.inlineQuery.from.username} (${ctx.inlineQuery.from.id}): Query for ${ctx.inlineQuery.query}`
+                );
+
+                pendingInlineQueries = pendingInlineQueries.filter(
+                    (q) => q.userId != query.userId
+                );
+
+                pendingInlineQueries.push(query);
+            });
+
+            this.scheduler.createTask(
+                'InlineQueryProcessing',
+                async () => {
+                    const ctx = new InlineQueryContext(
+                        this.storage,
+                        this.logger,
+                        this.scheduler
+                    );
+
+                    const queriesToProcess = [...pendingInlineQueries];
+                    pendingInlineQueries = [];
+
+                    for (const inlineQuery of queriesToProcess) {
+                        for (const inlineQueryAction of this.inlineQueries) {
+                            ctx.initializeContext(
+                                inlineQuery.query,
+                                inlineQuery.queryId,
+                                this.name,
+                                inlineQueryAction,
+                                inlineQuery.traceId
+                            );
+
+                            try {
+                                const responses = await inlineQueryAction.exec(
+                                    ctx
+                                );
+                                this.api.enqueueBatchedResponses(responses);
+                                ctx.isInitialized = false;
+                            } catch (error) {
+                                this.logger.errorWithTraceId(
+                                    ctx.botName,
+                                    ctx.traceId,
+                                    'Unknown',
+                                    error,
+                                    ctx
+                                );
+                            }
+                        }
+                    }
+
+                    this.api.flushResponses();
+                },
+                period,
+                false,
+                this.name
+            );
+        }
+    }
+
     private initializeMessageProcessing(
         verboseLoggingForIncomingMessage: boolean
     ) {

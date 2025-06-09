@@ -1,6 +1,6 @@
 import { TextMessageSendingOptions } from '../../types/messageSendingOptions';
 import { BotResponseTypes, IReplyMessage } from '../../types/response';
-import { IActionWithState } from '../../types/actionWithState';
+import { IActionWithState } from '../../types/statefulAction';
 import { IActionState } from '../../types/actionState';
 import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';
