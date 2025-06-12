@@ -1,9 +1,9 @@
 import { CommandActionBuilder } from '../helpers/builders/commandActionBuilder';
 import { Seconds } from '../types/timeValues';
 
-export function buildHelpCommand(readmes: string[]) {
+export function buildHelpCommand(readmes: string[], botUsername: string) {
     return new CommandActionBuilder('Reaction.Help')
-        .on('/help')
+        .on(['/help', `/help@${botUsername}`])
         .do(async (ctx) => {
             if (readmes.length == 0) return;
 

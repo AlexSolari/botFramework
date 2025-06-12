@@ -112,7 +112,8 @@ export class BotInstance {
                               .map((x) =>
                                   x.readmeFactory(this.botInfo.username)
                               )
-                              .filter((x) => !!x)
+                              .filter((x) => !!x),
+                          this.botInfo.username
                       ),
                       ...options.actions.commands
                   ]
