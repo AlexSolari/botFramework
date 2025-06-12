@@ -148,7 +148,8 @@ export class CommandAction<TActionState extends IActionState>
 
         if (typeof trigger == 'string')
             return {
-                shouldTrigger: ctx.messageText.toLowerCase() == trigger,
+                shouldTrigger:
+                    ctx.messageText.toLowerCase() == trigger.toLowerCase(),
                 matchResults: []
             };
 
