@@ -46,7 +46,7 @@ class BotOrchestrator {
         };
     }) {
         const token = await readFile(options.tokenFilePath, 'utf8');
-        const bot = new BotInstance({
+        const remappedOptions = {
             name: options.name,
             token,
             actions: options.actions,
@@ -60,8 +60,10 @@ class BotOrchestrator {
                 logger: options.services?.logger,
                 scheduler: options.services?.scheduler
             }
-        });
+        };
+        const bot = new BotInstance(remappedOptions);
 
+        await bot.start(remappedOptions);
         this.bots.push(bot);
 
         return bot;

@@ -16,6 +16,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     trigger: CommandTrigger | CommandTrigger[] = [];
 
     active = true;
+    readmeFactory: null | ((botName: string) => string) = null;
     cooldownSeconds: Seconds = 0 as Seconds;
     blacklist: number[] = [];
     allowedUsers: number[] = [];
@@ -72,6 +73,12 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
         return this;
     }
 
+    withHelp(readmeFactory: (botName: string) => string) {
+        this.readmeFactory = readmeFactory;
+
+        return this;
+    }
+
     /** If called during building, action is marked as disabled and never checked. */
     disabled() {
         this.active = false;
@@ -109,7 +116,8 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
             this.blacklist,
             this.allowedUsers,
             this.condition,
-            this.stateConstructor
+            this.stateConstructor,
+            this.readmeFactory != null ? this.readmeFactory : (_) => ''
         );
     }
 }

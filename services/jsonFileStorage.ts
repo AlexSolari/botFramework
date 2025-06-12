@@ -33,11 +33,9 @@ export class JsonFileStorage implements IStorageClient {
     }
 
     private async lock<TType>(key: ActionKey, action: () => Promise<TType>) {
-        const lock = this.locks.get(key);
+        if (!this.locks.has(key)) this.locks.set(key, new Semaphore(1));
 
-        if (!lock) {
-            throw new Error(`Lock for action ${key} not found`);
-        }
+        const lock = this.locks.get(key)!;
 
         await lock.acquire();
 

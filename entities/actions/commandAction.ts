@@ -24,6 +24,7 @@ export class CommandAction<TActionState extends IActionState>
     readonly condition: CommandCondition<TActionState>;
     readonly stateConstructor: () => TActionState;
     readonly key: ActionKey;
+    readonly readmeFactory: (botName: string) => string;
 
     constructor(
         trigger: CommandTrigger | CommandTrigger[],
@@ -34,7 +35,8 @@ export class CommandAction<TActionState extends IActionState>
         chatsBlacklist: number[],
         allowedUsers: number[],
         condition: CommandCondition<TActionState>,
-        stateConstructor: () => TActionState
+        stateConstructor: () => TActionState,
+        readmeFactory: (botName: string) => string
     ) {
         this.triggers = toArray(trigger);
         this.handler = handler;
@@ -45,6 +47,7 @@ export class CommandAction<TActionState extends IActionState>
         this.allowedUsers = allowedUsers;
         this.condition = condition;
         this.stateConstructor = stateConstructor;
+        this.readmeFactory = readmeFactory;
 
         this.key = `command:${this.name.replace('.', '-')}` as ActionKey;
     }

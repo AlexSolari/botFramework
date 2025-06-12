@@ -23,19 +23,22 @@ import { createTrace } from '../helpers/traceFactory';
 import { InlineQueryAction } from './actions/inlineQueryAction';
 import { IncomingInlineQuery } from '../dtos/incomingQuery';
 import { InlineQueryContext } from './context/inlineQueryContext';
+import { buildHelpCommand } from '../builtin/helpAction';
+import { UserFromGetMe } from 'telegraf/types';
 
 export class BotInstance {
     private readonly api: TelegramApiService;
     private readonly storage: IStorageClient;
     private readonly scheduler: IScheduler;
     private readonly logger: ILogger;
-
-    readonly name: string;
     private readonly telegraf: Telegraf;
-    private readonly commands: CommandAction<IActionState>[];
-    private readonly scheduled: ScheduledAction<IActionState>[];
-    private readonly inlineQueries: InlineQueryAction[];
-    private readonly chats: Record<string, number>;
+
+    name!: string;
+    private botInfo!: UserFromGetMe;
+    private commands!: CommandAction<IActionState>[];
+    private scheduled!: ScheduledAction<IActionState>[];
+    private inlineQueries!: InlineQueryAction[];
+    private chats!: Record<string, number>;
 
     constructor(options: {
         name: string;
@@ -55,13 +58,14 @@ export class BotInstance {
             scheduler?: IScheduler;
         };
     }) {
+        const actions = [
+            ...options.actions.commands,
+            ...options.actions.scheduled
+        ];
+
         this.name = options.name;
-        this.commands = options.actions.commands;
-        this.scheduled = options.actions.scheduled;
-        this.inlineQueries = options.actions.inlineQueries;
         this.chats = options.chats;
 
-        const actions = [...this.commands, ...this.scheduled];
         this.telegraf = new Telegraf(options.token);
         this.logger = options.services?.logger ?? new JsonLogger();
         this.scheduler =
@@ -77,6 +81,45 @@ export class BotInstance {
             this.logger
         );
 
+        this.storage.saveMetadata(actions, this.name);
+    }
+
+    async start(options: {
+        name: string;
+        token: string;
+        actions: {
+            commands: CommandAction<IActionState>[];
+            scheduled: ScheduledAction<IActionState>[];
+            inlineQueries: InlineQueryAction[];
+        };
+        chats: Record<string, number>;
+        storagePath?: string;
+        scheduledPeriod?: Seconds;
+        verboseLoggingForIncomingMessage?: boolean;
+        services?: {
+            storageClient?: IStorageClient;
+            logger?: ILogger;
+            scheduler?: IScheduler;
+        };
+    }) {
+        this.botInfo = await this.telegraf.telegram.getMe();
+
+        this.commands =
+            options.actions.commands.length > 0
+                ? [
+                      buildHelpCommand(
+                          options.actions.commands
+                              .map((x) =>
+                                  x.readmeFactory(this.botInfo.username)
+                              )
+                              .filter((x) => !!x)
+                      ),
+                      ...options.actions.commands
+                  ]
+                : [];
+        this.scheduled = options.actions.scheduled;
+        this.inlineQueries = options.actions.inlineQueries;
+
         this.initializeMessageProcessing(
             options.verboseLoggingForIncomingMessage ?? false
         );
@@ -85,7 +128,7 @@ export class BotInstance {
             options.scheduledPeriod ?? hoursToSeconds(1 as Hours)
         );
 
-        this.storage.saveMetadata(actions, this.name);
+        this.telegraf.launch();
 
         this.logger.logWithTraceId(
             this.name,
@@ -93,7 +136,6 @@ export class BotInstance {
             'System',
             'Starting bot...'
         );
-        this.telegraf.launch();
     }
 
     private initializeScheduledProcessing(period: Seconds) {
