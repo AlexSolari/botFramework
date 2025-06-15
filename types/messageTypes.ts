@@ -1,3 +1,5 @@
+import { Message, Update } from 'telegraf/types';
+
 export const MessageType = {
     Text: '__msg:Text',
     Sticker: '__msg:Sticker',
@@ -10,7 +12,10 @@ export const MessageType = {
     Poll: '__msg:Poll',
     Location: '__msg:Location',
     Photo: '__msg:Photo',
+    Forward: '__msg:Forward',
     Unknown: '__msg:Unknown'
 } as const;
 
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
+
+export type TelegrafContextMessage = Update.New & (Update.NonChannel & Message);

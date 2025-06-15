@@ -14,7 +14,10 @@ import {
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
 import { IActionWithState, ActionKey } from '../../types/statefulAction';
-import { MessageTypeValue } from '../../types/messageTypes';
+import {
+    MessageTypeValue,
+    TelegrafContextMessage
+} from '../../types/messageTypes';
 import { ILogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';
 /**
@@ -37,6 +40,8 @@ export class MessageContext<
     fromUserName!: string;
     /** Type of message being received */
     messageType!: MessageTypeValue;
+    /** Message object recieved from Telegram */
+    messageUpdateObject!: TelegrafContextMessage;
 
     constructor(
         storage: IStorageClient,
@@ -58,6 +63,7 @@ export class MessageContext<
         this.fromUserName =
             (message.from?.first_name ?? 'Unknown user') +
             (message.from?.last_name ? ` ${message.from.last_name}` : '');
+        this.messageUpdateObject = message.updateObject;
 
         this.matchResults = [];
         this.startCooldown = true;

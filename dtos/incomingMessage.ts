@@ -1,6 +1,10 @@
 import { Message, Update, User } from 'telegraf/types';
 import { randomInt } from 'crypto';
-import { MessageType, MessageTypeValue } from '../types/messageTypes';
+import {
+    MessageType,
+    MessageTypeValue,
+    TelegrafContextMessage
+} from '../types/messageTypes';
 import { ChatInfo } from './chatInfo';
 import { createTrace } from '../helpers/traceFactory';
 import { TraceId } from '../types/trace';
@@ -13,9 +17,12 @@ export class IncomingMessage {
     readonly type: MessageTypeValue;
     readonly traceId: TraceId;
 
+    readonly updateObject: TelegrafContextMessage;
+
     private detectMessageType(
         message: Update.New & (Update.NonChannel & Message)
     ) {
+        if ('forward_origin' in message) return MessageType.Forward;
         if ('text' in message) return MessageType.Text;
         if ('photo' in message) return MessageType.Photo;
         if ('sticker' in message) return MessageType.Sticker;
@@ -31,10 +38,7 @@ export class IncomingMessage {
         return MessageType.Unknown;
     }
 
-    constructor(
-        ctxMessage: Update.New & (Update.NonChannel & Message),
-        botName: string
-    ) {
+    constructor(ctxMessage: TelegrafContextMessage, botName: string) {
         this.traceId = createTrace(
             this,
             botName,
@@ -50,5 +54,6 @@ export class IncomingMessage {
                 : 'DM'
         );
         this.type = this.detectMessageType(ctxMessage);
+        this.updateObject = ctxMessage;
     }
 }
