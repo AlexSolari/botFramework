@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync } from 'fs';
-import { dirname } from 'path';
-import { mkdir, readFile, writeFile } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { Sema as Semaphore } from 'async-sema';
 import { IStorageClient } from '../types/storage';
 import { IActionState } from '../types/actionState';
@@ -51,11 +50,11 @@ export class JsonFileStorage implements IStorageClient {
     ) {
         if (!this.cache.has(key)) {
             const targetPath = this.buidPathFromKey(key);
-            if (!existsSync(targetPath)) {
-                return {};
-            }
 
-            const fileContent = await readFile(targetPath, 'utf8');
+            const fileContent = await readFile(targetPath, {
+                encoding: 'utf-8',
+                flag: 'a+'
+            });
 
             if (fileContent) {
                 const data = JSON.parse(fileContent);
@@ -74,11 +73,6 @@ export class JsonFileStorage implements IStorageClient {
         this.cache.set(key, data);
 
         const targetPath = this.buidPathFromKey(key);
-        const folderName = dirname(targetPath);
-
-        if (!existsSync(folderName)) {
-            await mkdir(folderName, { recursive: true });
-        }
 
         await writeFile(targetPath, JSON.stringify(data), { flag: 'w+' });
     }
@@ -92,7 +86,7 @@ export class JsonFileStorage implements IStorageClient {
 
     async load<TActionState extends IActionState>(key: ActionKey) {
         return await this.lock(key, async () => {
-            return this.loadInternal<TActionState>(key);
+            return await this.loadInternal<TActionState>(key);
         });
     }
 
@@ -128,7 +122,7 @@ export class JsonFileStorage implements IStorageClient {
         chatId: number,
         state: TActionState
     ) {
-        await this.lock(action.key, async () => {
+        return await this.lock(action.key, async () => {
             const data = await this.loadInternal<TActionState>(action.key);
 
             data[chatId] = state;

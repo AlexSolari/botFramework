@@ -37,10 +37,8 @@ export class ResponseProcessingQueue {
         this.isFlushing = true;
 
         while (this.items.length) {
-            if (Date.now() >= this.peek()!.priority) {
-                const item = this.items.shift();
-
-                if (!item) return;
+            if (Date.now() >= this.items[0].priority) {
+                const item = this.items.shift()!;
 
                 await item.callback();
             } else {
@@ -49,9 +47,5 @@ export class ResponseProcessingQueue {
         }
 
         this.isFlushing = false;
-    }
-
-    private peek() {
-        return this.items[0];
     }
 }
