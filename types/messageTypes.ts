@@ -1,19 +1,21 @@
 import { Message, Update } from 'telegraf/types';
 
+export const INTERNAL_MESSAGE_TYPE_PREFIX = `__msg:`;
+
 export const MessageType = {
-    Text: '__msg:Text',
-    Sticker: '__msg:Sticker',
-    Animation: '__msg:Animation',
-    Document: '__msg:Document',
-    Voice: '__msg:Voice',
-    Audio: '__msg:Audio',
-    LeftChatMember: '__msg:LeftChatMember',
-    NewChatMember: '__msg:NewChatMember',
-    Poll: '__msg:Poll',
-    Location: '__msg:Location',
-    Photo: '__msg:Photo',
-    Forward: '__msg:Forward',
-    Unknown: '__msg:Unknown'
+    Text: `${INTERNAL_MESSAGE_TYPE_PREFIX}Text`,
+    Sticker: `${INTERNAL_MESSAGE_TYPE_PREFIX}Sticker`,
+    Animation: `${INTERNAL_MESSAGE_TYPE_PREFIX}Animation`,
+    Document: `${INTERNAL_MESSAGE_TYPE_PREFIX}Document`,
+    Voice: `${INTERNAL_MESSAGE_TYPE_PREFIX}Voice`,
+    Audio: `${INTERNAL_MESSAGE_TYPE_PREFIX}Audio`,
+    LeftChatMember: `${INTERNAL_MESSAGE_TYPE_PREFIX}LeftChatMember`,
+    NewChatMember: `${INTERNAL_MESSAGE_TYPE_PREFIX}NewChatMember`,
+    Poll: `${INTERNAL_MESSAGE_TYPE_PREFIX}Poll`,
+    Location: `${INTERNAL_MESSAGE_TYPE_PREFIX}Location`,
+    Photo: `${INTERNAL_MESSAGE_TYPE_PREFIX}Photo`,
+    Forward: `${INTERNAL_MESSAGE_TYPE_PREFIX}Forward`,
+    Unknown: `${INTERNAL_MESSAGE_TYPE_PREFIX}Unknown`
 } as const;
 
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];

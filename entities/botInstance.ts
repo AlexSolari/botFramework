@@ -25,6 +25,10 @@ import { IncomingInlineQuery } from '../dtos/incomingQuery';
 import { InlineQueryContext } from './context/inlineQueryContext';
 import { buildHelpCommand } from '../builtin/helpAction';
 import { UserFromGetMe } from 'telegraf/types';
+import {
+    INTERNAL_MESSAGE_TYPE_PREFIX,
+    MessageType
+} from '../types/messageTypes';
 
 export class BotInstance {
     private readonly api: TelegramApiService;
@@ -262,13 +266,20 @@ export class BotInstance {
         verboseLoggingForIncomingMessage: boolean
     ) {
         if (this.commands.length > 0) {
+            const triggersToBeProcessed = new Set(
+                this.commands
+                    .flatMap((x) => x.triggers)
+                    .map((x) =>
+                        typeof x == 'string'
+                            ? x.startsWith(INTERNAL_MESSAGE_TYPE_PREFIX)
+                                ? x
+                                : MessageType.Text
+                            : MessageType.Text
+                    )
+            );
+
             this.telegraf.on('message', async (ctx) => {
                 const msg = new IncomingMessage(ctx.update.message, this.name);
-                const messageContent =
-                    msg.text || `<non-text message: ${msg.type}>`;
-
-                const messageFromName = msg.from?.first_name ?? 'Unknown';
-                const messageFromId = msg.from?.id ?? 'Unknown';
 
                 if (verboseLoggingForIncomingMessage) {
                     this.logger.logObjectWithTraceId(
@@ -282,11 +293,14 @@ export class BotInstance {
                         this.name,
                         msg.traceId,
                         msg.chatInfo.name,
-                        `${messageFromName} (${messageFromId}): ${messageContent}`
+                        `${msg.from?.first_name ?? 'Unknown'} (${
+                            msg.from?.id ?? 'Unknown'
+                        }): ${msg.text || `<non-text message: ${msg.type}>`}`
                     );
                 }
 
-                await this.processMessage(msg);
+                if (triggersToBeProcessed.has(msg.type))
+                    await this.processMessage(msg);
             });
         }
     }
