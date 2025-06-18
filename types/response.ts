@@ -7,6 +7,7 @@ import { TextMessage } from '../dtos/responses/textMessage';
 import { UnpinResponse } from '../dtos/responses/unpin';
 import { VideoMessage } from '../dtos/responses/videoMessage';
 import { IActionState } from './actionState';
+import { ReplyInfo } from './replyInfo';
 import { IActionWithState } from './statefulAction';
 import { TraceId } from './trace';
 
@@ -38,9 +39,9 @@ export interface IChatResponse {
     readonly action: IActionWithState<IActionState>;
 }
 
-export interface IReplyMessage<TType> extends IChatResponse {
+export interface IReplyResponse<TType> extends IChatResponse {
     readonly content: TType;
-    readonly replyId: number | undefined;
+    readonly replyInfo: ReplyInfo | undefined;
     readonly disableWebPreview: boolean;
     readonly shouldPin: boolean;
 }

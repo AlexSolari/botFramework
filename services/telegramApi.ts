@@ -1,6 +1,6 @@
 import { Message } from 'telegraf/types';
 import { IStorageClient } from '../types/storage';
-import { BotResponse, IReplyMessage } from '../types/response';
+import { BotResponse, IReplyResponse } from '../types/response';
 import { Telegram } from 'telegraf/typings/telegram';
 import { ILogger } from '../types/logger';
 import { QueueItem, ResponseProcessingQueue } from './responseProcessingQueue';
@@ -60,7 +60,7 @@ export class TelegramApiService {
     }
 
     private async pinIfShould<T>(
-        response: IReplyMessage<T>,
+        response: IReplyResponse<T>,
         sentMessage: Message
     ) {
         if (response.shouldPin) {
@@ -89,11 +89,17 @@ export class TelegramApiService {
                     response.chatInfo.id,
                     response.content,
                     {
-                        reply_to_message_id: response.replyId,
+                        reply_parameters: response.replyInfo
+                            ? {
+                                  message_id: response.replyInfo.id,
+                                  quote: response.replyInfo.quote
+                              }
+                            : undefined,
                         parse_mode: 'MarkdownV2',
-                        disable_web_page_preview: response.disableWebPreview
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    } as any
+                        link_preview_options: {
+                            is_disabled: response.disableWebPreview
+                        }
+                    }
                 );
 
                 await this.pinIfShould(response, sentMessage);
@@ -102,10 +108,15 @@ export class TelegramApiService {
                 sentMessage = await this.telegram.sendPhoto(
                     response.chatInfo.id,
                     response.content,
-                    response.replyId
-                        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          ({ reply_to_message_id: response.replyId } as any)
-                        : undefined
+                    {
+                        reply_parameters: response.replyInfo
+                            ? {
+                                  message_id: response.replyInfo.id,
+                                  quote: response.replyInfo.quote
+                              }
+                            : undefined,
+                        parse_mode: 'MarkdownV2'
+                    }
                 );
 
                 await this.pinIfShould(response, sentMessage);
@@ -114,10 +125,15 @@ export class TelegramApiService {
                 sentMessage = await this.telegram.sendVideo(
                     response.chatInfo.id,
                     response.content,
-                    response.replyId
-                        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          ({ reply_to_message_id: response.replyId } as any)
-                        : undefined
+                    {
+                        reply_parameters: response.replyInfo
+                            ? {
+                                  message_id: response.replyInfo.id,
+                                  quote: response.replyInfo.quote
+                              }
+                            : undefined,
+                        parse_mode: 'MarkdownV2'
+                    }
                 );
 
                 await this.pinIfShould(response, sentMessage);

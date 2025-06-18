@@ -7,7 +7,7 @@ export function buildHelpCommand(readmes: string[], botUsername: string) {
         .do(async (ctx) => {
             if (readmes.length == 0) return;
 
-            ctx.replyWithText(readmes.join('\n\n'));
+            ctx.reply.withText(readmes.join('\n\n'));
         })
         .cooldown(60 as Seconds)
         .build();

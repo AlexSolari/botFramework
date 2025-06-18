@@ -22,7 +22,7 @@ import { TraceId } from '../../types/trace';
  * Context of action executed in chat.
  */
 export class ChatContext<TActionState extends IActionState> {
-    protected action!: IActionWithState<TActionState>;
+    action!: IActionWithState<TActionState>;
 
     /** Storage client instance for the bot executing this action. */
     readonly storage: IStorageClient;
@@ -52,81 +52,67 @@ export class ChatContext<TActionState extends IActionState> {
         this.scheduler = scheduler;
     }
 
-    initializeChatContext(
-        botName: string,
-        action: IActionWithState<TActionState>,
-        chatInfo: ChatInfo,
-        traceId: TraceId
-    ) {
-        this.botName = botName;
-        this.action = action;
-        this.chatInfo = chatInfo;
-        this.traceId = traceId;
-
-        this.isInitialized = true;
-        this.responses = [];
-
-        return this;
-    }
-
     /**
-     * Sends text message to chat after action execution is finished.
-     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
-     * @param text Message contents.
-     * @param options Message sending option.
+     * Collection of actions that send something to chat as a standalone message.
      */
-    sendTextToChat(text: string, options?: TextMessageSendingOptions) {
-        this.responses.push(
-            new TextMessage(
-                text,
-                this.chatInfo,
-                undefined,
-                this.traceId,
-                this.action,
-                options
-            )
-        );
-    }
+    send = {
+        /**
+         * Sends text message to chat after action execution is finished.
+         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * @param text Message contents.
+         * @param options Message sending option.
+         */
+        text: (text: string, options?: TextMessageSendingOptions) => {
+            this.responses.push(
+                new TextMessage(
+                    text,
+                    this.chatInfo,
+                    this.traceId,
+                    this.action,
+                    undefined,
+                    options
+                )
+            );
+        },
 
-    /**
-     * Sends image message to chat after action execution is finished.
-     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
-     * @param name Message contents.
-     * @param options Message sending option.
-     */
-    sendImageToChat(name: string, options?: MessageSendingOptions) {
-        const filePath = `./content/${name}.png`;
-        this.responses.push(
-            new ImageMessage(
-                { source: resolve(filePath) },
-                this.chatInfo,
-                undefined,
-                this.traceId,
-                this.action,
-                options
-            )
-        );
-    }
+        /**
+         * Sends image message to chat after action execution is finished.
+         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * @param name Message contents.
+         * @param options Message sending option.
+         */
+        image: (name: string, options?: MessageSendingOptions) => {
+            this.responses.push(
+                new ImageMessage(
+                    { source: resolve(`./content/${name}.png`) },
+                    this.chatInfo,
+                    this.traceId,
+                    this.action,
+                    undefined,
+                    options
+                )
+            );
+        },
 
-    /**
-     * Sends video/gif message to chat after action execution is finished.
-     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
-     * @param name Message contents.
-     * @param options Message sending option.
-     */
-    sendVideoToChat(name: string, options?: MessageSendingOptions) {
-        const filePath = `./content/${name}.mp4`;
-        this.responses.push(
-            new VideoMessage(
-                { source: resolve(filePath) },
-                this.chatInfo,
-                undefined,
-                this.traceId,
-                this.action,
-                options
-            )
-        );
-    }
+        /**
+         * Sends video/gif message to chat after action execution is finished.
+         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * @param name Message contents.
+         * @param options Message sending option.
+         */
+        video: (name: string, options?: MessageSendingOptions) => {
+            this.responses.push(
+                new VideoMessage(
+                    { source: resolve(`./content/${name}.mp4`) },
+                    this.chatInfo,
+                    this.traceId,
+                    this.action,
+                    undefined,
+                    options
+                )
+            );
+        }
+    };
 
     /**
      * Unpins message after action execution is finished.

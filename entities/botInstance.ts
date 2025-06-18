@@ -29,6 +29,8 @@ import {
     INTERNAL_MESSAGE_TYPE_PREFIX,
     MessageType
 } from '../types/messageTypes';
+import { IActionWithState } from '../types/statefulAction';
+import { TraceId } from '../types/trace';
 
 export class BotInstance {
     private readonly api: TelegramApiService;
@@ -318,6 +320,45 @@ export class BotInstance {
         this.telegraf.stop(code);
     }
 
+    private initializeMessageContext<TActionState extends IActionState>(
+        ctx: MessageContext<IActionState>,
+        action: IActionWithState<TActionState>,
+        message: IncomingMessage
+    ) {
+        ctx.messageId = message.message_id;
+        ctx.messageText = message.text ?? '';
+        ctx.messageType = message.type;
+        ctx.fromUserId = message.from?.id;
+        ctx.fromUserName =
+            (message.from?.first_name ?? 'Unknown user') +
+            (message.from?.last_name ? ` ${message.from.last_name}` : '');
+        ctx.messageUpdateObject = message.updateObject;
+
+        ctx.matchResults = [];
+        ctx.startCooldown = true;
+
+        this.initializeChatContext(
+            ctx,
+            action,
+            message.chatInfo,
+            message.traceId
+        );
+    }
+
+    private initializeChatContext<TActionState extends IActionState>(
+        ctx: ChatContext<IActionState>,
+        action: IActionWithState<TActionState>,
+        chatInfo: ChatInfo,
+        traceId: TraceId
+    ) {
+        ctx.responses = [];
+        ctx.isInitialized = true;
+        ctx.botName = this.name;
+        ctx.action = action;
+        ctx.chatInfo = chatInfo;
+        ctx.traceId = traceId;
+    }
+
     private async runScheduled() {
         const ctx = new ChatContext<IActionState>(
             this.storage,
@@ -327,8 +368,8 @@ export class BotInstance {
 
         for (const [chatName, chatId] of Object.entries(this.chats)) {
             for (const scheduledAction of this.scheduled) {
-                ctx.initializeChatContext(
-                    this.name,
+                this.initializeChatContext(
+                    ctx,
                     scheduledAction,
                     new ChatInfo(chatId, chatName),
                     createTrace(
@@ -365,7 +406,7 @@ export class BotInstance {
         );
 
         for (const commandAction of this.commands) {
-            ctx.initializeMessageContext(this.name, commandAction, msg);
+            this.initializeMessageContext(ctx, commandAction, msg);
 
             try {
                 const responses = await commandAction.exec(ctx);

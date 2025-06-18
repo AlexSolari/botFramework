@@ -8,18 +8,18 @@ import { TextMessage } from '../../dtos/responses/textMessage';
 import { VideoMessage } from '../../dtos/responses/videoMessage';
 import { ActionStateBase } from '../states/actionStateBase';
 import { ChatContext } from './chatContext';
-import { IncomingMessage } from '../../dtos/incomingMessage';
 import {
     MessageSendingOptions,
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
-import { IActionWithState, ActionKey } from '../../types/statefulAction';
+import { ActionKey } from '../../types/statefulAction';
 import {
     MessageTypeValue,
     TelegrafContextMessage
 } from '../../types/messageTypes';
 import { ILogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';
+import { ReplyInfo } from '../../types/replyInfo';
 /**
  * Context of action executed in chat, in response to a message
  */
@@ -51,28 +51,69 @@ export class MessageContext<
         super(storage, logger, scheduler);
     }
 
-    initializeMessageContext(
-        botName: string,
-        action: IActionWithState<TActionState>,
-        message: IncomingMessage
+    private replyWithText(
+        text: string,
+        quote: boolean,
+        options?: TextMessageSendingOptions
     ) {
-        this.messageId = message.message_id;
-        this.messageText = message.text ?? '';
-        this.messageType = message.type;
-        this.fromUserId = message.from?.id;
-        this.fromUserName =
-            (message.from?.first_name ?? 'Unknown user') +
-            (message.from?.last_name ? ` ${message.from.last_name}` : '');
-        this.messageUpdateObject = message.updateObject;
+        const quotedPart =
+            this.matchResults.length != 0
+                ? this.matchResults[0][1]
+                : this.messageText;
 
-        this.matchResults = [];
-        this.startCooldown = true;
+        this.responses.push(
+            new TextMessage(
+                text,
+                this.chatInfo,
+                this.traceId,
+                this.action,
+                new ReplyInfo(this.messageId, quote ? quotedPart : undefined),
+                options
+            )
+        );
+    }
 
-        return this.initializeChatContext(
-            botName,
-            action,
-            message.chatInfo,
-            message.traceId
+    private replyWithImage(
+        name: string,
+        quote: boolean,
+        options?: MessageSendingOptions
+    ) {
+        const quotedPart =
+            this.matchResults.length != 0
+                ? this.matchResults[0][1]
+                : this.messageText;
+
+        this.responses.push(
+            new ImageMessage(
+                { source: resolve(`./content/${name}.png`) },
+                this.chatInfo,
+                this.traceId,
+                this.action,
+                new ReplyInfo(this.messageId, quote ? quotedPart : undefined),
+                options
+            )
+        );
+    }
+
+    private replyWithVideo(
+        name: string,
+        quote: boolean,
+        options?: MessageSendingOptions
+    ) {
+        const quotedPart =
+            this.matchResults.length != 0
+                ? this.matchResults[0][1]
+                : this.messageText;
+
+        this.responses.push(
+            new VideoMessage(
+                { source: resolve(`./content/${name}.mp4`) },
+                this.chatInfo,
+                this.traceId,
+                this.action,
+                new ReplyInfo(this.messageId, quote ? quotedPart : undefined),
+                options
+            )
         );
     }
 
@@ -99,78 +140,82 @@ export class MessageContext<
     }
 
     /**
-     * Reply with text message to message that triggered this action after action execution is finished.
-     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
-     * @param text Message contents.
-     * @param options Message sending option.
+     * Collection of actions that can be done as a reply to a message that triggered this action
      */
-    replyWithText(text: string, options?: TextMessageSendingOptions) {
-        this.responses.push(
-            new TextMessage(
-                text,
-                this.chatInfo,
-                this.messageId,
-                this.traceId,
-                this.action,
-                options
-            )
-        );
-    }
+    reply = {
+        /**
+         * Collection of actions that can be done as a reply to a message, quoting the part that triggered this action
+         * If regex is matched, first match will be quoted
+         */
+        andQuote: {
+            /**
+             * Reply with text message to message that triggered this action after action execution is finished.
+             * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+             * @param text Message contents.
+             * @param options Message sending option.
+             */
+            withText: (text: string, options?: TextMessageSendingOptions) =>
+                this.replyWithText(text, true, options),
+            /**
+             * Reply with image message to message that triggered this action after action execution is finished.
+             * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+             * @param text Message contents.
+             * @param options Message sending option.
+             */
+            withImage: (name: string, options?: MessageSendingOptions) =>
+                this.replyWithImage(name, true, options),
 
-    /**
-     * Reply with image message to message that triggered this action after action execution is finished.
-     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
-     * @param text Message contents.
-     * @param options Message sending option.
-     */
-    replyWithImage(name: string, options?: MessageSendingOptions) {
-        const filePath = `./content/${name}.png`;
-        this.responses.push(
-            new ImageMessage(
-                { source: resolve(filePath) },
-                this.chatInfo,
-                this.messageId,
-                this.traceId,
-                this.action,
-                options
-            )
-        );
-    }
+            /**
+             * Reply with video/gif message to message that triggered this action after action execution is finished.
+             * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+             * @param text Message contents.
+             * @param options Message sending option.
+             */
+            withVideo: (name: string, options?: MessageSendingOptions) =>
+                this.replyWithVideo(name, true, options)
+        },
 
-    /**
-     * Reply with video/gif message to message that triggered this action after action execution is finished.
-     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
-     * @param text Message contents.
-     * @param options Message sending option.
-     */
-    replyWithVideo(name: string, options?: MessageSendingOptions) {
-        const filePath = `./content/${name}.mp4`;
-        this.responses.push(
-            new VideoMessage(
-                { source: resolve(filePath) },
-                this.chatInfo,
-                this.messageId,
-                this.traceId,
-                this.action,
-                options
-            )
-        );
-    }
+        /**
+         * Reply with text message to message that triggered this action after action execution is finished.
+         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * @param text Message contents.
+         * @param options Message sending option.
+         */
+        withText: (text: string, options?: TextMessageSendingOptions) =>
+            this.replyWithText(text, false, options),
+        /**
+         * Reply with image message to message that triggered this action after action execution is finished.
+         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * @param text Message contents.
+         * @param options Message sending option.
+         */
+        withImage: (name: string, options?: MessageSendingOptions) =>
+            this.replyWithImage(name, false, options),
 
-    /**
-     * React to the message that triggered this action after action execution is finished.
-     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
-     * @param emoji Telegram emoji to react with.
-     */
-    react(emoji: TelegramEmoji) {
-        this.responses.push(
-            new Reaction(
-                this.traceId,
-                this.chatInfo,
-                this.messageId,
-                emoji,
-                this.action
-            )
-        );
-    }
+        /**
+         * Reply with video/gif message to message that triggered this action after action execution is finished.
+         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * @param text Message contents.
+         * @param options Message sending option.
+         */
+        withVideo: (name: string, options?: MessageSendingOptions) =>
+            this.replyWithVideo(name, false, options),
+
+        /**
+         * React to the message that triggered this action after action execution is finished.
+         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * @param emoji Telegram emoji to react with.
+         */
+        withReaction: (emoji: TelegramEmoji) => {
+            this.responses.push(
+                new Reaction(
+                    this.traceId,
+                    this.chatInfo,
+                    this.messageId,
+                    emoji,
+                    this.action
+                )
+            );
+        }
+    };
 }

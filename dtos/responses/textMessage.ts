@@ -1,17 +1,18 @@
 import { TextMessageSendingOptions } from '../../types/messageSendingOptions';
-import { BotResponseTypes, IReplyMessage } from '../../types/response';
+import { BotResponseTypes, IReplyResponse } from '../../types/response';
 import { IActionWithState } from '../../types/statefulAction';
 import { IActionState } from '../../types/actionState';
 import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';
+import { ReplyInfo } from '../../types/replyInfo';
 
-export class TextMessage implements IReplyMessage<string> {
+export class TextMessage implements IReplyResponse<string> {
     readonly kind = BotResponseTypes.text;
     readonly createdAt = Date.now();
 
     readonly content: string;
     readonly chatInfo: ChatInfo;
-    readonly replyId: number | undefined;
+    readonly replyInfo: ReplyInfo | undefined;
     readonly traceId: TraceId;
     readonly disableWebPreview: boolean;
     readonly shouldPin: boolean;
@@ -20,14 +21,14 @@ export class TextMessage implements IReplyMessage<string> {
     constructor(
         text: string,
         chatInfo: ChatInfo,
-        replyId: number | undefined,
         traceId: TraceId,
         action: IActionWithState<IActionState>,
+        replyInfo?: ReplyInfo,
         options?: TextMessageSendingOptions
     ) {
         this.content = text;
         this.chatInfo = chatInfo;
-        this.replyId = replyId;
+        this.replyInfo = replyInfo;
         this.traceId = traceId;
         this.disableWebPreview = options?.disableWebPreview ?? false;
         this.shouldPin = options?.pin ?? false;
