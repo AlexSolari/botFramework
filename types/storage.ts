@@ -1,5 +1,5 @@
 import { IActionState } from './actionState';
-import { ActionKey, IActionWithState } from './statefulAction';
+import { ActionKey, IActionWithState } from './action';
 
 export interface IStorageClient {
     updateStateFor<TActionState extends IActionState>(

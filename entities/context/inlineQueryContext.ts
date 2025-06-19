@@ -8,8 +8,8 @@ import { InlineQueryAction } from '../actions/inlineQueryAction';
 import { InlineQueryResponse } from '../../dtos/responses/inlineQueryResponse';
 
 export class InlineQueryContext {
-    private action!: InlineQueryAction;
-    private queryResults: InlineQueryResult[] = [];
+    action!: InlineQueryAction;
+    queryResults: InlineQueryResult[] = [];
 
     /** Storage client instance for the bot executing this action. */
     readonly storage: IStorageClient;
@@ -51,26 +51,6 @@ export class InlineQueryContext {
         this.storage = storage;
         this.logger = logger;
         this.scheduler = scheduler;
-    }
-
-    initializeContext(
-        queryText: string,
-        queryId: string,
-        botName: string,
-        action: InlineQueryAction,
-        traceId: TraceId
-    ) {
-        this.queryText = queryText;
-        this.queryId = queryId;
-        this.botName = botName;
-        this.action = action;
-        this.traceId = traceId;
-
-        this.isInitialized = true;
-        this.queryResults = [];
-        this.matchResults = [];
-
-        return this;
     }
 
     /**

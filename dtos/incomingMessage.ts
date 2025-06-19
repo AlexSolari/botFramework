@@ -10,12 +10,13 @@ import { createTrace } from '../helpers/traceFactory';
 import { TraceId } from '../types/trace';
 
 export class IncomingMessage {
-    readonly message_id: number;
+    readonly messageId: number;
     readonly chatInfo: ChatInfo;
     readonly from: User | undefined;
     readonly text: string;
     readonly type: MessageTypeValue;
     readonly traceId: TraceId;
+    readonly replyToMessageId: number | undefined;
 
     readonly updateObject: TelegrafContextMessage;
 
@@ -44,7 +45,11 @@ export class IncomingMessage {
             botName,
             randomInt(10000, 99999).toString()
         );
-        this.message_id = ctxMessage.message_id;
+        this.messageId = ctxMessage.message_id;
+        this.replyToMessageId =
+            'reply_to_message' in ctxMessage
+                ? ctxMessage.reply_to_message?.message_id
+                : undefined;
         this.from = ctxMessage.from;
         this.text = 'text' in ctxMessage ? ctxMessage.text : '';
         this.chatInfo = new ChatInfo(

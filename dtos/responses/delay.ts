@@ -1,5 +1,5 @@
 import { IActionState } from '../../types/actionState';
-import { IActionWithState } from '../../types/statefulAction';
+import { IActionWithState } from '../../types/action';
 import { BotResponseTypes, IChatResponse } from '../../types/response';
 import { Milliseconds } from '../../types/timeValues';
 import { TraceId } from '../../types/trace';

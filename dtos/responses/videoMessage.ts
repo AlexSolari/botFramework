@@ -1,15 +1,19 @@
 import { InputFile } from 'telegraf/types';
-import { BotResponseTypes, IReplyResponse } from '../../types/response';
+import {
+    BotResponseTypes,
+    IReplyResponseWithContent
+} from '../../types/response';
 import { MessageSendingOptions } from '../../types/messageSendingOptions';
-import { IActionWithState } from '../../types/statefulAction';
-import { IActionState } from '../../types/actionState';
+import { IAction } from '../../types/action';
 import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';
-import { ReplyInfo } from '../../types/replyInfo';
+import { ReplyInfo } from '../replyInfo';
+import { IReplyCapture } from '../../types/capture';
 
-export class VideoMessage implements IReplyResponse<InputFile> {
+export class VideoMessage implements IReplyResponseWithContent<InputFile> {
     readonly kind = BotResponseTypes.video;
     readonly createdAt = Date.now();
+    readonly captures: IReplyCapture[] = [];
 
     readonly content: InputFile;
     readonly chatInfo: ChatInfo;
@@ -17,13 +21,13 @@ export class VideoMessage implements IReplyResponse<InputFile> {
     readonly traceId: TraceId;
     readonly disableWebPreview = false;
     readonly shouldPin: boolean;
-    readonly action: IActionWithState<IActionState>;
+    readonly action: IAction;
 
     constructor(
         video: InputFile,
         chatInfo: ChatInfo,
         traceId: TraceId,
-        action: IActionWithState<IActionState>,
+        action: IAction,
         replyInfo: ReplyInfo | undefined,
         options?: MessageSendingOptions
     ) {

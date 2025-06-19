@@ -1,14 +1,18 @@
 import { TextMessageSendingOptions } from '../../types/messageSendingOptions';
-import { BotResponseTypes, IReplyResponse } from '../../types/response';
-import { IActionWithState } from '../../types/statefulAction';
-import { IActionState } from '../../types/actionState';
+import {
+    BotResponseTypes,
+    IReplyResponseWithContent
+} from '../../types/response';
+import { IAction } from '../../types/action';
 import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';
-import { ReplyInfo } from '../../types/replyInfo';
+import { ReplyInfo } from '../replyInfo';
+import { IReplyCapture } from '../../types/capture';
 
-export class TextMessage implements IReplyResponse<string> {
+export class TextMessage implements IReplyResponseWithContent<string> {
     readonly kind = BotResponseTypes.text;
     readonly createdAt = Date.now();
+    readonly captures: IReplyCapture[] = [];
 
     readonly content: string;
     readonly chatInfo: ChatInfo;
@@ -16,13 +20,13 @@ export class TextMessage implements IReplyResponse<string> {
     readonly traceId: TraceId;
     readonly disableWebPreview: boolean;
     readonly shouldPin: boolean;
-    readonly action: IActionWithState<IActionState>;
+    readonly action: IAction;
 
     constructor(
         text: string,
         chatInfo: ChatInfo,
         traceId: TraceId,
-        action: IActionWithState<IActionState>,
+        action: IAction,
         replyInfo?: ReplyInfo,
         options?: TextMessageSendingOptions
     ) {

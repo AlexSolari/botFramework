@@ -1,10 +1,9 @@
 import { Noop } from '../../helpers/noop';
-import { ActionKey } from '../../types/statefulAction';
+import { ActionKey, IAction } from '../../types/action';
 import { InlineQueryContext } from '../context/inlineQueryContext';
 import { InlineQueryHandler } from '../../types/handlers';
-import { IActionWithoutState } from '../../types/statelessAction';
 
-export class InlineQueryAction implements IActionWithoutState {
+export class InlineQueryAction implements IAction {
     readonly key: ActionKey;
     readonly active: boolean;
     readonly handler: InlineQueryHandler;

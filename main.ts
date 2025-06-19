@@ -46,24 +46,25 @@ class BotOrchestrator {
         };
     }) {
         const token = await readFile(options.tokenFilePath, 'utf8');
-        const remappedOptions = {
+
+        const bot = new BotInstance({
             name: options.name,
-            token,
             actions: options.actions,
             chats: options.chats,
-            storagePath: options.storagePath,
-            scheduledPeriod: options.scheduledPeriod,
-            verboseLoggingForIncomingMessage:
-                options.verboseLoggingForIncomingMessage,
             services: {
                 storageClient: options.services?.storageClient,
                 logger: options.services?.logger,
                 scheduler: options.services?.scheduler
-            }
-        };
-        const bot = new BotInstance(remappedOptions);
+            },
+            storagePath: options.storagePath
+        });
 
-        await bot.start(remappedOptions);
+        await bot.start(
+            token,
+            options.actions,
+            options.scheduledPeriod,
+            options.verboseLoggingForIncomingMessage
+        );
         this.bots.push(bot);
 
         return bot;

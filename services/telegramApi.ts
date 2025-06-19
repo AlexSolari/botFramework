@@ -4,12 +4,23 @@ import { BotResponse, IReplyResponse } from '../types/response';
 import { Telegram } from 'telegraf/typings/telegram';
 import { ILogger } from '../types/logger';
 import { QueueItem, ResponseProcessingQueue } from './responseProcessingQueue';
+import { IReplyCapture } from '../types/capture';
+import { IActionWithState } from '../types/action';
+import { IActionState } from '../types/actionState';
+import { TraceId } from '../types/trace';
+import { ChatInfo } from '../dtos/chatInfo';
 
 export class TelegramApiService {
     private readonly queue = new ResponseProcessingQueue();
     private readonly telegram: Telegram;
     private readonly storage: IStorageClient;
     private readonly logger: ILogger;
+    private readonly captureRegistrationCallback: (
+        capture: IReplyCapture,
+        parentMessageId: number,
+        chatInfo: ChatInfo,
+        traceId: TraceId
+    ) => void;
 
     private readonly botName: string;
 
@@ -17,12 +28,19 @@ export class TelegramApiService {
         botName: string,
         telegram: Telegram,
         storage: IStorageClient,
-        logger: ILogger
+        logger: ILogger,
+        captureRegistrationCallback: (
+            capture: IReplyCapture,
+            parentMessageId: number,
+            chatInfo: ChatInfo,
+            traceId: TraceId
+        ) => void
     ) {
         this.telegram = telegram;
         this.botName = botName;
         this.storage = storage;
         this.logger = logger;
+        this.captureRegistrationCallback = captureRegistrationCallback;
     }
 
     enqueueBatchedResponses(responses: BotResponse[]) {
@@ -59,10 +77,7 @@ export class TelegramApiService {
         this.queue.flushReadyItems();
     }
 
-    private async pinIfShould<T>(
-        response: IReplyResponse<T>,
-        sentMessage: Message
-    ) {
+    private async pinIfShould(response: IReplyResponse, sentMessage: Message) {
         if (response.shouldPin) {
             await this.telegram.pinChatMessage(
                 response.chatInfo.id,
@@ -71,7 +86,7 @@ export class TelegramApiService {
             );
 
             await this.storage.updateStateFor(
-                response.action,
+                response.action as IActionWithState<IActionState>,
                 response.chatInfo.id,
                 async (state) => {
                     state.pinnedMessages.push(sentMessage.message_id);
@@ -81,7 +96,7 @@ export class TelegramApiService {
     }
 
     private async processResponse(response: BotResponse) {
-        let sentMessage: Message;
+        let sentMessage: Message | null = null;
 
         switch (response.kind) {
             case 'text':
@@ -101,42 +116,28 @@ export class TelegramApiService {
                         }
                     }
                 );
-
-                await this.pinIfShould(response, sentMessage);
                 break;
             case 'image':
                 sentMessage = await this.telegram.sendPhoto(
                     response.chatInfo.id,
                     response.content,
-                    {
-                        reply_parameters: response.replyInfo
-                            ? {
-                                  message_id: response.replyInfo.id,
-                                  quote: response.replyInfo.quote
-                              }
-                            : undefined,
-                        parse_mode: 'MarkdownV2'
-                    }
+                    response.replyInfo?.id
+                        ? ({
+                              reply_to_message_id: response.replyInfo?.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          } as any)
+                        : undefined
                 );
-
-                await this.pinIfShould(response, sentMessage);
                 break;
             case 'video':
                 sentMessage = await this.telegram.sendVideo(
                     response.chatInfo.id,
                     response.content,
-                    {
-                        reply_parameters: response.replyInfo
-                            ? {
-                                  message_id: response.replyInfo.id,
-                                  quote: response.replyInfo.quote
-                              }
-                            : undefined,
-                        parse_mode: 'MarkdownV2'
-                    }
+                    response.replyInfo?.id
+                        ? ({
+                              reply_to_message_id: response.replyInfo?.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          } as any)
+                        : undefined
                 );
-
-                await this.pinIfShould(response, sentMessage);
                 break;
             case 'react':
                 await this.telegram.setMessageReaction(
@@ -177,6 +178,19 @@ export class TelegramApiService {
                 break;
             case 'delay':
                 break;
+        }
+
+        if ('content' in response && sentMessage) {
+            await this.pinIfShould(response, sentMessage);
+
+            for (const capture of response.captures) {
+                this.captureRegistrationCallback(
+                    capture,
+                    sentMessage.message_id,
+                    response.chatInfo,
+                    response.traceId
+                );
+            }
         }
     }
 }

@@ -8,15 +8,18 @@ import {
     MessageSendingOptions,
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
-import { IActionWithState } from '../../types/statefulAction';
+import { IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
-import { BotResponse } from '../../types/response';
+import { BotResponse, IReplyResponse } from '../../types/response';
 import { Milliseconds } from '../../types/timeValues';
 import { DelayResponse } from '../../dtos/responses/delay';
 import { ChatInfo } from '../../dtos/chatInfo';
 import { ILogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';
 import { TraceId } from '../../types/trace';
+import { ICaptureController } from '../../types/capture';
+import { CommandTrigger } from '../../types/commandTrigger';
+import { ReplyContext } from './replyContext';
 
 /**
  * Context of action executed in chat.
@@ -52,6 +55,27 @@ export class ChatContext<TActionState extends IActionState> {
         this.scheduler = scheduler;
     }
 
+    protected createCaptureController_TEMP(
+        response: IReplyResponse
+    ): ICaptureController {
+        return {
+            captureReplies: (
+                trigger: CommandTrigger[],
+                handler: (
+                    replyContext: ReplyContext<TActionState>
+                ) => Promise<void>,
+                abortController: AbortController
+            ) => {
+                response.captures.push({
+                    trigger,
+                    handler,
+                    abortController,
+                    action: this.action
+                });
+            }
+        };
+    }
+
     /**
      * Collection of actions that send something to chat as a standalone message.
      */
@@ -63,16 +87,18 @@ export class ChatContext<TActionState extends IActionState> {
          * @param options Message sending option.
          */
         text: (text: string, options?: TextMessageSendingOptions) => {
-            this.responses.push(
-                new TextMessage(
-                    text,
-                    this.chatInfo,
-                    this.traceId,
-                    this.action,
-                    undefined,
-                    options
-                )
+            const response = new TextMessage(
+                text,
+                this.chatInfo,
+                this.traceId,
+                this.action,
+                undefined,
+                options
             );
+
+            this.responses.push(response);
+
+            return this.createCaptureController_TEMP(response);
         },
 
         /**
@@ -82,16 +108,18 @@ export class ChatContext<TActionState extends IActionState> {
          * @param options Message sending option.
          */
         image: (name: string, options?: MessageSendingOptions) => {
-            this.responses.push(
-                new ImageMessage(
-                    { source: resolve(`./content/${name}.png`) },
-                    this.chatInfo,
-                    this.traceId,
-                    this.action,
-                    undefined,
-                    options
-                )
+            const response = new ImageMessage(
+                { source: resolve(`./content/${name}.png`) },
+                this.chatInfo,
+                this.traceId,
+                this.action,
+                undefined,
+                options
             );
+
+            this.responses.push(response);
+
+            return this.createCaptureController_TEMP(response);
         },
 
         /**
@@ -101,16 +129,18 @@ export class ChatContext<TActionState extends IActionState> {
          * @param options Message sending option.
          */
         video: (name: string, options?: MessageSendingOptions) => {
-            this.responses.push(
-                new VideoMessage(
-                    { source: resolve(`./content/${name}.mp4`) },
-                    this.chatInfo,
-                    this.traceId,
-                    this.action,
-                    undefined,
-                    options
-                )
+            const response = new VideoMessage(
+                { source: resolve(`./content/${name}.mp4`) },
+                this.chatInfo,
+                this.traceId,
+                this.action,
+                undefined,
+                options
             );
+
+            this.responses.push(response);
+
+            return this.createCaptureController_TEMP(response);
         }
     };
 

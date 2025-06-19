@@ -6,10 +6,10 @@ import { Reaction } from '../dtos/responses/reaction';
 import { TextMessage } from '../dtos/responses/textMessage';
 import { UnpinResponse } from '../dtos/responses/unpin';
 import { VideoMessage } from '../dtos/responses/videoMessage';
-import { IActionState } from './actionState';
-import { ReplyInfo } from './replyInfo';
-import { IActionWithState } from './statefulAction';
+import { IReplyCapture } from './capture';
+import { ReplyInfo } from '../dtos/replyInfo';
 import { TraceId } from './trace';
+import { IAction } from './action';
 
 export const BotResponseTypes = {
     unpin: 'unpin',
@@ -36,12 +36,16 @@ export interface IChatResponse {
     readonly traceId: TraceId;
     readonly createdAt: number;
 
-    readonly action: IActionWithState<IActionState>;
+    readonly action: IAction;
 }
 
-export interface IReplyResponse<TType> extends IChatResponse {
-    readonly content: TType;
+export interface IReplyResponse extends IChatResponse {
+    readonly captures: IReplyCapture[];
     readonly replyInfo: ReplyInfo | undefined;
     readonly disableWebPreview: boolean;
     readonly shouldPin: boolean;
+}
+
+export interface IReplyResponseWithContent<TType> extends IReplyResponse {
+    readonly content: TType;
 }

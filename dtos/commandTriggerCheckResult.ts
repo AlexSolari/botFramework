@@ -5,6 +5,9 @@ export class CommandTriggerCheckResult {
     static get DoNotTrigger() {
         return new CommandTriggerCheckResult(false, [], false);
     }
+    static get Trigger() {
+        return new CommandTriggerCheckResult(true, [], false);
+    }
 
     readonly shouldExecute: boolean;
     readonly matchResults: RegExpExecArray[];

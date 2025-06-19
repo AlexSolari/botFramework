@@ -1,55 +1,73 @@
-import { resolve } from 'path';
 import { TelegramEmoji } from 'telegraf/types';
-import { IStorageClient } from '../../types/storage';
-import { IActionState } from '../../types/actionState';
+import { ChatInfo } from '../../dtos/chatInfo';
+import { ReplyInfo } from '../../dtos/replyInfo';
 import { ImageMessage } from '../../dtos/responses/imageMessage';
 import { Reaction } from '../../dtos/responses/reaction';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { VideoMessage } from '../../dtos/responses/videoMessage';
-import { ActionStateBase } from '../states/actionStateBase';
-import { ChatContext } from './chatContext';
+import { IActionState } from '../../types/actionState';
+import { ILogger } from '../../types/logger';
 import {
-    MessageSendingOptions,
-    TextMessageSendingOptions
+    TextMessageSendingOptions,
+    MessageSendingOptions
 } from '../../types/messageSendingOptions';
-import { ActionKey } from '../../types/action';
 import {
     MessageTypeValue,
     TelegrafContextMessage
 } from '../../types/messageTypes';
-import { ILogger } from '../../types/logger';
+import { BotResponse } from '../../types/response';
 import { IScheduler } from '../../types/scheduler';
-import { ReplyInfo } from '../../dtos/replyInfo';
+import { IStorageClient } from '../../types/storage';
+import { TraceId } from '../../types/trace';
+import { ReplyCaptureAction } from '../actions/replyCaptureAction';
+import { resolve } from 'path';
 
-/**
- * Context of action executed in chat, in response to a message
- */
-export class MessageContext<
-    TActionState extends IActionState
-> extends ChatContext<TActionState> {
+export class ReplyContext<TParentActionState extends IActionState> {
+    action!: ReplyCaptureAction<TParentActionState>;
+
+    /** Storage client instance for the bot executing this action. */
+    readonly storage: IStorageClient;
+    /** Logger instance for the bot executing this action */
+    readonly logger: ILogger;
+    /** Scheduler instance for the bot executing this action */
+    readonly scheduler: IScheduler;
+
+    /** Trace id of a action execution. */
+    traceId!: TraceId;
+    /** Name of a bot that executes this action. */
+    botName!: string;
+
+    /** Ordered collection of responses to be processed  */
+    responses: BotResponse[] = [];
+    /** Chat information. */
+    chatInfo!: ChatInfo;
+    /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
+    matchResults!: RegExpExecArray[];
+    /** Id of a message that triggered this action. */
+    replyMessageId!: number | undefined;
     /** Id of a message that triggered this action. */
     messageId!: number;
-    /** Text of a message that triggered this action. */
-    messageText!: string;
-    /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
-    matchResults: RegExpMatchArray[] = [];
-    /** Id of a user that sent a message that triggered this action. */
-    fromUserId: number | undefined;
-    /** Indicates if cooldown should be started after action is executed. Set to `true` by default. */
-    startCooldown: boolean = true;
-    /** Name of a user that sent a message that triggered this action. */
-    fromUserName!: string;
     /** Type of message being received */
     messageType!: MessageTypeValue;
+    /** Text of a message that triggered this action. */
+    messageText!: string;
+    /** Id of a user that sent a message that triggered this action. */
+    fromUserId: number | undefined;
+    /** Name of a user that sent a message that triggered this action. */
+    fromUserName!: string;
     /** Message object recieved from Telegram */
     messageUpdateObject!: TelegrafContextMessage;
+
+    isInitialized = false;
 
     constructor(
         storage: IStorageClient,
         logger: ILogger,
         scheduler: IScheduler
     ) {
-        super(storage, logger, scheduler);
+        this.storage = storage;
+        this.logger = logger;
+        this.scheduler = scheduler;
     }
 
     private replyWithText(
@@ -72,8 +90,6 @@ export class MessageContext<
         );
 
         this.responses.push(response);
-
-        return this.createCaptureController_TEMP(response);
     }
 
     private replyWithImage(
@@ -96,8 +112,6 @@ export class MessageContext<
         );
 
         this.responses.push(response);
-
-        return this.createCaptureController_TEMP(response);
     }
 
     private replyWithVideo(
@@ -120,30 +134,13 @@ export class MessageContext<
         );
 
         this.responses.push(response);
-
-        return this.createCaptureController_TEMP(response);
     }
 
     /**
-     * Loads state of another action. Changes to the loaded state will no affect actual state of other action.
-     * @param commandName Name of an action to load state of.
-     * @template TAnotherActionState - Type of a state that is used by another action.
+     * Stops capturing replies and removes this action
      */
-    async loadStateOf<TAnotherActionState extends IActionState>(
-        commandName: string
-    ): Promise<TAnotherActionState> {
-        const storageKey = `command:${commandName.replace(
-            '.',
-            '-'
-        )}` as ActionKey;
-        const allStates = await this.storage.load(storageKey);
-        const stateForChat = allStates[this.chatInfo.id];
-
-        if (!stateForChat) {
-            return new ActionStateBase() as TAnotherActionState;
-        }
-
-        return stateForChat as TAnotherActionState;
+    stopCapture() {
+        this.action.abortController.abort();
     }
 
     /**

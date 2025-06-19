@@ -5,7 +5,7 @@ import { Seconds } from '../../types/timeValues';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { toArray } from '../../helpers/toArray';
 import { IActionState } from '../../types/actionState';
-import { IActionWithState, ActionKey } from '../../types/statefulAction';
+import { IActionWithState, ActionKey } from '../../types/action';
 import { CommandTriggerCheckResult } from '../../dtos/commandTriggerCheckResult';
 import { MessageContext } from '../context/messageContext';
 import { CommandTrigger } from '../../types/commandTrigger';
@@ -130,13 +130,7 @@ export class CommandAction<TActionState extends IActionState>
         if (!isCustomConditionMet)
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown;
 
-        const { shouldTrigger, matchResults } = this.checkTrigger(ctx, trigger);
-
-        return new CommandTriggerCheckResult(
-            shouldTrigger,
-            matchResults,
-            false
-        );
+        return this.checkTrigger(ctx, trigger);
     }
 
     private checkTrigger(
@@ -144,14 +138,12 @@ export class CommandAction<TActionState extends IActionState>
         trigger: CommandTrigger
     ) {
         if (trigger == ctx.messageType)
-            return { shouldTrigger: true, matchResults: [] };
+            return CommandTriggerCheckResult.Trigger;
 
         if (typeof trigger == 'string')
-            return {
-                shouldTrigger:
-                    ctx.messageText.toLowerCase() == trigger.toLowerCase(),
-                matchResults: []
-            };
+            return ctx.messageText.toLowerCase() == trigger.toLowerCase()
+                ? CommandTriggerCheckResult.Trigger
+                : CommandTriggerCheckResult.DoNotTrigger;
 
         const matchResults: RegExpExecArray[] = [];
 
@@ -170,9 +162,10 @@ export class CommandAction<TActionState extends IActionState>
             }
         }
 
-        return {
-            shouldTrigger: matchResults.length > 0,
-            matchResults
-        };
+        return new CommandTriggerCheckResult(
+            matchResults.length > 0,
+            matchResults,
+            false
+        );
     }
 }
