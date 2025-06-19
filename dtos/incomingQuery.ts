@@ -5,6 +5,7 @@ export class IncomingInlineQuery {
     readonly query: string;
     readonly userId: number;
     readonly traceId: TraceId;
+    readonly abortController: AbortController;
 
     constructor(
         queryId: string,
@@ -16,5 +17,6 @@ export class IncomingInlineQuery {
         this.query = query;
         this.userId = userId;
         this.traceId = traceId;
+        this.abortController = new AbortController();
     }
 }

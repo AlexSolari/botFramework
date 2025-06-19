@@ -22,6 +22,11 @@ export class InlineQueryContext {
     traceId!: TraceId;
     /** Name of a bot that executes this action. */
     botName!: string;
+    /**
+     * Abort signal to be utilized in query handler.
+     * Signal will be aborted if new query comes from the same user.
+     */
+    abortSignal!: AbortSignal;
 
     /** Ordered collection of responses to be processed  */
     get responses(): BotResponse[] {

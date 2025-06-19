@@ -46,6 +46,8 @@ export class InlineQueryActionProcessor {
 
         let pendingInlineQueries: IncomingInlineQuery[] = [];
 
+        const queriesInProcessing = new Map<number, IncomingInlineQuery>();
+
         if (this.inlineQueries.length > 0) {
             this.telegraf.on('inline_query', async (ctx) => {
                 const query = new IncomingInlineQuery(
@@ -61,6 +63,21 @@ export class InlineQueryActionProcessor {
                     'Query',
                     `${ctx.inlineQuery.from.username} (${ctx.inlineQuery.from.id}): Query for ${ctx.inlineQuery.query}`
                 );
+
+                const queryBeingProcessed = queriesInProcessing.get(
+                    query.userId
+                );
+                if (queryBeingProcessed) {
+                    this.logger.logWithTraceId(
+                        this.botName,
+                        query.traceId,
+                        'Query',
+                        `Aborting query ${queryBeingProcessed.queryId} (${queryBeingProcessed.query}): new query recieved from ${query.userId}`
+                    );
+
+                    queryBeingProcessed.abortController.abort();
+                    queriesInProcessing.delete(query.userId);
+                }
 
                 pendingInlineQueries = pendingInlineQueries.filter(
                     (q) => q.userId != query.userId
@@ -82,12 +99,18 @@ export class InlineQueryActionProcessor {
                     pendingInlineQueries = [];
 
                     for (const inlineQuery of queriesToProcess) {
+                        queriesInProcessing.set(
+                            inlineQuery.userId,
+                            inlineQuery
+                        );
+
                         for (const inlineQueryAction of this.inlineQueries) {
                             this.initializeInlineQueryContext(
                                 ctx,
                                 inlineQuery.query,
                                 inlineQuery.queryId,
                                 inlineQueryAction,
+                                inlineQuery.abortController.signal,
                                 inlineQuery.traceId
                             );
 
@@ -97,16 +120,29 @@ export class InlineQueryActionProcessor {
                                 );
                                 this.api.enqueueBatchedResponses(responses);
                                 ctx.isInitialized = false;
-                            } catch (error) {
-                                this.logger.errorWithTraceId(
-                                    ctx.botName,
-                                    ctx.traceId,
-                                    'Unknown',
-                                    error,
-                                    ctx
-                                );
+                            } catch (err) {
+                                const error = err as Error;
+
+                                if (error.name == 'AbortError') {
+                                    this.logger.logWithTraceId(
+                                        this.botName,
+                                        inlineQuery.traceId,
+                                        'Query',
+                                        `Aborting query ${inlineQuery.queryId} (${inlineQuery.query}) successful.`
+                                    );
+                                } else {
+                                    this.logger.errorWithTraceId(
+                                        ctx.botName,
+                                        ctx.traceId,
+                                        'Unknown',
+                                        error,
+                                        ctx
+                                    );
+                                }
                             }
                         }
+
+                        queriesInProcessing.delete(inlineQuery.userId);
                     }
 
                     this.api.flushResponses();
@@ -123,6 +159,7 @@ export class InlineQueryActionProcessor {
         queryText: string,
         queryId: string,
         action: InlineQueryAction,
+        abortSignal: AbortSignal,
         traceId: TraceId
     ) {
         ctx.queryText = queryText;
@@ -130,6 +167,7 @@ export class InlineQueryActionProcessor {
         ctx.botName = this.botName;
         ctx.action = action;
         ctx.traceId = traceId;
+        ctx.abortSignal = abortSignal;
 
         ctx.isInitialized = true;
         ctx.queryResults = [];

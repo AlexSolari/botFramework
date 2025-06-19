@@ -106,7 +106,7 @@ export class ActionProcessingService {
             api,
             this.telegraf,
             actions.inlineQueries,
-            1000 as Milliseconds
+            300 as Milliseconds
         );
         this.scheduledProcessor.initialize(
             api,
