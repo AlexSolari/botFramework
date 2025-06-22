@@ -105,7 +105,7 @@ export class CommandAction<TActionState extends IActionState>
     private checkIfShouldBeExecuted(
         ctx: MessageContext<TActionState>,
         trigger: CommandTrigger,
-        state: IActionState
+        state: TActionState
     ) {
         if (!ctx.fromUserId)
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown;
@@ -126,7 +126,7 @@ export class CommandAction<TActionState extends IActionState>
 
         if (onCooldown) return CommandTriggerCheckResult.DoNotTrigger;
 
-        const isCustomConditionMet = this.condition(ctx);
+        const isCustomConditionMet = this.condition(ctx, state);
         if (!isCustomConditionMet)
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown;
 
