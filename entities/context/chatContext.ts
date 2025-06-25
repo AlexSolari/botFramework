@@ -14,7 +14,7 @@ import { BotResponse, IReplyResponse } from '../../types/response';
 import { Milliseconds } from '../../types/timeValues';
 import { DelayResponse } from '../../dtos/responses/delay';
 import { ChatInfo } from '../../dtos/chatInfo';
-import { ILogger } from '../../types/logger';
+import { IScopedLogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';
 import { TraceId } from '../../types/trace';
 import { ICaptureController } from '../../types/capture';
@@ -30,10 +30,10 @@ export class ChatContext<TActionState extends IActionState> {
     /** Storage client instance for the bot executing this action. */
     readonly storage: IStorageClient;
     /** Logger instance for the bot executing this action */
-    readonly logger: ILogger;
     /** Scheduler instance for the bot executing this action */
     readonly scheduler: IScheduler;
 
+    logger!: IScopedLogger;
     /** Trace id of a action execution. */
     traceId!: TraceId;
     /** Name of a bot that executes this action. */
@@ -45,17 +45,12 @@ export class ChatContext<TActionState extends IActionState> {
 
     isInitialized = false;
 
-    constructor(
-        storage: IStorageClient,
-        logger: ILogger,
-        scheduler: IScheduler
-    ) {
+    constructor(storage: IStorageClient, scheduler: IScheduler) {
         this.storage = storage;
-        this.logger = logger;
         this.scheduler = scheduler;
     }
 
-    protected createCaptureController_TEMP(
+    protected createCaptureController(
         response: IReplyResponse
     ): ICaptureController {
         return {
@@ -74,6 +69,24 @@ export class ChatContext<TActionState extends IActionState> {
                 });
             }
         };
+    }
+
+    /**
+     * Loads state of another action for current chat.
+     * @param action Action to load state of.
+     * @template TAnotherActionState - Type of a state that is used by another action.
+     */
+    async loadStateOf<TAnotherActionState extends IActionState>(
+        action: IActionWithState<TAnotherActionState>
+    ) {
+        const allStates = await this.storage.load(action.key);
+        const stateForChat = allStates[this.chatInfo.id];
+
+        if (!stateForChat) {
+            return Object.freeze(action.stateConstructor());
+        }
+
+        return Object.freeze(stateForChat as TAnotherActionState);
     }
 
     /**
@@ -98,7 +111,7 @@ export class ChatContext<TActionState extends IActionState> {
 
             this.responses.push(response);
 
-            return this.createCaptureController_TEMP(response);
+            return this.createCaptureController(response);
         },
 
         /**
@@ -119,7 +132,7 @@ export class ChatContext<TActionState extends IActionState> {
 
             this.responses.push(response);
 
-            return this.createCaptureController_TEMP(response);
+            return this.createCaptureController(response);
         },
 
         /**
@@ -140,7 +153,7 @@ export class ChatContext<TActionState extends IActionState> {
 
             this.responses.push(response);
 
-            return this.createCaptureController_TEMP(response);
+            return this.createCaptureController(response);
         }
     };
 

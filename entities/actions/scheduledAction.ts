@@ -63,9 +63,6 @@ export class ScheduledAction<TActionState extends IActionState>
         if (!isAllowedToTrigger) return Noop.NoResponse;
 
         ctx.logger.logWithTraceId(
-            ctx.botName,
-            ctx.traceId,
-            ctx.chatInfo.name,
             ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
         );
 

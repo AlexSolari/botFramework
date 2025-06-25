@@ -76,9 +76,6 @@ export class CommandAction<TActionState extends IActionState>
         if (!shouldExecute) return Noop.NoResponse;
 
         ctx.logger.logWithTraceId(
-            ctx.botName,
-            ctx.traceId,
-            ctx.chatInfo.name,
             ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
         );
         ctx.matchResults = matchResults;

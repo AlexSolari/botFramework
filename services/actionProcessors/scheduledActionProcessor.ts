@@ -91,11 +91,7 @@ export class ScheduledActionProcessor {
     }
 
     private async runScheduled() {
-        const ctx = new ChatContext<IActionState>(
-            this.storage,
-            this.logger,
-            this.scheduler
-        );
+        const ctx = new ChatContext<IActionState>(this.storage, this.scheduler);
 
         for (const [chatName, chatId] of Object.entries(this.chats)) {
             for (const scheduledAction of this.scheduled) {
@@ -115,13 +111,7 @@ export class ScheduledActionProcessor {
                     this.api.enqueueBatchedResponses(responses);
                     ctx.isInitialized = false;
                 } catch (error) {
-                    this.logger.errorWithTraceId(
-                        ctx.botName,
-                        ctx.traceId,
-                        chatName,
-                        error,
-                        ctx
-                    );
+                    ctx.logger.errorWithTraceId(error, ctx);
                 }
             }
         }
@@ -141,5 +131,11 @@ export class ScheduledActionProcessor {
         ctx.action = action;
         ctx.chatInfo = chatInfo;
         ctx.traceId = traceId;
+
+        ctx.logger = this.logger.createScope(
+            this.botName,
+            traceId,
+            chatInfo.name
+        );
     }
 }

@@ -1,8 +1,8 @@
-import { ILogger } from '../types/logger';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { ILogger, IScopedLogger } from '../types/logger';
 import { TraceId } from '../types/trace';
 
 export class JsonLogger implements ILogger {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private serializeError(error: any) {
         const plainObject: Record<string, unknown> = {};
         Object.getOwnPropertyNames(error).forEach(function (key) {
@@ -11,11 +11,27 @@ export class JsonLogger implements ILogger {
         return JSON.stringify(plainObject);
     }
 
+    createScope(botName: string, traceId: TraceId, chatName: string) {
+        return {
+            logObjectWithTraceId: (data: any) =>
+                this.logObjectWithTraceId(botName, traceId, chatName, data),
+            logWithTraceId: (text: string) =>
+                this.logWithTraceId(botName, traceId, chatName, text),
+            errorWithTraceId: <TData>(errorObj: unknown, extraData?: TData) =>
+                this.errorWithTraceId(
+                    botName,
+                    traceId,
+                    chatName,
+                    errorObj,
+                    extraData
+                )
+        } as IScopedLogger;
+    }
+
     logObjectWithTraceId(
         botName: string,
         traceId: TraceId,
         chatName: string,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data: any
     ) {
         data.botName = botName;
@@ -40,7 +56,7 @@ export class JsonLogger implements ILogger {
         traceId: TraceId,
         chatName: string,
         errorObj: unknown,
-        extraData?: TData | undefined
+        extraData?: TData
     ) {
         console.error(
             `{"botName":"${botName}","traceId":"${traceId}","chatName":"${chatName}","error":${this.serializeError(

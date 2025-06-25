@@ -6,18 +6,15 @@ import { ImageMessage } from '../../dtos/responses/imageMessage';
 import { Reaction } from '../../dtos/responses/reaction';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { VideoMessage } from '../../dtos/responses/videoMessage';
-import { ActionStateBase } from '../states/actionStateBase';
 import { ChatContext } from './chatContext';
 import {
     MessageSendingOptions,
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
-import { ActionKey } from '../../types/action';
 import {
     MessageTypeValue,
     TelegrafContextMessage
 } from '../../types/messageTypes';
-import { ILogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';
 import { ReplyInfo } from '../../dtos/replyInfo';
 
@@ -44,12 +41,8 @@ export class MessageContext<
     /** Message object recieved from Telegram */
     messageUpdateObject!: TelegrafContextMessage;
 
-    constructor(
-        storage: IStorageClient,
-        logger: ILogger,
-        scheduler: IScheduler
-    ) {
-        super(storage, logger, scheduler);
+    constructor(storage: IStorageClient, scheduler: IScheduler) {
+        super(storage, scheduler);
     }
 
     private replyWithText(
@@ -73,7 +66,7 @@ export class MessageContext<
 
         this.responses.push(response);
 
-        return this.createCaptureController_TEMP(response);
+        return this.createCaptureController(response);
     }
 
     private replyWithImage(
@@ -97,7 +90,7 @@ export class MessageContext<
 
         this.responses.push(response);
 
-        return this.createCaptureController_TEMP(response);
+        return this.createCaptureController(response);
     }
 
     private replyWithVideo(
@@ -121,29 +114,7 @@ export class MessageContext<
 
         this.responses.push(response);
 
-        return this.createCaptureController_TEMP(response);
-    }
-
-    /**
-     * Loads state of another action. Changes to the loaded state will no affect actual state of other action.
-     * @param commandName Name of an action to load state of.
-     * @template TAnotherActionState - Type of a state that is used by another action.
-     */
-    async loadStateOf<TAnotherActionState extends IActionState>(
-        commandName: string
-    ): Promise<TAnotherActionState> {
-        const storageKey = `command:${commandName.replace(
-            '.',
-            '-'
-        )}` as ActionKey;
-        const allStates = await this.storage.load(storageKey);
-        const stateForChat = allStates[this.chatInfo.id];
-
-        if (!stateForChat) {
-            return new ActionStateBase() as TAnotherActionState;
-        }
-
-        return stateForChat as TAnotherActionState;
+        return this.createCaptureController(response);
     }
 
     /**

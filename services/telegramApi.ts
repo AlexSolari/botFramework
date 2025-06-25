@@ -9,6 +9,9 @@ import { IActionWithState } from '../types/action';
 import { IActionState } from '../types/actionState';
 import { TraceId } from '../types/trace';
 import { ChatInfo } from '../dtos/chatInfo';
+import { TelegramError } from 'telegraf';
+
+export const TELEGRAM_ERROR_QUOTE_INVALID = 'QUOTE_TEXT_INVALID';
 
 export class TelegramApiService {
     private readonly queue = new ResponseProcessingQueue();
@@ -53,18 +56,42 @@ export class TelegramApiService {
 
             const queueItem: QueueItem = {
                 callback: async () => {
+                    const scopedLogger = this.logger.createScope(
+                        this.botName,
+                        response.traceId,
+                        'chatInfo' in response
+                            ? response.chatInfo.name
+                            : 'Unknown'
+                    );
+
                     try {
                         await this.processResponse(response);
                     } catch (error) {
-                        this.logger.errorWithTraceId(
-                            this.botName,
-                            response.traceId,
-                            'chatInfo' in response
-                                ? response.chatInfo.name
-                                : 'Unknown',
-                            error,
-                            response
-                        );
+                        if ('message' in (error as TelegramError)) {
+                            const telegramResponse = error as TelegramError;
+
+                            if (
+                                telegramResponse.message.includes(
+                                    TELEGRAM_ERROR_QUOTE_INVALID
+                                )
+                            ) {
+                                scopedLogger.logWithTraceId(
+                                    'Quote error recieved, retrying without quote'
+                                );
+                                try {
+                                    await this.processResponse(response, true);
+                                } catch (error) {
+                                    scopedLogger.errorWithTraceId(
+                                        error,
+                                        response
+                                    );
+                                }
+
+                                return;
+                            }
+                        }
+
+                        scopedLogger.errorWithTraceId(error, response);
                     }
                 },
                 priority: response.createdAt + offset
@@ -95,7 +122,7 @@ export class TelegramApiService {
         }
     }
 
-    private async processResponse(response: BotResponse) {
+    private async processResponse(response: BotResponse, ignoreQuote = false) {
         let sentMessage: Message | null = null;
 
         switch (response.kind) {
@@ -107,7 +134,9 @@ export class TelegramApiService {
                         reply_parameters: response.replyInfo
                             ? {
                                   message_id: response.replyInfo.id,
-                                  quote: response.replyInfo.quote
+                                  quote: ignoreQuote
+                                      ? undefined
+                                      : response.replyInfo.quote
                               }
                             : undefined,
                         parse_mode: 'MarkdownV2',

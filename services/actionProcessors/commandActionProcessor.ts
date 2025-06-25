@@ -75,18 +75,16 @@ export class CommandActionProcessor {
                     this.botName
                 );
 
+                const logger = this.logger.createScope(
+                    this.botName,
+                    msg.traceId,
+                    msg.chatInfo.name
+                );
+
                 if (verboseLoggingForIncomingMessage) {
-                    this.logger.logObjectWithTraceId(
-                        this.botName,
-                        msg.traceId,
-                        msg.chatInfo.name,
-                        ctx.update.message
-                    );
+                    logger.logObjectWithTraceId(ctx.update.message);
                 } else {
-                    this.logger.logWithTraceId(
-                        this.botName,
-                        msg.traceId,
-                        msg.chatInfo.name,
+                    logger.logWithTraceId(
                         `${msg.from?.first_name ?? 'Unknown'} (${
                             msg.from?.id ?? 'Unknown'
                         }): ${msg.text || `<non-text message: ${msg.type}>`}`
@@ -118,10 +116,13 @@ export class CommandActionProcessor {
             capture.abortController
         );
 
-        this.logger.logWithTraceId(
+        const logger = this.logger.createScope(
             this.botName,
             traceId,
-            chatInfo.name,
+            chatInfo.name
+        );
+
+        logger.logWithTraceId(
             `Starting capturing replies to message ${parentMessageId} with action ${replyAction.key}`
         );
 
@@ -131,10 +132,7 @@ export class CommandActionProcessor {
             const index = this.replyCaptures.indexOf(replyAction);
             this.replyCaptures.splice(index, 1);
 
-            this.logger.logWithTraceId(
-                this.botName,
-                traceId,
-                chatInfo.name,
+            logger.logWithTraceId(
                 `Stopping capturing replies to message ${parentMessageId} with action ${replyAction.key}`
             );
         });
@@ -143,7 +141,6 @@ export class CommandActionProcessor {
     private async processMessage(msg: IncomingMessage) {
         const ctx = new MessageContext<IActionState>(
             this.storage,
-            this.logger,
             this.scheduler
         );
 
@@ -155,19 +152,12 @@ export class CommandActionProcessor {
                 this.api.enqueueBatchedResponses(responses);
                 ctx.isInitialized = false;
             } catch (error) {
-                this.logger.errorWithTraceId(
-                    ctx.botName,
-                    ctx.traceId,
-                    ctx.chatInfo.name,
-                    error,
-                    ctx
-                );
+                ctx.logger.errorWithTraceId(error, ctx);
             }
         }
 
         const replyCtx = new ReplyContext<IActionState>(
             this.storage,
-            this.logger,
             this.scheduler
         );
 
@@ -179,13 +169,7 @@ export class CommandActionProcessor {
                 this.api.enqueueBatchedResponses(responses);
                 replyCtx.isInitialized = false;
             } catch (error) {
-                this.logger.errorWithTraceId(
-                    replyCtx.botName,
-                    replyCtx.traceId,
-                    replyCtx.chatInfo.name,
-                    error,
-                    replyCtx
-                );
+                replyCtx.logger.errorWithTraceId(error, replyCtx);
             }
         }
 
@@ -213,6 +197,12 @@ export class CommandActionProcessor {
 
         ctx.isInitialized = true;
         ctx.matchResults = [];
+
+        ctx.logger = this.logger.createScope(
+            this.botName,
+            message.traceId,
+            message.chatInfo.name
+        );
     }
 
     private initializeMessageContext<TActionState extends IActionState>(
@@ -238,5 +228,11 @@ export class CommandActionProcessor {
         ctx.action = action;
         ctx.chatInfo = message.chatInfo;
         ctx.traceId = message.traceId;
+
+        ctx.logger = this.logger.createScope(
+            this.botName,
+            message.traceId,
+            message.chatInfo.name
+        );
     }
 }

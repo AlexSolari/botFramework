@@ -57,10 +57,13 @@ export class InlineQueryActionProcessor {
                     createTrace('InlineQuery', this.botName, ctx.inlineQuery.id)
                 );
 
-                this.logger.logWithTraceId(
+                const logger = this.logger.createScope(
                     this.botName,
                     query.traceId,
-                    'Query',
+                    'Query'
+                );
+
+                logger.logWithTraceId(
                     `${ctx.inlineQuery.from.username} (${ctx.inlineQuery.from.id}): Query for ${ctx.inlineQuery.query}`
                 );
 
@@ -68,10 +71,7 @@ export class InlineQueryActionProcessor {
                     query.userId
                 );
                 if (queryBeingProcessed) {
-                    this.logger.logWithTraceId(
-                        this.botName,
-                        query.traceId,
-                        'Query',
+                    logger.logWithTraceId(
                         `Aborting query ${queryBeingProcessed.queryId} (${queryBeingProcessed.query}): new query recieved from ${query.userId}`
                     );
 
@@ -91,7 +91,6 @@ export class InlineQueryActionProcessor {
                 async () => {
                     const ctx = new InlineQueryContext(
                         this.storage,
-                        this.logger,
                         this.scheduler
                     );
 
@@ -124,20 +123,11 @@ export class InlineQueryActionProcessor {
                                 const error = err as Error;
 
                                 if (error.name == 'AbortError') {
-                                    this.logger.logWithTraceId(
-                                        this.botName,
-                                        inlineQuery.traceId,
-                                        'Query',
+                                    ctx.logger.logWithTraceId(
                                         `Aborting query ${inlineQuery.queryId} (${inlineQuery.query}) successful.`
                                     );
                                 } else {
-                                    this.logger.errorWithTraceId(
-                                        ctx.botName,
-                                        ctx.traceId,
-                                        'Unknown',
-                                        error,
-                                        ctx
-                                    );
+                                    ctx.logger.errorWithTraceId(error, ctx);
                                 }
                             }
                         }
@@ -172,5 +162,7 @@ export class InlineQueryActionProcessor {
         ctx.isInitialized = true;
         ctx.queryResults = [];
         ctx.matchResults = [];
+
+        ctx.logger = this.logger.createScope(this.botName, traceId, 'Unknown');
     }
 }

@@ -51,9 +51,6 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
         if (!shouldExecute) return Noop.NoResponse;
 
         ctx.logger.logWithTraceId(
-            ctx.botName,
-            ctx.traceId,
-            ctx.chatInfo.name,
             ` - Executing [${this.key}] in ${ctx.chatInfo.id}`
         );
         ctx.matchResults = matchResults;

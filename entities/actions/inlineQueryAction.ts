@@ -53,12 +53,7 @@ export class InlineQueryAction implements IAction {
 
         ctx.matchResults = matchResults;
 
-        ctx.logger.logWithTraceId(
-            ctx.botName,
-            ctx.traceId,
-            'Unknown',
-            ` - Executing [${this.name}]`
-        );
+        ctx.logger.logWithTraceId(` - Executing [${this.name}]`);
 
         await this.handler(ctx);
 

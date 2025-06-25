@@ -1,5 +1,5 @@
 import { InlineQueryResult } from 'telegraf/types';
-import { ILogger } from '../../types/logger';
+import { IScopedLogger } from '../../types/logger';
 import { BotResponse } from '../../types/response';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
@@ -13,11 +13,11 @@ export class InlineQueryContext {
 
     /** Storage client instance for the bot executing this action. */
     readonly storage: IStorageClient;
-    /** Logger instance for the bot executing this action */
-    readonly logger: ILogger;
     /** Scheduler instance for the bot executing this action */
     readonly scheduler: IScheduler;
 
+    /** Logger instance for the bot executing this action */
+    logger!: IScopedLogger;
     /** Trace id of a action execution. */
     traceId!: TraceId;
     /** Name of a bot that executes this action. */
@@ -48,13 +48,8 @@ export class InlineQueryContext {
 
     isInitialized = false;
 
-    constructor(
-        storage: IStorageClient,
-        logger: ILogger,
-        scheduler: IScheduler
-    ) {
+    constructor(storage: IStorageClient, scheduler: IScheduler) {
         this.storage = storage;
-        this.logger = logger;
         this.scheduler = scheduler;
     }
 

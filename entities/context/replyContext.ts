@@ -6,7 +6,7 @@ import { Reaction } from '../../dtos/responses/reaction';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { VideoMessage } from '../../dtos/responses/videoMessage';
 import { IActionState } from '../../types/actionState';
-import { ILogger } from '../../types/logger';
+import { IScopedLogger } from '../../types/logger';
 import {
     TextMessageSendingOptions,
     MessageSendingOptions
@@ -27,8 +27,6 @@ export class ReplyContext<TParentActionState extends IActionState> {
 
     /** Storage client instance for the bot executing this action. */
     readonly storage: IStorageClient;
-    /** Logger instance for the bot executing this action */
-    readonly logger: ILogger;
     /** Scheduler instance for the bot executing this action */
     readonly scheduler: IScheduler;
 
@@ -36,6 +34,8 @@ export class ReplyContext<TParentActionState extends IActionState> {
     traceId!: TraceId;
     /** Name of a bot that executes this action. */
     botName!: string;
+    /** Logger instance for the bot executing this action */
+    logger!: IScopedLogger;
 
     /** Ordered collection of responses to be processed  */
     responses: BotResponse[] = [];
@@ -60,13 +60,8 @@ export class ReplyContext<TParentActionState extends IActionState> {
 
     isInitialized = false;
 
-    constructor(
-        storage: IStorageClient,
-        logger: ILogger,
-        scheduler: IScheduler
-    ) {
+    constructor(storage: IStorageClient, scheduler: IScheduler) {
         this.storage = storage;
-        this.logger = logger;
         this.scheduler = scheduler;
     }
 
