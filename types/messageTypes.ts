@@ -3,7 +3,7 @@ import { Message, Update } from 'telegraf/types';
 export const INTERNAL_MESSAGE_TYPE_PREFIX = `__msg:`;
 
 export const MessageType = {
-    Any: `${INTERNAL_MESSAGE_TYPE_PREFIX}ANY`,
+    Any: `${INTERNAL_MESSAGE_TYPE_PREFIX}Any`,
     Text: `${INTERNAL_MESSAGE_TYPE_PREFIX}Text`,
     Sticker: `${INTERNAL_MESSAGE_TYPE_PREFIX}Sticker`,
     Animation: `${INTERNAL_MESSAGE_TYPE_PREFIX}Animation`,

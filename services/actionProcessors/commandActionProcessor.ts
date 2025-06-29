@@ -7,16 +7,17 @@ import { ReplyContext } from '../../entities/context/replyContext';
 import { IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
 import { ILogger } from '../../types/logger';
-import {
-    INTERNAL_MESSAGE_TYPE_PREFIX,
-    MessageType
-} from '../../types/messageTypes';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { TelegramApiService } from '../telegramApi';
 import { IReplyCapture } from '../../types/capture';
 import { TraceId } from '../../types/trace';
 import { ChatInfo } from '../../dtos/chatInfo';
+import {
+    INTERNAL_MESSAGE_TYPE_PREFIX,
+    MessageType,
+    MessageTypeValue
+} from '../../types/messageTypes';
 
 export class CommandActionProcessor {
     private readonly storage: IStorageClient;
@@ -28,9 +29,23 @@ export class CommandActionProcessor {
 
     private api!: TelegramApiService;
     private telegraf!: Telegraf;
-    private commands!: CommandAction<IActionState>[];
-
-    private permanentTriggersToBeProcessed!: Set<string>;
+    private commands: Record<MessageTypeValue, CommandAction<IActionState>[]> =
+        {
+            '__msg:Any': [],
+            '__msg:Text': [],
+            '__msg:Sticker': [],
+            '__msg:Animation': [],
+            '__msg:Document': [],
+            '__msg:Voice': [],
+            '__msg:Audio': [],
+            '__msg:LeftChatMember': [],
+            '__msg:NewChatMember': [],
+            '__msg:Poll': [],
+            '__msg:Location': [],
+            '__msg:Photo': [],
+            '__msg:Forward': [],
+            '__msg:Unknown': []
+        };
 
     constructor(
         botName: string,
@@ -54,21 +69,33 @@ export class CommandActionProcessor {
     ) {
         this.api = api;
         this.telegraf = telegraf;
-        this.commands = commands;
 
-        if (this.commands.length > 0) {
-            this.permanentTriggersToBeProcessed = new Set(
-                this.commands
-                    .flatMap((x) => x.triggers)
-                    .map((x) =>
-                        typeof x == 'string'
-                            ? x.startsWith(INTERNAL_MESSAGE_TYPE_PREFIX)
-                                ? x
-                                : MessageType.Text
-                            : MessageType.Text
-                    )
+        for (const msgType of Object.values(MessageType)) {
+            if (msgType == MessageType.Text) {
+                this.commands[msgType] = commands.filter(
+                    (cmd) =>
+                        cmd.triggers.find((x) => typeof x != 'string') !=
+                            undefined ||
+                        cmd.triggers.find(
+                            (x) =>
+                                typeof x == 'string' &&
+                                !x.startsWith(INTERNAL_MESSAGE_TYPE_PREFIX)
+                        ) ||
+                        cmd.triggers.includes(MessageType.Text) ||
+                        cmd.triggers.includes(MessageType.Any)
+                );
+
+                continue;
+            }
+
+            this.commands[msgType] = commands.filter(
+                (cmd) =>
+                    cmd.triggers.includes(msgType) ||
+                    cmd.triggers.includes(MessageType.Any)
             );
+        }
 
+        if (commands.length > 0) {
             this.telegraf.on('message', async (ctx) => {
                 const msg = new IncomingMessage(
                     ctx.update.message,
@@ -91,13 +118,7 @@ export class CommandActionProcessor {
                     );
                 }
 
-                if (
-                    this.permanentTriggersToBeProcessed.has(msg.type) ||
-                    this.replyCaptures.find(
-                        (x) => x.parentMessageId == msg.replyToMessageId
-                    )
-                )
-                    await this.processMessage(msg);
+                await this.processMessage(msg);
             });
         }
     }
@@ -137,14 +158,13 @@ export class CommandActionProcessor {
             );
         });
     }
-
     private async processMessage(msg: IncomingMessage) {
         const ctx = new MessageContext<IActionState>(
             this.storage,
             this.scheduler
         );
 
-        for (const commandAction of this.commands) {
+        for (const commandAction of this.commands[msg.type]) {
             this.initializeMessageContext(ctx, commandAction, msg);
 
             try {
