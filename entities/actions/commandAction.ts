@@ -10,6 +10,7 @@ import { CommandTriggerCheckResult } from '../../dtos/commandTriggerCheckResult'
 import { MessageContext } from '../context/messageContext';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { Noop } from '../../helpers/noop';
+import { MessageType } from '../../types/messageTypes';
 
 export class CommandAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
@@ -134,7 +135,7 @@ export class CommandAction<TActionState extends IActionState>
         ctx: MessageContext<TActionState>,
         trigger: CommandTrigger
     ) {
-        if (trigger == ctx.messageType)
+        if (trigger == MessageType.Any || trigger == ctx.messageType)
             return CommandTriggerCheckResult.Trigger;
 
         if (typeof trigger == 'string')
