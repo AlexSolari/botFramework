@@ -16,6 +16,7 @@ export const MessageType = {
     Location: `${INTERNAL_MESSAGE_TYPE_PREFIX}Location`,
     Photo: `${INTERNAL_MESSAGE_TYPE_PREFIX}Photo`,
     Forward: `${INTERNAL_MESSAGE_TYPE_PREFIX}Forward`,
+    Video: `${INTERNAL_MESSAGE_TYPE_PREFIX}Video`,
     Unknown: `${INTERNAL_MESSAGE_TYPE_PREFIX}Unknown`
 } as const;
 

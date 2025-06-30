@@ -25,6 +25,7 @@ export class IncomingMessage {
     ) {
         if ('forward_origin' in message) return MessageType.Forward;
         if ('text' in message) return MessageType.Text;
+        if ('video' in message) return MessageType.Video;
         if ('photo' in message) return MessageType.Photo;
         if ('sticker' in message) return MessageType.Sticker;
         if ('animation' in message) return MessageType.Animation;

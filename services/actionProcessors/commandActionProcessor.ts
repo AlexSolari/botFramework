@@ -15,9 +15,9 @@ import { TraceId } from '../../types/trace';
 import { ChatInfo } from '../../dtos/chatInfo';
 import {
     INTERNAL_MESSAGE_TYPE_PREFIX,
-    MessageType,
-    MessageTypeValue
+    MessageType
 } from '../../types/messageTypes';
+import { typeSafeObjectFromEntries } from '../../helpers/objectFromEntries';
 
 export class CommandActionProcessor {
     private readonly storage: IStorageClient;
@@ -29,23 +29,12 @@ export class CommandActionProcessor {
 
     private api!: TelegramApiService;
     private telegraf!: Telegraf;
-    private commands: Record<MessageTypeValue, CommandAction<IActionState>[]> =
-        {
-            '__msg:Any': [],
-            '__msg:Text': [],
-            '__msg:Sticker': [],
-            '__msg:Animation': [],
-            '__msg:Document': [],
-            '__msg:Voice': [],
-            '__msg:Audio': [],
-            '__msg:LeftChatMember': [],
-            '__msg:NewChatMember': [],
-            '__msg:Poll': [],
-            '__msg:Location': [],
-            '__msg:Photo': [],
-            '__msg:Forward': [],
-            '__msg:Unknown': []
-        };
+    private commands = typeSafeObjectFromEntries(
+        Object.values(MessageType).map((x) => [
+            x,
+            [] as CommandAction<IActionState>[]
+        ])
+    );
 
     constructor(
         botName: string,
