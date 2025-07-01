@@ -65,15 +65,20 @@ export class ReplyContext<TParentActionState extends IActionState> {
         this.scheduler = scheduler;
     }
 
+    private getQuotePart(quote: boolean | string) {
+        return typeof quote == 'boolean'
+            ? this.matchResults.length != 0
+                ? this.matchResults[0][1]
+                : this.messageText
+            : quote;
+    }
+
     private replyWithText(
         text: string,
-        quote: boolean,
+        quote: boolean | string,
         options?: TextMessageSendingOptions
     ) {
-        const quotedPart =
-            this.matchResults.length != 0
-                ? this.matchResults[0][1]
-                : this.messageText;
+        const quotedPart = this.getQuotePart(quote);
 
         const response = new TextMessage(
             text,
@@ -89,13 +94,10 @@ export class ReplyContext<TParentActionState extends IActionState> {
 
     private replyWithImage(
         name: string,
-        quote: boolean,
+        quote: boolean | string,
         options?: MessageSendingOptions
     ) {
-        const quotedPart =
-            this.matchResults.length != 0
-                ? this.matchResults[0][1]
-                : this.messageText;
+        const quotedPart = this.getQuotePart(quote);
 
         const response = new ImageMessage(
             { source: resolve(`./content/${name}.png`) },
@@ -111,13 +113,10 @@ export class ReplyContext<TParentActionState extends IActionState> {
 
     private replyWithVideo(
         name: string,
-        quote: boolean,
+        quote: boolean | string,
         options?: MessageSendingOptions
     ) {
-        const quotedPart =
-            this.matchResults.length != 0
-                ? this.matchResults[0][1]
-                : this.messageText;
+        const quotedPart = this.getQuotePart(quote);
 
         const response = new VideoMessage(
             { source: resolve(`./content/${name}.mp4`) },
@@ -153,16 +152,22 @@ export class ReplyContext<TParentActionState extends IActionState> {
              * @param text Message contents.
              * @param options Message sending option.
              */
-            withText: (text: string, options?: TextMessageSendingOptions) =>
-                this.replyWithText(text, true, options),
+            withText: (
+                text: string,
+                quote?: string,
+                options?: TextMessageSendingOptions
+            ) => this.replyWithText(text, quote ?? true, options),
             /**
              * Reply with image message to message that triggered this action after action execution is finished.
              * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
              * @param text Message contents.
              * @param options Message sending option.
              */
-            withImage: (name: string, options?: MessageSendingOptions) =>
-                this.replyWithImage(name, true, options),
+            withImage: (
+                name: string,
+                quote?: string,
+                options?: MessageSendingOptions
+            ) => this.replyWithImage(name, quote ?? true, options),
 
             /**
              * Reply with video/gif message to message that triggered this action after action execution is finished.
@@ -170,8 +175,11 @@ export class ReplyContext<TParentActionState extends IActionState> {
              * @param text Message contents.
              * @param options Message sending option.
              */
-            withVideo: (name: string, options?: MessageSendingOptions) =>
-                this.replyWithVideo(name, true, options)
+            withVideo: (
+                name: string,
+                quote?: string,
+                options?: MessageSendingOptions
+            ) => this.replyWithVideo(name, quote ?? true, options)
         },
 
         /**
