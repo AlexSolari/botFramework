@@ -9,16 +9,9 @@ import { IStorageClient } from '../../types/storage';
 import { Milliseconds } from '../../types/timeValues';
 import { TraceId } from '../../types/trace';
 import { TelegramApiService } from '../telegramApi';
+import { BaseActionProcessor } from './baseProcessor';
 
-export class InlineQueryActionProcessor {
-    private readonly storage: IStorageClient;
-    private readonly scheduler: IScheduler;
-    private readonly logger: ILogger;
-
-    private readonly botName: string;
-
-    private api!: TelegramApiService;
-    private telegraf!: Telegraf;
+export class InlineQueryActionProcessor extends BaseActionProcessor {
     private inlineQueries!: InlineQueryAction[];
 
     constructor(
@@ -27,11 +20,7 @@ export class InlineQueryActionProcessor {
         scheduler: IScheduler,
         logger: ILogger
     ) {
-        this.storage = storage;
-        this.scheduler = scheduler;
-        this.logger = logger;
-
-        this.botName = botName;
+        super(botName, storage, scheduler, logger);
     }
 
     initialize(
@@ -40,8 +29,7 @@ export class InlineQueryActionProcessor {
         inlineQueries: InlineQueryAction[],
         period: Milliseconds
     ) {
-        this.api = api;
-        this.telegraf = telegraf;
+        this.initializeDependencies(api, telegraf);
         this.inlineQueries = inlineQueries;
 
         let pendingInlineQueries: IncomingInlineQuery[] = [];
@@ -113,23 +101,19 @@ export class InlineQueryActionProcessor {
                                 inlineQuery.traceId
                             );
 
-                            try {
-                                const responses = await inlineQueryAction.exec(
-                                    ctx
-                                );
-                                this.api.enqueueBatchedResponses(responses);
-                                ctx.isInitialized = false;
-                            } catch (err) {
-                                const error = err as Error;
-
-                                if (error.name == 'AbortError') {
-                                    ctx.logger.logWithTraceId(
-                                        `Aborting query ${inlineQuery.queryId} (${inlineQuery.query}) successful.`
-                                    );
-                                } else {
-                                    ctx.logger.errorWithTraceId(error, ctx);
+                            this.executeAction(
+                                inlineQueryAction,
+                                ctx,
+                                (error, ctx) => {
+                                    if (error.name == 'AbortError') {
+                                        ctx.logger.logWithTraceId(
+                                            `Aborting query ${inlineQuery.queryId} (${inlineQuery.query}) successful.`
+                                        );
+                                    } else {
+                                        ctx.logger.errorWithTraceId(error, ctx);
+                                    }
                                 }
-                            }
+                            );
                         }
 
                         queriesInProcessing.delete(inlineQuery.userId);

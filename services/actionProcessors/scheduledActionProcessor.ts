@@ -4,7 +4,6 @@ import { ScheduledAction } from '../../entities/actions/scheduledAction';
 import { ChatContext } from '../../entities/context/chatContext';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { createTrace } from '../../helpers/traceFactory';
-import { IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
 import { ILogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';
@@ -12,16 +11,11 @@ import { IStorageClient } from '../../types/storage';
 import { Seconds, Milliseconds } from '../../types/timeValues';
 import { TraceId } from '../../types/trace';
 import { TelegramApiService } from '../telegramApi';
+import { BaseActionProcessor } from './baseProcessor';
 
-export class ScheduledActionProcessor {
-    private readonly storage: IStorageClient;
-    private readonly scheduler: IScheduler;
-    private readonly logger: ILogger;
-
-    private readonly botName: string;
+export class ScheduledActionProcessor extends BaseActionProcessor {
     private readonly chats: Record<string, number>;
 
-    private api!: TelegramApiService;
     private scheduled!: ScheduledAction<IActionState>[];
 
     constructor(
@@ -31,11 +25,7 @@ export class ScheduledActionProcessor {
         scheduler: IScheduler,
         logger: ILogger
     ) {
-        this.storage = storage;
-        this.scheduler = scheduler;
-        this.logger = logger;
-
-        this.botName = botName;
+        super(botName, storage, scheduler, logger);
         this.chats = chats;
     }
 
@@ -44,7 +34,7 @@ export class ScheduledActionProcessor {
         scheduled: ScheduledAction<IActionState>[],
         period: Seconds
     ) {
-        this.api = api;
+        this.initializeDependencies(api, null!);
         this.scheduled = scheduled;
 
         if (this.scheduled.length > 0) {
@@ -106,22 +96,16 @@ export class ScheduledActionProcessor {
                     )
                 );
 
-                try {
-                    const responses = await scheduledAction.exec(ctx);
-                    this.api.enqueueBatchedResponses(responses);
-                    ctx.isInitialized = false;
-                } catch (error) {
-                    ctx.logger.errorWithTraceId(error, ctx);
-                }
+                this.executeAction(scheduledAction, ctx);
             }
         }
 
         this.api.flushResponses();
     }
 
-    private initializeChatContext<TActionState extends IActionState>(
+    private initializeChatContext(
         ctx: ChatContext<IActionState>,
-        action: IActionWithState<TActionState>,
+        action: ScheduledAction<IActionState>,
         chatInfo: ChatInfo,
         traceId: TraceId
     ) {

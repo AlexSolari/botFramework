@@ -4,7 +4,6 @@ import { CommandAction } from '../../entities/actions/commandAction';
 import { ReplyCaptureAction } from '../../entities/actions/replyCaptureAction';
 import { MessageContext } from '../../entities/context/messageContext';
 import { ReplyContext } from '../../entities/context/replyContext';
-import { IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
 import { ILogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';
@@ -18,17 +17,11 @@ import {
     MessageType
 } from '../../types/messageTypes';
 import { typeSafeObjectFromEntries } from '../../helpers/objectFromEntries';
+import { BaseActionProcessor } from './baseProcessor';
 
-export class CommandActionProcessor {
-    private readonly storage: IStorageClient;
-    private readonly scheduler: IScheduler;
-    private readonly logger: ILogger;
+export class CommandActionProcessor extends BaseActionProcessor {
+    private readonly replyCaptures: ReplyCaptureAction<IActionState>[] = [];
 
-    private readonly botName: string;
-    private readonly replyCaptures: ReplyCaptureAction<IActionState>[];
-
-    private api!: TelegramApiService;
-    private telegraf!: Telegraf;
     private commands = typeSafeObjectFromEntries(
         Object.values(MessageType).map((x) => [
             x,
@@ -42,12 +35,7 @@ export class CommandActionProcessor {
         scheduler: IScheduler,
         logger: ILogger
     ) {
-        this.storage = storage;
-        this.scheduler = scheduler;
-        this.logger = logger;
-
-        this.botName = botName;
-        this.replyCaptures = [];
+        super(botName, storage, scheduler, logger);
     }
 
     initialize(
@@ -56,8 +44,7 @@ export class CommandActionProcessor {
         commands: CommandAction<IActionState>[],
         verboseLoggingForIncomingMessage: boolean
     ) {
-        this.api = api;
-        this.telegraf = telegraf;
+        this.initializeDependencies(api, telegraf);
 
         for (const msgType of Object.values(MessageType)) {
             if (msgType == MessageType.Text) {
@@ -155,35 +142,25 @@ export class CommandActionProcessor {
 
         const commandsToCheck = new Set(this.commands[msg.type]);
         if (msg.type != MessageType.Text && msg.text != '') {
-            this.commands[MessageType.Text].map((x) => commandsToCheck.add(x));
+            this.commands[MessageType.Text].forEach((x) =>
+                commandsToCheck.add(x)
+            );
         }
 
         for (const commandAction of commandsToCheck) {
             this.initializeMessageContext(ctx, commandAction, msg);
-
-            try {
-                const responses = await commandAction.exec(ctx);
-                this.api.enqueueBatchedResponses(responses);
-                ctx.isInitialized = false;
-            } catch (error) {
-                ctx.logger.errorWithTraceId(error, ctx);
-            }
+            this.executeAction(commandAction, ctx);
         }
 
-        const replyCtx = new ReplyContext<IActionState>(
-            this.storage,
-            this.scheduler
-        );
+        if (this.replyCaptures.length != 0) {
+            const replyCtx = new ReplyContext<IActionState>(
+                this.storage,
+                this.scheduler
+            );
 
-        for (const replyAction of this.replyCaptures) {
-            this.initializeReplyCaptureContext(replyCtx, replyAction, msg);
-
-            try {
-                const responses = await replyAction.exec(replyCtx);
-                this.api.enqueueBatchedResponses(responses);
-                replyCtx.isInitialized = false;
-            } catch (error) {
-                replyCtx.logger.errorWithTraceId(error, replyCtx);
+            for (const replyAction of this.replyCaptures) {
+                this.initializeReplyCaptureContext(replyCtx, replyAction, msg);
+                this.executeAction(replyAction, replyCtx);
             }
         }
 
@@ -219,9 +196,9 @@ export class CommandActionProcessor {
         );
     }
 
-    private initializeMessageContext<TActionState extends IActionState>(
+    private initializeMessageContext(
         ctx: MessageContext<IActionState>,
-        action: IActionWithState<TActionState>,
+        action: CommandAction<IActionState>,
         message: IncomingMessage
     ) {
         ctx.messageId = message.messageId;

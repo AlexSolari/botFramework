@@ -10,44 +10,25 @@ import {
 } from '../../types/messageSendingOptions';
 import { IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
-import { BotResponse, IReplyResponse } from '../../types/response';
+import { IReplyResponse } from '../../types/response';
 import { Milliseconds } from '../../types/timeValues';
 import { DelayResponse } from '../../dtos/responses/delay';
-import { ChatInfo } from '../../dtos/chatInfo';
-import { IScopedLogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';
-import { TraceId } from '../../types/trace';
 import { ICaptureController } from '../../types/capture';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { ReplyContext } from './replyContext';
+import { BaseContext } from './baseContext';
+import { ScheduledAction } from '../actions/scheduledAction';
 
 /**
  * Context of action executed in chat.
  */
-export class ChatContext<TActionState extends IActionState> {
-    action!: IActionWithState<TActionState>;
-
-    /** Storage client instance for the bot executing this action. */
-    readonly storage: IStorageClient;
-    /** Logger instance for the bot executing this action */
-    /** Scheduler instance for the bot executing this action */
-    readonly scheduler: IScheduler;
-
-    logger!: IScopedLogger;
-    /** Trace id of a action execution. */
-    traceId!: TraceId;
-    /** Name of a bot that executes this action. */
-    botName!: string;
-    /** Chat information. */
-    chatInfo!: ChatInfo;
-    /** Ordered collection of responses to be processed  */
-    responses: BotResponse[] = [];
-
-    isInitialized = false;
-
+export class ChatContext<
+    TActionState extends IActionState,
+    TAction extends IActionWithState<TActionState> = ScheduledAction<TActionState>
+> extends BaseContext<TAction> {
     constructor(storage: IStorageClient, scheduler: IScheduler) {
-        this.storage = storage;
-        this.scheduler = scheduler;
+        super(storage, scheduler);
     }
 
     protected createCaptureController(
@@ -69,24 +50,6 @@ export class ChatContext<TActionState extends IActionState> {
                 });
             }
         };
-    }
-
-    /**
-     * Loads state of another action for current chat.
-     * @param action Action to load state of.
-     * @template TAnotherActionState - Type of a state that is used by another action.
-     */
-    async loadStateOf<TAnotherActionState extends IActionState>(
-        action: IActionWithState<TAnotherActionState>
-    ) {
-        const allStates = await this.storage.load(action.key);
-        const stateForChat = allStates[this.chatInfo.id];
-
-        if (!stateForChat) {
-            return Object.freeze(action.stateConstructor());
-        }
-
-        return Object.freeze(stateForChat as TAnotherActionState);
     }
 
     /**

@@ -1,12 +1,10 @@
 import { TelegramEmoji } from 'telegraf/types';
-import { ChatInfo } from '../../dtos/chatInfo';
 import { ReplyInfo } from '../../dtos/replyInfo';
 import { ImageMessage } from '../../dtos/responses/imageMessage';
 import { Reaction } from '../../dtos/responses/reaction';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { VideoMessage } from '../../dtos/responses/videoMessage';
 import { IActionState } from '../../types/actionState';
-import { IScopedLogger } from '../../types/logger';
 import {
     TextMessageSendingOptions,
     MessageSendingOptions
@@ -15,32 +13,15 @@ import {
     MessageTypeValue,
     TelegrafContextMessage
 } from '../../types/messageTypes';
-import { BotResponse } from '../../types/response';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
-import { TraceId } from '../../types/trace';
 import { ReplyCaptureAction } from '../actions/replyCaptureAction';
 import { resolve } from 'path';
+import { BaseContext } from './baseContext';
 
-export class ReplyContext<TParentActionState extends IActionState> {
-    action!: ReplyCaptureAction<TParentActionState>;
-
-    /** Storage client instance for the bot executing this action. */
-    readonly storage: IStorageClient;
-    /** Scheduler instance for the bot executing this action */
-    readonly scheduler: IScheduler;
-
-    /** Trace id of a action execution. */
-    traceId!: TraceId;
-    /** Name of a bot that executes this action. */
-    botName!: string;
-    /** Logger instance for the bot executing this action */
-    logger!: IScopedLogger;
-
-    /** Ordered collection of responses to be processed  */
-    responses: BotResponse[] = [];
-    /** Chat information. */
-    chatInfo!: ChatInfo;
+export class ReplyContext<
+    TParentActionState extends IActionState
+> extends BaseContext<ReplyCaptureAction<TParentActionState>> {
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
     matchResults!: RegExpExecArray[];
     /** Id of a message that triggered this action. */
@@ -61,8 +42,7 @@ export class ReplyContext<TParentActionState extends IActionState> {
     isInitialized = false;
 
     constructor(storage: IStorageClient, scheduler: IScheduler) {
-        this.storage = storage;
-        this.scheduler = scheduler;
+        super(storage, scheduler);
     }
 
     private getQuotePart(quote: boolean | string) {

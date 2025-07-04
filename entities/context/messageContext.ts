@@ -17,13 +17,14 @@ import {
 } from '../../types/messageTypes';
 import { IScheduler } from '../../types/scheduler';
 import { ReplyInfo } from '../../dtos/replyInfo';
+import { CommandAction } from '../actions/commandAction';
 
 /**
  * Context of action executed in chat, in response to a message
  */
 export class MessageContext<
     TActionState extends IActionState
-> extends ChatContext<TActionState> {
+> extends ChatContext<TActionState, CommandAction<TActionState>> {
     /** Id of a message that triggered this action. */
     messageId!: number;
     /** Text of a message that triggered this action. */

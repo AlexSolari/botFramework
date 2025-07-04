@@ -1,27 +1,13 @@
 import { InlineQueryResult } from 'telegraf/types';
-import { IScopedLogger } from '../../types/logger';
 import { BotResponse } from '../../types/response';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
-import { TraceId } from '../../types/trace';
 import { InlineQueryAction } from '../actions/inlineQueryAction';
 import { InlineQueryResponse } from '../../dtos/responses/inlineQueryResponse';
+import { BaseContext } from './baseContext';
 
-export class InlineQueryContext {
-    action!: InlineQueryAction;
+export class InlineQueryContext extends BaseContext<InlineQueryAction> {
     queryResults: InlineQueryResult[] = [];
-
-    /** Storage client instance for the bot executing this action. */
-    readonly storage: IStorageClient;
-    /** Scheduler instance for the bot executing this action */
-    readonly scheduler: IScheduler;
-
-    /** Logger instance for the bot executing this action */
-    logger!: IScopedLogger;
-    /** Trace id of a action execution. */
-    traceId!: TraceId;
-    /** Name of a bot that executes this action. */
-    botName!: string;
     /**
      * Abort signal to be utilized in query handler.
      * Signal will be aborted if new query comes from the same user.
@@ -46,11 +32,8 @@ export class InlineQueryContext {
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
     matchResults: RegExpMatchArray[] = [];
 
-    isInitialized = false;
-
     constructor(storage: IStorageClient, scheduler: IScheduler) {
-        this.storage = storage;
-        this.scheduler = scheduler;
+        super(storage, scheduler);
     }
 
     /**
