@@ -1,6 +1,6 @@
 {
     "name": "chz-telegram-bot",
-    "version": "0.3.6",
+    "version": "0.3.7",
     "type": "module",
     "dependencies": {
         "async-sema": "^3.1.1",

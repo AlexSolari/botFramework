@@ -153,7 +153,12 @@ export class CommandActionProcessor {
             this.scheduler
         );
 
-        for (const commandAction of this.commands[msg.type]) {
+        const commandsToCheck = new Set(this.commands[msg.type]);
+        if (msg.type != MessageType.Text && msg.text != '') {
+            this.commands[MessageType.Text].map((x) => commandsToCheck.add(x));
+        }
+
+        for (const commandAction of commandsToCheck) {
             this.initializeMessageContext(ctx, commandAction, msg);
 
             try {

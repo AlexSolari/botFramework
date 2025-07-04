@@ -52,7 +52,12 @@ export class IncomingMessage {
                 ? ctxMessage.reply_to_message?.message_id
                 : undefined;
         this.from = ctxMessage.from;
-        this.text = 'text' in ctxMessage ? ctxMessage.text : '';
+        this.text =
+            'text' in ctxMessage
+                ? ctxMessage.text
+                : 'caption' in ctxMessage
+                ? ctxMessage.caption ?? ''
+                : '';
         this.chatInfo = new ChatInfo(
             ctxMessage.chat.id,
             'title' in ctxMessage.chat
