@@ -101,7 +101,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                                 inlineQuery.traceId
                             );
 
-                            this.executeAction(
+                            await this.executeAction(
                                 inlineQueryAction,
                                 ctx,
                                 (error, ctx) => {

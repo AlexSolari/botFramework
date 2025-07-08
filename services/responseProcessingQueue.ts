@@ -1,5 +1,5 @@
-import { setTimeout } from 'timers/promises';
 import { Milliseconds } from '../types/timeValues';
+import { RateLimit } from 'async-sema';
 
 export type QueueItem = {
     priority: number;
@@ -9,6 +9,7 @@ export type QueueItem = {
 const TELEGRAM_RATELIMIT_DELAY = 35 as Milliseconds;
 
 export class ResponseProcessingQueue {
+    rateLimiter = RateLimit(1, { timeUnit: TELEGRAM_RATELIMIT_DELAY });
     items: QueueItem[] = [];
     isFlushing = false;
 
@@ -38,11 +39,11 @@ export class ResponseProcessingQueue {
 
         while (this.items.length) {
             if (Date.now() >= this.items[0].priority) {
+                await this.rateLimiter();
+
                 const item = this.items.shift()!;
 
                 await item.callback();
-            } else {
-                await setTimeout(TELEGRAM_RATELIMIT_DELAY);
             }
         }
 

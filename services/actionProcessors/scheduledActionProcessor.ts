@@ -96,7 +96,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                     )
                 );
 
-                this.executeAction(scheduledAction, ctx);
+                await this.executeAction(scheduledAction, ctx);
             }
         }
 

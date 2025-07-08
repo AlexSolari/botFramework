@@ -149,7 +149,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         for (const commandAction of commandsToCheck) {
             this.initializeMessageContext(ctx, commandAction, msg);
-            this.executeAction(commandAction, ctx);
+            await this.executeAction(commandAction, ctx);
         }
 
         if (this.replyCaptures.length != 0) {
@@ -160,7 +160,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
             for (const replyAction of this.replyCaptures) {
                 this.initializeReplyCaptureContext(replyCtx, replyAction, msg);
-                this.executeAction(replyAction, replyCtx);
+                await this.executeAction(replyAction, replyCtx);
             }
         }
 
