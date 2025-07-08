@@ -1,7 +1,7 @@
 import { TraceId } from '../types/trace';
 
-export function createTrace<T extends object>(
-    traceOwner: T | string,
+export function createTrace(
+    traceOwner: object | string,
     botName: string,
     traceName: string
 ) {

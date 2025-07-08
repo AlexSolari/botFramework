@@ -1,3 +1,5 @@
 declare const traceSymbol: unique symbol;
 
-export type TraceId = `${string}:${string}-${string}` & { [traceSymbol]: void };
+export type TraceId = `${string}:${string}-${string}` & {
+    [traceSymbol]: never;
+};

@@ -5,9 +5,6 @@ import { ReplyCaptureAction } from '../../entities/actions/replyCaptureAction';
 import { MessageContext } from '../../entities/context/messageContext';
 import { ReplyContext } from '../../entities/context/replyContext';
 import { IActionState } from '../../types/actionState';
-import { ILogger } from '../../types/logger';
-import { IScheduler } from '../../types/scheduler';
-import { IStorageClient } from '../../types/storage';
 import { TelegramApiService } from '../telegramApi';
 import { IReplyCapture } from '../../types/capture';
 import { TraceId } from '../../types/trace';
@@ -29,22 +26,13 @@ export class CommandActionProcessor extends BaseActionProcessor {
         ])
     );
 
-    constructor(
-        botName: string,
-        storage: IStorageClient,
-        scheduler: IScheduler,
-        logger: ILogger
-    ) {
-        super(botName, storage, scheduler, logger);
-    }
-
     initialize(
         api: TelegramApiService,
         telegraf: Telegraf,
         commands: CommandAction<IActionState>[],
         verboseLoggingForIncomingMessage: boolean
     ) {
-        this.initializeDependencies(api, telegraf);
+        this.initializeDependencies(api);
 
         for (const msgType of Object.values(MessageType)) {
             if (msgType == MessageType.Text) {
@@ -72,7 +60,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         }
 
         if (commands.length > 0) {
-            this.telegraf.on('message', async (ctx) => {
+            telegraf.on('message', async (ctx) => {
                 const msg = new IncomingMessage(
                     ctx.update.message,
                     this.botName
@@ -174,7 +162,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
     ) {
         ctx.replyMessageId = message.replyToMessageId;
         ctx.messageId = message.messageId;
-        ctx.messageText = message.text ?? '';
+        ctx.messageText = message.text;
         ctx.messageType = message.type;
         ctx.fromUserId = message.from?.id;
         ctx.fromUserName =
@@ -202,7 +190,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         message: IncomingMessage
     ) {
         ctx.messageId = message.messageId;
-        ctx.messageText = message.text ?? '';
+        ctx.messageText = message.text;
         ctx.messageType = message.type;
         ctx.fromUserId = message.from?.id;
         ctx.fromUserName =

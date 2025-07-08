@@ -68,18 +68,18 @@ export class BotInstance {
         scheduledPeriod?: Seconds,
         verboseLoggingForIncomingMessage?: boolean
     ) {
-        this.actionProcessingService.initialize(
-            token,
-            actions,
-            scheduledPeriod,
-            verboseLoggingForIncomingMessage
-        );
-
         this.logger.logWithTraceId(
             this.name,
             createTrace(this, this.name, 'Start'),
             'System',
             'Starting bot...'
+        );
+
+        await this.actionProcessingService.initialize(
+            token,
+            actions,
+            scheduledPeriod,
+            verboseLoggingForIncomingMessage
         );
     }
 

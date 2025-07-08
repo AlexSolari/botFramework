@@ -20,7 +20,7 @@ export class NodeTimeoutScheduler implements IScheduler {
 
     createTask(
         name: string,
-        action: () => void,
+        action: () => unknown,
         interval: Milliseconds,
         executeRightAway: boolean,
         ownerName: string
@@ -36,7 +36,7 @@ export class NodeTimeoutScheduler implements IScheduler {
             ownerName,
             createTrace(this, ownerName, name),
             'System',
-            `Created task [${taskId}]${name}, that will run every ${interval}ms.`
+            `Created task ${name}, that will run every ${interval}ms.`
         );
 
         this.activeTasks.push(task);
@@ -44,7 +44,7 @@ export class NodeTimeoutScheduler implements IScheduler {
 
     createOnetimeTask(
         name: string,
-        action: () => void,
+        action: () => unknown,
         delay: Milliseconds,
         ownerName: string
     ) {
@@ -53,17 +53,17 @@ export class NodeTimeoutScheduler implements IScheduler {
                 ownerName,
                 createTrace(this, ownerName, name),
                 'System',
-                `Executing delayed oneshot [${taskId}]${name}`
+                `Executing delayed oneshot ${name}`
             );
             action();
         };
-        const taskId = setTimeout(actionWrapper, delay);
+        setTimeout(actionWrapper, delay);
 
         this.logger.logWithTraceId(
             ownerName,
             createTrace(this, ownerName, name),
             'System',
-            `Created oneshot task [${taskId}]${name}, that will run in ${delay}ms.`
+            `Created oneshot task ${name}, that will run in ${delay}ms.`
         );
     }
 }

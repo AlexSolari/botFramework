@@ -1,6 +1,5 @@
 import { resolve } from 'path';
 import { TelegramEmoji } from 'telegraf/types';
-import { IStorageClient } from '../../types/storage';
 import { IActionState } from '../../types/actionState';
 import { ImageMessage } from '../../dtos/responses/imageMessage';
 import { Reaction } from '../../dtos/responses/reaction';
@@ -15,7 +14,6 @@ import {
     MessageTypeValue,
     TelegrafContextMessage
 } from '../../types/messageTypes';
-import { IScheduler } from '../../types/scheduler';
 import { ReplyInfo } from '../../dtos/replyInfo';
 import { CommandAction } from '../actions/commandAction';
 
@@ -41,10 +39,6 @@ export class MessageContext<
     messageType!: MessageTypeValue;
     /** Message object recieved from Telegram */
     messageUpdateObject!: TelegrafContextMessage;
-
-    constructor(storage: IStorageClient, scheduler: IScheduler) {
-        super(storage, scheduler);
-    }
 
     private getQuotePart(quote: boolean | string) {
         return typeof quote == 'boolean'

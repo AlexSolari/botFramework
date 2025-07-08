@@ -61,7 +61,7 @@ export class IncomingMessage {
         this.chatInfo = new ChatInfo(
             ctxMessage.chat.id,
             'title' in ctxMessage.chat
-                ? ctxMessage.chat.title + ' ' + ctxMessage.chat.id
+                ? `${ctxMessage.chat.title} ${ctxMessage.chat.id}`
                 : 'DM'
         );
         this.type = this.detectMessageType(ctxMessage);

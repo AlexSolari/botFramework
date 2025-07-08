@@ -4,6 +4,7 @@ import { Sema as Semaphore } from 'async-sema';
 import { IStorageClient } from '../types/storage';
 import { IActionState } from '../types/actionState';
 import { IActionWithState, ActionKey } from '../types/action';
+import { getOrSetIfNotExists } from '../helpers/mapUtils';
 
 function buildPath(storagePath: string, botName: string, actionKey: string) {
     return `${storagePath}/${botName}/${actionKey.replaceAll(':', '/')}.json`;
@@ -40,10 +41,21 @@ export class JsonFileStorage implements IStorageClient {
         }
     }
 
-    private async lock<TType>(key: ActionKey, action: () => Promise<TType>) {
-        if (!this.locks.has(key)) this.locks.set(key, new Semaphore(1));
+    private backfillEmptyActionStates<TActionState extends IActionState>(
+        action: IActionWithState<TActionState>,
+        data: Record<number, TActionState | undefined>
+    ): data is Record<number, TActionState> {
+        for (const [stringKey, value] of Object.entries(data)) {
+            if (value) continue;
 
-        const lock = this.locks.get(key)!;
+            data[parseInt(stringKey)] = action.stateConstructor();
+        }
+
+        return true;
+    }
+
+    private async lock<TType>(key: ActionKey, action: () => Promise<TType>) {
+        const lock = getOrSetIfNotExists(this.locks, key, new Semaphore(1));
 
         await lock.acquire();
 
@@ -61,12 +73,11 @@ export class JsonFileStorage implements IStorageClient {
     private async loadFromFile<TActionState extends IActionState>(
         key: ActionKey
     ) {
-        if (!this.filePaths.has(key))
-            this.filePaths.set(
-                key,
-                buildPath(this.storagePath, this.botName, key)
-            );
-        const targetPath = this.filePaths.get(key)!;
+        const targetPath = getOrSetIfNotExists(
+            this.filePaths,
+            key,
+            buildPath(this.storagePath, this.botName, key)
+        );
 
         const fileContent = await readFile(targetPath, {
             encoding: 'utf-8',
@@ -74,12 +85,18 @@ export class JsonFileStorage implements IStorageClient {
         });
 
         if (fileContent) {
-            const data = JSON.parse(fileContent);
+            const data = JSON.parse(fileContent) as Record<
+                number,
+                TActionState
+            >;
 
             this.cache.set(key, data);
         }
 
-        return (this.cache.get(key) ?? {}) as Record<number, TActionState>;
+        return (this.cache.get(key) ?? {}) as Record<
+            number,
+            TActionState | undefined
+        >;
     }
 
     private async updateCacheAndSaveToFile<TActionState extends IActionState>(
@@ -88,12 +105,11 @@ export class JsonFileStorage implements IStorageClient {
     ) {
         this.cache.set(key, data);
 
-        if (!this.filePaths.has(key))
-            this.filePaths.set(
-                key,
-                buildPath(this.storagePath, this.botName, key)
-            );
-        const targetPath = this.filePaths.get(key)!;
+        const targetPath = getOrSetIfNotExists(
+            this.filePaths,
+            key,
+            buildPath(this.storagePath, this.botName, key)
+        );
 
         await writeFile(targetPath, JSON.stringify(data), { flag: 'w+' });
     }
@@ -133,14 +149,15 @@ export class JsonFileStorage implements IStorageClient {
         chatId: number,
         state: TActionState
     ) {
-        return await this.lock(action.key, async () => {
+        await this.lock(action.key, async () => {
             const data =
                 this.tryGetFromCache<TActionState>(action.key) ??
                 (await this.loadFromFile<TActionState>(action.key));
 
             data[chatId] = state;
 
-            await this.updateCacheAndSaveToFile(data, action.key);
+            if (this.backfillEmptyActionStates(action, data))
+                await this.updateCacheAndSaveToFile(data, action.key);
         });
     }
 
@@ -153,7 +170,7 @@ export class JsonFileStorage implements IStorageClient {
     async updateStateFor<TActionState extends IActionState>(
         action: IActionWithState<TActionState>,
         chatId: number,
-        update: (state: TActionState) => Promise<void>
+        update: (state: TActionState) => Promise<void> | void
     ) {
         await this.lock(action.key, async () => {
             const data =
@@ -167,7 +184,8 @@ export class JsonFileStorage implements IStorageClient {
 
             await update(state);
 
-            await this.updateCacheAndSaveToFile(data, action.key);
+            if (this.backfillEmptyActionStates(action, data))
+                await this.updateCacheAndSaveToFile(data, action.key);
         });
     }
 }

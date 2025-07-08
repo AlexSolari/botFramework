@@ -1,3 +1,1 @@
-import { MessageTypeValue } from './messageTypes';
-
-export type CommandTrigger = MessageTypeValue | string | RegExp;
+export type CommandTrigger = string | RegExp;

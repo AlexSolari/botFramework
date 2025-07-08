@@ -1,4 +1,3 @@
-import { Telegraf } from 'telegraf';
 import { ILogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
@@ -14,7 +13,6 @@ export abstract class BaseActionProcessor {
     protected readonly botName: string;
 
     protected api!: TelegramApiService;
-    protected telegraf!: Telegraf;
 
     constructor(
         botName: string,
@@ -29,16 +27,15 @@ export abstract class BaseActionProcessor {
         this.botName = botName;
     }
 
-    private defaultErrorHandler<
-        TAction extends IAction,
-        TActionContext extends BaseContext<TAction>
-    >(error: Error, ctx: TActionContext) {
+    private defaultErrorHandler<TAction extends IAction>(
+        error: Error,
+        ctx: BaseContext<TAction>
+    ) {
         ctx.logger.errorWithTraceId(error, ctx);
     }
 
-    initializeDependencies(api: TelegramApiService, telegraf: Telegraf) {
+    initializeDependencies(api: TelegramApiService) {
         this.api = api;
-        this.telegraf = telegraf;
     }
 
     async executeAction<

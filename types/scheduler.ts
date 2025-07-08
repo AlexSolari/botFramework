@@ -5,7 +5,7 @@ export interface IScheduler {
 
     createTask(
         name: string,
-        action: () => void,
+        action: () => unknown,
         interval: Milliseconds,
         executeRightAway: boolean,
         ownerName: string
@@ -13,7 +13,7 @@ export interface IScheduler {
 
     createOnetimeTask(
         name: string,
-        action: () => void,
+        action: () => unknown,
         delay: Milliseconds,
         ownerName: string
     ): void;

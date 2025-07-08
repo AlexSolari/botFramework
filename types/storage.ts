@@ -5,12 +5,12 @@ export interface IStorageClient {
     updateStateFor<TActionState extends IActionState>(
         action: IActionWithState<TActionState>,
         chatId: number,
-        update: (state: TActionState) => Promise<void>
+        update: (state: TActionState) => Promise<void> | void
     ): Promise<void>;
     close(): Promise<void>;
     load<TActionState extends IActionState>(
         key: ActionKey
-    ): Promise<Record<number, TActionState>>;
+    ): Promise<Record<number, TActionState | undefined>>;
     saveMetadata<TActionState extends IActionState>(
         actions: IActionWithState<TActionState>[]
     ): Promise<void>;

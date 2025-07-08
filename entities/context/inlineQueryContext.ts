@@ -1,7 +1,5 @@
 import { InlineQueryResult } from 'telegraf/types';
 import { BotResponse } from '../../types/response';
-import { IScheduler } from '../../types/scheduler';
-import { IStorageClient } from '../../types/storage';
 import { InlineQueryAction } from '../actions/inlineQueryAction';
 import { InlineQueryResponse } from '../../dtos/responses/inlineQueryResponse';
 import { BaseContext } from './baseContext';
@@ -31,10 +29,6 @@ export class InlineQueryContext extends BaseContext<InlineQueryAction> {
     queryId!: string;
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
     matchResults: RegExpMatchArray[] = [];
-
-    constructor(storage: IStorageClient, scheduler: IScheduler) {
-        super(storage, scheduler);
-    }
 
     /**
      * This result will be shown to user as a response to inline query.

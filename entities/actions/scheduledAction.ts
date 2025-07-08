@@ -9,6 +9,7 @@ import { CachedStateFactory } from '../cachedStateFactory';
 import { ChatContext } from '../context/chatContext';
 import { Noop } from '../../helpers/noop';
 import { IScheduler } from '../../types/scheduler';
+import { getOrSetIfNotExists, getOrThrow } from '../../helpers/mapUtils';
 
 export class ScheduledAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
@@ -89,20 +90,18 @@ export class ScheduledAction<TActionState extends IActionState>
         botName: string,
         scheduler: IScheduler
     ): Promise<TResult> {
-        if (!this.cachedStateFactories.has(key)) {
-            throw new Error(
-                `No shared cache was set up for the key [${key}] in action '${this.name}'`
-            );
-        }
+        const cachedItemFactory = getOrThrow(
+            this.cachedStateFactories,
+            key,
+            `No shared cache was set up for the key [${key}] in action '${this.name}'`
+        );
 
         const semaphoreKey = `${this.key}_cached:${key}`;
-        let semaphore: Semaphore;
-        if (ScheduledAction.locks.has(semaphoreKey)) {
-            semaphore = ScheduledAction.locks.get(semaphoreKey)!;
-        } else {
-            semaphore = new Semaphore(1);
-            ScheduledAction.locks.set(semaphoreKey, semaphore);
-        }
+        const semaphore = getOrSetIfNotExists(
+            ScheduledAction.locks,
+            semaphoreKey,
+            new Semaphore(1)
+        );
 
         await semaphore.acquire();
 
@@ -111,7 +110,6 @@ export class ScheduledAction<TActionState extends IActionState>
                 return this.cachedState.get(key) as TResult;
             }
 
-            const cachedItemFactory = this.cachedStateFactories.get(key)!;
             const value = await cachedItemFactory.getValue();
 
             this.cachedState.set(key, value);

@@ -1,5 +1,4 @@
 import { resolve } from 'path';
-import { IStorageClient } from '../../types/storage';
 import { ImageMessage } from '../../dtos/responses/imageMessage';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { VideoMessage } from '../../dtos/responses/videoMessage';
@@ -13,7 +12,6 @@ import { IActionState } from '../../types/actionState';
 import { IReplyResponse } from '../../types/response';
 import { Milliseconds } from '../../types/timeValues';
 import { DelayResponse } from '../../dtos/responses/delay';
-import { IScheduler } from '../../types/scheduler';
 import { ICaptureController } from '../../types/capture';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { ReplyContext } from './replyContext';
@@ -27,10 +25,6 @@ export class ChatContext<
     TActionState extends IActionState,
     TAction extends IActionWithState<TActionState> = ScheduledAction<TActionState>
 > extends BaseContext<TAction> {
-    constructor(storage: IStorageClient, scheduler: IScheduler) {
-        super(storage, scheduler);
-    }
-
     protected createCaptureController(
         response: IReplyResponse
     ): ICaptureController {

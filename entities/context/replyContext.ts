@@ -13,8 +13,6 @@ import {
     MessageTypeValue,
     TelegrafContextMessage
 } from '../../types/messageTypes';
-import { IScheduler } from '../../types/scheduler';
-import { IStorageClient } from '../../types/storage';
 import { ReplyCaptureAction } from '../actions/replyCaptureAction';
 import { resolve } from 'path';
 import { BaseContext } from './baseContext';
@@ -40,10 +38,6 @@ export class ReplyContext<
     messageUpdateObject!: TelegrafContextMessage;
 
     isInitialized = false;
-
-    constructor(storage: IStorageClient, scheduler: IScheduler) {
-        super(storage, scheduler);
-    }
 
     private getQuotePart(quote: boolean | string) {
         return typeof quote == 'boolean'
@@ -136,7 +130,9 @@ export class ReplyContext<
                 text: string,
                 quote?: string,
                 options?: TextMessageSendingOptions
-            ) => this.replyWithText(text, quote ?? true, options),
+            ) => {
+                this.replyWithText(text, quote ?? true, options);
+            },
             /**
              * Reply with image message to message that triggered this action after action execution is finished.
              * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
@@ -147,7 +143,9 @@ export class ReplyContext<
                 name: string,
                 quote?: string,
                 options?: MessageSendingOptions
-            ) => this.replyWithImage(name, quote ?? true, options),
+            ) => {
+                this.replyWithImage(name, quote ?? true, options);
+            },
 
             /**
              * Reply with video/gif message to message that triggered this action after action execution is finished.
@@ -159,7 +157,9 @@ export class ReplyContext<
                 name: string,
                 quote?: string,
                 options?: MessageSendingOptions
-            ) => this.replyWithVideo(name, quote ?? true, options)
+            ) => {
+                this.replyWithVideo(name, quote ?? true, options);
+            }
         },
 
         /**
@@ -168,16 +168,18 @@ export class ReplyContext<
          * @param text Message contents.
          * @param options Message sending option.
          */
-        withText: (text: string, options?: TextMessageSendingOptions) =>
-            this.replyWithText(text, false, options),
+        withText: (text: string, options?: TextMessageSendingOptions) => {
+            this.replyWithText(text, false, options);
+        },
         /**
          * Reply with image message to message that triggered this action after action execution is finished.
          * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
          * @param text Message contents.
          * @param options Message sending option.
          */
-        withImage: (name: string, options?: MessageSendingOptions) =>
-            this.replyWithImage(name, false, options),
+        withImage: (name: string, options?: MessageSendingOptions) => {
+            this.replyWithImage(name, false, options);
+        },
 
         /**
          * Reply with video/gif message to message that triggered this action after action execution is finished.
@@ -185,8 +187,9 @@ export class ReplyContext<
          * @param text Message contents.
          * @param options Message sending option.
          */
-        withVideo: (name: string, options?: MessageSendingOptions) =>
-            this.replyWithVideo(name, false, options),
+        withVideo: (name: string, options?: MessageSendingOptions) => {
+            this.replyWithVideo(name, false, options);
+        },
 
         /**
          * React to the message that triggered this action after action execution is finished.

@@ -2,9 +2,9 @@ declare const millisecondsSymbol: unique symbol;
 declare const secondsSymbol: unique symbol;
 declare const hoursSymbol: unique symbol;
 
-export type Milliseconds = number & { [millisecondsSymbol]: void };
-export type Seconds = number & { [secondsSymbol]: void };
-export type Hours = number & { [hoursSymbol]: void };
+export type Milliseconds = number & { [millisecondsSymbol]: never };
+export type Seconds = number & { [secondsSymbol]: never };
+export type Hours = number & { [hoursSymbol]: never };
 
 export type HoursOfDay =
     | 0

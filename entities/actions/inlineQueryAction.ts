@@ -38,13 +38,17 @@ export class InlineQueryAction implements IAction {
 
         const execResult = this.pattern.exec(ctx.queryText);
         if (execResult != null) {
+            let regexMatchLimit = 100;
             matchResults.push(execResult);
 
             if (this.pattern.global) {
-                while (true) {
+                while (regexMatchLimit > 0) {
                     const nextResult = this.pattern.exec(ctx.queryText);
+
                     if (nextResult == null) break;
+
                     matchResults.push(nextResult);
+                    regexMatchLimit -= 1;
                 }
             }
         }

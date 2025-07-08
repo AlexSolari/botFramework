@@ -34,7 +34,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
         scheduled: ScheduledAction<IActionState>[],
         period: Seconds
     ) {
-        this.initializeDependencies(api, null!);
+        this.initializeDependencies(api);
         this.scheduled = scheduled;
 
         if (this.scheduled.length > 0) {
@@ -63,11 +63,11 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
 
             this.scheduler.createOnetimeTask(
                 'ScheduledProcessing_OneTime',
-                async () => {
+                () => {
                     this.scheduler.createTask(
                         'ScheduledProcessing',
-                        async () => {
-                            await this.runScheduled();
+                        () => {
+                            void this.runScheduled();
                         },
                         secondsToMilliseconds(period),
                         true,

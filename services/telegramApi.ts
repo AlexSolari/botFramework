@@ -101,7 +101,7 @@ export class TelegramApiService {
     }
 
     flushResponses() {
-        this.queue.flushReadyItems();
+        void this.queue.flushReadyItems();
     }
 
     private async pinIfShould(response: IReplyResponse, sentMessage: Message) {
@@ -115,7 +115,7 @@ export class TelegramApiService {
             await this.storage.updateStateFor(
                 response.action as IActionWithState<IActionState>,
                 response.chatInfo.id,
-                async (state) => {
+                (state) => {
                     state.pinnedMessages.push(sentMessage.message_id);
                 }
             );
@@ -150,9 +150,10 @@ export class TelegramApiService {
                 sentMessage = await this.telegram.sendPhoto(
                     response.chatInfo.id,
                     response.content,
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                     response.replyInfo?.id
                         ? ({
-                              reply_to_message_id: response.replyInfo?.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              reply_to_message_id: response.replyInfo.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           } as any)
                         : undefined
                 );
@@ -161,9 +162,10 @@ export class TelegramApiService {
                 sentMessage = await this.telegram.sendVideo(
                     response.chatInfo.id,
                     response.content,
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                     response.replyInfo?.id
                         ? ({
-                              reply_to_message_id: response.replyInfo?.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              reply_to_message_id: response.replyInfo.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           } as any)
                         : undefined
                 );
@@ -191,7 +193,7 @@ export class TelegramApiService {
                 await this.storage.updateStateFor(
                     response.action,
                     response.chatInfo.id,
-                    async (state) => {
+                    (state) => {
                         state.pinnedMessages = state.pinnedMessages.filter(
                             (x) => x != response.messageId
                         );

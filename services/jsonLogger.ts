@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ILogger, IScopedLogger } from '../types/logger';
 import { TraceId } from '../types/trace';
@@ -13,18 +14,21 @@ export class JsonLogger implements ILogger {
 
     createScope(botName: string, traceId: TraceId, chatName: string) {
         return {
-            logObjectWithTraceId: (data: any) =>
-                this.logObjectWithTraceId(botName, traceId, chatName, data),
-            logWithTraceId: (text: string) =>
-                this.logWithTraceId(botName, traceId, chatName, text),
-            errorWithTraceId: <TData>(errorObj: unknown, extraData?: TData) =>
+            logObjectWithTraceId: (data: any) => {
+                this.logObjectWithTraceId(botName, traceId, chatName, data);
+            },
+            logWithTraceId: (text: string) => {
+                this.logWithTraceId(botName, traceId, chatName, text);
+            },
+            errorWithTraceId: (errorObj: unknown, extraData?: unknown) => {
                 this.errorWithTraceId(
                     botName,
                     traceId,
                     chatName,
                     errorObj,
                     extraData
-                )
+                );
+            }
         } as IScopedLogger;
     }
 
@@ -51,12 +55,12 @@ export class JsonLogger implements ILogger {
         );
     }
 
-    errorWithTraceId<TData>(
+    errorWithTraceId(
         botName: string,
         traceId: TraceId,
         chatName: string,
         errorObj: unknown,
-        extraData?: TData
+        extraData?: unknown
     ) {
         console.error(
             `{"botName":"${botName}","traceId":"${traceId}","chatName":"${chatName}","error":${this.serializeError(

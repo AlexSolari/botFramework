@@ -8,10 +8,7 @@ export interface IScopedLogger {
 
     logWithTraceId(text: string): void;
 
-    errorWithTraceId<TData>(
-        errorObj: unknown,
-        extraData?: TData | undefined
-    ): void;
+    errorWithTraceId(errorObj: unknown, extraData?: unknown): void;
 }
 
 export interface ILogger {
@@ -36,11 +33,11 @@ export interface ILogger {
         text: string
     ): void;
 
-    errorWithTraceId<TData>(
+    errorWithTraceId(
         botName: string,
         traceId: TraceId,
         chatName: string,
         errorObj: unknown,
-        extraData?: TData | undefined
+        extraData?: unknown
     ): void;
 }

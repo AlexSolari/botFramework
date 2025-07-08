@@ -149,13 +149,17 @@ export class CommandAction<TActionState extends IActionState>
 
         const execResult = trigger.exec(ctx.messageText);
         if (execResult != null) {
+            let regexMatchLimit = 100;
             matchResults.push(execResult);
 
             if (trigger.global) {
-                while (true) {
+                while (regexMatchLimit > 0) {
                     const nextResult = trigger.exec(ctx.messageText);
+
                     if (nextResult == null) break;
+
                     matchResults.push(nextResult);
+                    regexMatchLimit -= 1;
                 }
             }
         }

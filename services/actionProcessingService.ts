@@ -75,13 +75,14 @@ export class ActionProcessingService {
             this.telegraf.telegram,
             this.storage,
             this.logger,
-            (capture, id, chatInfo, traceId) =>
+            (capture, id, chatInfo, traceId) => {
                 this.commandProcessor.captureRegistrationCallback(
                     capture,
                     id,
                     chatInfo,
                     traceId
-                )
+                );
+            }
         );
 
         const botInfo = await this.telegraf.telegram.getMe();
@@ -116,9 +117,12 @@ export class ActionProcessingService {
             scheduledPeriod ?? hoursToSeconds(1 as Hours)
         );
 
-        this.storage.saveMetadata([...actions.scheduled, ...commandActions]);
+        void this.storage.saveMetadata([
+            ...actions.scheduled,
+            ...commandActions
+        ]);
 
-        this.telegraf.launch();
+        void this.telegraf.launch();
     }
 
     stop(code: string) {

@@ -3,9 +3,6 @@ import { IncomingInlineQuery } from '../../dtos/incomingQuery';
 import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
 import { InlineQueryContext } from '../../entities/context/inlineQueryContext';
 import { createTrace } from '../../helpers/traceFactory';
-import { ILogger } from '../../types/logger';
-import { IScheduler } from '../../types/scheduler';
-import { IStorageClient } from '../../types/storage';
 import { Milliseconds } from '../../types/timeValues';
 import { TraceId } from '../../types/trace';
 import { TelegramApiService } from '../telegramApi';
@@ -14,22 +11,13 @@ import { BaseActionProcessor } from './baseProcessor';
 export class InlineQueryActionProcessor extends BaseActionProcessor {
     private inlineQueries!: InlineQueryAction[];
 
-    constructor(
-        botName: string,
-        storage: IStorageClient,
-        scheduler: IScheduler,
-        logger: ILogger
-    ) {
-        super(botName, storage, scheduler, logger);
-    }
-
     initialize(
         api: TelegramApiService,
         telegraf: Telegraf,
         inlineQueries: InlineQueryAction[],
         period: Milliseconds
     ) {
-        this.initializeDependencies(api, telegraf);
+        this.initializeDependencies(api);
         this.inlineQueries = inlineQueries;
 
         let pendingInlineQueries: IncomingInlineQuery[] = [];
@@ -37,7 +25,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
         const queriesInProcessing = new Map<number, IncomingInlineQuery>();
 
         if (this.inlineQueries.length > 0) {
-            this.telegraf.on('inline_query', async (ctx) => {
+            telegraf.on('inline_query', (ctx) => {
                 const query = new IncomingInlineQuery(
                     ctx.inlineQuery.id,
                     ctx.inlineQuery.query,
@@ -52,7 +40,9 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                 );
 
                 logger.logWithTraceId(
-                    `${ctx.inlineQuery.from.username} (${ctx.inlineQuery.from.id}): Query for ${ctx.inlineQuery.query}`
+                    `${ctx.inlineQuery.from.username ?? 'Unknown'} (${
+                        ctx.inlineQuery.from.id
+                    }): Query for ${ctx.inlineQuery.query}`
                 );
 
                 const queryBeingProcessed = queriesInProcessing.get(

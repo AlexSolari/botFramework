@@ -14,7 +14,7 @@ export type CommandHandler<TActionState extends IActionState> = (
     ctx: MessageContext<TActionState>,
     /** State of an action being executed. */
     state: TActionState
-) => Promise<void>;
+) => Promise<void> | void;
 
 export type ScheduledHandler<TActionState extends IActionState> = (
     /** Context of action executed in chat. */
