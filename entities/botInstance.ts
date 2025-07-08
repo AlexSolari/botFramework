@@ -56,8 +56,6 @@ export class BotInstance {
             this.scheduler,
             this.logger
         );
-
-        this.storage.saveMetadata(actions, this.name);
     }
 
     async start(

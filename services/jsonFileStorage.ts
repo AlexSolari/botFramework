@@ -5,7 +5,12 @@ import { IStorageClient } from '../types/storage';
 import { IActionState } from '../types/actionState';
 import { IActionWithState, ActionKey } from '../types/action';
 
+function buildPath(storagePath: string, botName: string, actionKey: string) {
+    return `${storagePath}/${botName}/${actionKey.replaceAll(':', '/')}.json`;
+}
+
 export class JsonFileStorage implements IStorageClient {
+    private readonly filePaths = new Map<ActionKey, string>();
     private readonly locks = new Map<ActionKey, Semaphore>();
     private readonly cache: Map<string, Record<number, IActionState>>;
     private readonly storagePath: string;
@@ -28,6 +33,10 @@ export class JsonFileStorage implements IStorageClient {
 
         for (const action of actions) {
             this.locks.set(action.key, new Semaphore(1));
+            this.filePaths.set(
+                action.key,
+                buildPath(this.storagePath, this.botName, action.key)
+            );
         }
     }
 
@@ -45,58 +54,61 @@ export class JsonFileStorage implements IStorageClient {
         }
     }
 
-    private async loadInternal<TActionState extends IActionState>(
+    private tryGetFromCache<TActionState extends IActionState>(key: ActionKey) {
+        return this.cache.get(key) as Record<number, TActionState> | undefined;
+    }
+
+    private async loadFromFile<TActionState extends IActionState>(
         key: ActionKey
     ) {
-        if (!this.cache.has(key)) {
-            const targetPath = this.buidPathFromKey(key);
+        if (!this.filePaths.has(key))
+            this.filePaths.set(
+                key,
+                buildPath(this.storagePath, this.botName, key)
+            );
+        const targetPath = this.filePaths.get(key)!;
 
-            const fileContent = await readFile(targetPath, {
-                encoding: 'utf-8',
-                flag: 'a+'
-            });
+        const fileContent = await readFile(targetPath, {
+            encoding: 'utf-8',
+            flag: 'a+'
+        });
 
-            if (fileContent) {
-                const data = JSON.parse(fileContent);
+        if (fileContent) {
+            const data = JSON.parse(fileContent);
 
-                this.cache.set(key, data);
-            }
+            this.cache.set(key, data);
         }
 
         return (this.cache.get(key) ?? {}) as Record<number, TActionState>;
     }
 
-    private async save<TActionState extends IActionState>(
+    private async updateCacheAndSaveToFile<TActionState extends IActionState>(
         data: Record<number, TActionState>,
         key: ActionKey
     ) {
         this.cache.set(key, data);
 
-        const targetPath = this.buidPathFromKey(key);
+        if (!this.filePaths.has(key))
+            this.filePaths.set(
+                key,
+                buildPath(this.storagePath, this.botName, key)
+            );
+        const targetPath = this.filePaths.get(key)!;
 
         await writeFile(targetPath, JSON.stringify(data), { flag: 'w+' });
     }
 
-    private buidPathFromKey(key: ActionKey) {
-        return `${this.storagePath}/${this.botName}/${key.replaceAll(
-            ':',
-            '/'
-        )}.json`;
-    }
-
     async load<TActionState extends IActionState>(key: ActionKey) {
-        return await this.lock(key, async () => {
-            return await this.loadInternal<TActionState>(key);
-        });
+        return (
+            this.tryGetFromCache<TActionState>(key) ??
+            (await this.lock(key, async () => {
+                return await this.loadFromFile<TActionState>(key);
+            }))
+        );
     }
 
-    async saveMetadata(
-        actions: IActionWithState<IActionState>[],
-        botName: string
-    ) {
-        const targetPath = this.buidPathFromKey(
-            `Metadata-${botName}` as ActionKey
-        );
+    async saveMetadata(actions: IActionWithState<IActionState>[]) {
+        const targetPath = `${this.storagePath}/${this.botName}/Metadata-${this.botName}.json`;
 
         await writeFile(targetPath, JSON.stringify(actions), {
             flag: 'w+'
@@ -107,14 +119,13 @@ export class JsonFileStorage implements IStorageClient {
         action: IActionWithState<TActionState>,
         chatId: number
     ) {
-        return await this.lock(action.key, async () => {
-            const data = await this.loadInternal(action.key);
+        const value =
+            this.tryGetFromCache<TActionState>(action.key) ??
+            (await this.lock(action.key, async () => {
+                return await this.loadFromFile<TActionState>(action.key);
+            }));
 
-            return Object.assign(
-                action.stateConstructor(),
-                data[chatId]
-            ) as TActionState;
-        });
+        return Object.assign(action.stateConstructor(), value[chatId]);
     }
 
     async saveActionExecutionResult<TActionState extends IActionState>(
@@ -123,11 +134,13 @@ export class JsonFileStorage implements IStorageClient {
         state: TActionState
     ) {
         return await this.lock(action.key, async () => {
-            const data = await this.loadInternal<TActionState>(action.key);
+            const data =
+                this.tryGetFromCache<TActionState>(action.key) ??
+                (await this.loadFromFile<TActionState>(action.key));
 
             data[chatId] = state;
 
-            await this.save(data, action.key);
+            await this.updateCacheAndSaveToFile(data, action.key);
         });
     }
 
@@ -143,7 +156,10 @@ export class JsonFileStorage implements IStorageClient {
         update: (state: TActionState) => Promise<void>
     ) {
         await this.lock(action.key, async () => {
-            const data = await this.loadInternal<TActionState>(action.key);
+            const data =
+                this.tryGetFromCache<TActionState>(action.key) ??
+                (await this.loadFromFile<TActionState>(action.key));
+
             const state = Object.assign(
                 action.stateConstructor(),
                 data[chatId]
@@ -151,7 +167,7 @@ export class JsonFileStorage implements IStorageClient {
 
             await update(state);
 
-            await this.save(data, action.key);
+            await this.updateCacheAndSaveToFile(data, action.key);
         });
     }
 }

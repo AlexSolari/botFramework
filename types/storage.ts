@@ -12,8 +12,7 @@ export interface IStorageClient {
         key: ActionKey
     ): Promise<Record<number, TActionState>>;
     saveMetadata<TActionState extends IActionState>(
-        actions: IActionWithState<TActionState>[],
-        botName: string
+        actions: IActionWithState<TActionState>[]
     ): Promise<void>;
     getActionState<TActionState extends IActionState>(
         action: IActionWithState<TActionState>,

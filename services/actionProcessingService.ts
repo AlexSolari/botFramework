@@ -85,10 +85,7 @@ export class ActionProcessingService {
         );
 
         const botInfo = await this.telegraf.telegram.getMe();
-
-        this.commandProcessor.initialize(
-            api,
-            this.telegraf,
+        const commandActions =
             actions.commands.length > 0
                 ? [
                       buildHelpCommand(
@@ -99,7 +96,12 @@ export class ActionProcessingService {
                       ),
                       ...actions.commands
                   ]
-                : [],
+                : [];
+
+        this.commandProcessor.initialize(
+            api,
+            this.telegraf,
+            commandActions,
             verboseLoggingForIncomingMessage ?? false
         );
         this.inlineQueryProcessor.initialize(
@@ -113,6 +115,8 @@ export class ActionProcessingService {
             actions.scheduled,
             scheduledPeriod ?? hoursToSeconds(1 as Hours)
         );
+
+        this.storage.saveMetadata([...actions.scheduled, ...commandActions]);
 
         this.telegraf.launch();
     }
