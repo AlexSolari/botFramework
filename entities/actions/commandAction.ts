@@ -11,10 +11,14 @@ import { MessageContext } from '../context/messageContext';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { Noop } from '../../helpers/noop';
 import { MessageType } from '../../types/messageTypes';
+import { Sema as Semaphore } from 'async-sema';
+import { getOrSetIfNotExists } from '../../helpers/mapUtils';
 
 export class CommandAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
 {
+    readonly ratelimitSemaphores = new Map<number, Semaphore>();
+
     readonly triggers: CommandTrigger[];
     readonly handler: CommandHandler<TActionState>;
     readonly name: string;
@@ -26,6 +30,7 @@ export class CommandAction<TActionState extends IActionState>
     readonly stateConstructor: () => TActionState;
     readonly key: ActionKey;
     readonly readmeFactory: (botName: string) => string;
+    readonly maxAllowedSimultaniousExecutions: number;
 
     constructor(
         trigger: CommandTrigger | CommandTrigger[],
@@ -35,6 +40,7 @@ export class CommandAction<TActionState extends IActionState>
         cooldown: Seconds,
         chatsBlacklist: number[],
         allowedUsers: number[],
+        maxAllowedSimultaniousExecutions: number,
         condition: CommandCondition<TActionState>,
         stateConstructor: () => TActionState,
         readmeFactory: (botName: string) => string
@@ -49,6 +55,8 @@ export class CommandAction<TActionState extends IActionState>
         this.condition = condition;
         this.stateConstructor = stateConstructor;
         this.readmeFactory = readmeFactory;
+        this.maxAllowedSimultaniousExecutions =
+            maxAllowedSimultaniousExecutions;
 
         this.key = `command:${this.name.replace('.', '-')}` as ActionKey;
     }
@@ -62,42 +70,57 @@ export class CommandAction<TActionState extends IActionState>
         if (!this.active || this.chatsBlacklist.includes(ctx.chatInfo.id))
             return Noop.NoResponse;
 
-        const state = await ctx.storage.getActionState<TActionState>(
-            this,
-            ctx.chatInfo.id
-        );
-
-        const { shouldExecute, matchResults, skipCooldown } = this.triggers
-            .map((x) => this.checkIfShouldBeExecuted(ctx, x, state))
-            .reduce(
-                (acc, curr) => acc.mergeWith(curr),
-                CommandTriggerCheckResult.DoNotTrigger
+        let lock: Semaphore | undefined;
+        if (this.maxAllowedSimultaniousExecutions != 0) {
+            lock = getOrSetIfNotExists(
+                this.ratelimitSemaphores,
+                ctx.chatInfo.id,
+                new Semaphore(this.maxAllowedSimultaniousExecutions)
             );
 
-        if (!shouldExecute) return Noop.NoResponse;
-
-        ctx.logger.logWithTraceId(
-            ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
-        );
-        ctx.matchResults = matchResults;
-
-        await this.handler(ctx, state);
-
-        if (skipCooldown) {
-            ctx.startCooldown = false;
+            await lock.acquire();
         }
 
-        if (ctx.startCooldown) {
-            state.lastExecutedDate = moment().valueOf();
+        try {
+            const state = await ctx.storage.getActionState<TActionState>(
+                this,
+                ctx.chatInfo.id
+            );
+
+            const { shouldExecute, matchResults, skipCooldown } = this.triggers
+                .map((x) => this.checkIfShouldBeExecuted(ctx, x, state))
+                .reduce(
+                    (acc, curr) => acc.mergeWith(curr),
+                    CommandTriggerCheckResult.DoNotTrigger
+                );
+
+            if (!shouldExecute) return Noop.NoResponse;
+
+            ctx.logger.logWithTraceId(
+                ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
+            );
+            ctx.matchResults = matchResults;
+
+            await this.handler(ctx, state);
+
+            if (skipCooldown) {
+                ctx.startCooldown = false;
+            }
+
+            if (ctx.startCooldown) {
+                state.lastExecutedDate = moment().valueOf();
+            }
+
+            await ctx.storage.saveActionExecutionResult(
+                this,
+                ctx.chatInfo.id,
+                state
+            );
+
+            return ctx.responses;
+        } finally {
+            lock?.release();
         }
-
-        await ctx.storage.saveActionExecutionResult(
-            this,
-            ctx.chatInfo.id,
-            state
-        );
-
-        return ctx.responses;
     }
 
     private checkIfShouldBeExecuted(

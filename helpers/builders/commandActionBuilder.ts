@@ -23,6 +23,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     stateConstructor: () => TActionState;
     handler: CommandHandler<TActionState> = Noop.call;
     condition: CommandCondition<TActionState> = Noop.true;
+    maxAllowedSimultaniousExecutions: number = 0;
 
     /**
      * Builder for `CommandAction` with state represented by `TActionState`
@@ -86,6 +87,14 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
         return this;
     }
 
+    /** Sets maximum number of simultaniously executing handlers for this command per chat. 0 is treated as unlimited. */
+    ratelimit(maxAllowedSimultaniousExecutions: number) {
+        this.maxAllowedSimultaniousExecutions =
+            maxAllowedSimultaniousExecutions;
+
+        return this;
+    }
+
     /** Sets action cooldown.
      * @param seconds Cooldown in seconds.
      */
@@ -115,6 +124,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
             this.cooldownSeconds,
             this.blacklist,
             this.allowedUsers,
+            this.maxAllowedSimultaniousExecutions,
             this.condition,
             this.stateConstructor,
             this.readmeFactory != null ? this.readmeFactory : (_) => ''

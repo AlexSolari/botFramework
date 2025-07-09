@@ -60,7 +60,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         }
 
         if (commands.length > 0) {
-            telegraf.on('message', async (ctx) => {
+            telegraf.on('message', (ctx) => {
                 const msg = new IncomingMessage(
                     ctx.update.message,
                     this.botName
@@ -82,7 +82,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
                     );
                 }
 
-                await this.processMessage(msg);
+                void this.processMessage(msg);
             });
         }
     }
