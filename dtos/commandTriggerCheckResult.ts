@@ -1,33 +1,48 @@
+const _SkipTriggerReasonsObject = {
+    UserIdMissing: 'UserIdMissing',
+    UserForbidden: 'UserForbidden',
+    OnCooldown: 'OnCooldown',
+    CustomConditionNotMet: 'CustomConditionNotMet',
+    TriggerNotSatisfied: 'TriggerNotSatisfied',
+    Other: 'Other'
+} as const;
+
+export type SkipTriggerReasons = keyof typeof _SkipTriggerReasonsObject;
+
 export class CommandTriggerCheckResult {
-    static get DontTriggerAndSkipCooldown() {
-        return new CommandTriggerCheckResult(false, [], true);
+    static DontTriggerAndSkipCooldown(reason: SkipTriggerReasons) {
+        return new CommandTriggerCheckResult(false, [], true, reason);
     }
-    static get DoNotTrigger() {
-        return new CommandTriggerCheckResult(false, [], false);
+    static DoNotTrigger(reason: SkipTriggerReasons) {
+        return new CommandTriggerCheckResult(false, [], false, reason);
     }
-    static get Trigger() {
+    static Trigger() {
         return new CommandTriggerCheckResult(true, [], false);
     }
 
     readonly shouldExecute: boolean;
     readonly matchResults: RegExpExecArray[];
     readonly skipCooldown: boolean;
+    readonly reason: SkipTriggerReasons | undefined;
 
     constructor(
         shouldExecute: boolean,
         matchResults: RegExpExecArray[],
-        skipCooldown: boolean
+        skipCooldown: boolean,
+        reason?: SkipTriggerReasons
     ) {
         this.shouldExecute = shouldExecute;
         this.matchResults = matchResults;
         this.skipCooldown = skipCooldown;
+        this.reason = reason;
     }
 
     mergeWith(other: CommandTriggerCheckResult) {
         return new CommandTriggerCheckResult(
             this.shouldExecute || other.shouldExecute,
             this.matchResults.concat(other.matchResults),
-            this.skipCooldown || other.skipCooldown
+            this.skipCooldown || other.skipCooldown,
+            other.reason
         );
     }
 }

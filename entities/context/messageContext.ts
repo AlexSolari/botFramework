@@ -1,5 +1,5 @@
 import { resolve } from 'path';
-import { TelegramEmoji } from 'telegraf/types';
+import { TelegramEmoji, UserFromGetMe } from 'telegraf/types';
 import { IActionState } from '../../types/actionState';
 import { ImageMessage } from '../../dtos/responses/imageMessage';
 import { Reaction } from '../../dtos/responses/reaction';
@@ -16,6 +16,7 @@ import {
 } from '../../types/messageTypes';
 import { ReplyInfo } from '../../dtos/replyInfo';
 import { CommandAction } from '../actions/commandAction';
+import { Seconds } from '../../types/timeValues';
 
 /**
  * Context of action executed in chat, in response to a message
@@ -39,6 +40,10 @@ export class MessageContext<
     messageType!: MessageTypeValue;
     /** Message object recieved from Telegram */
     messageUpdateObject!: TelegrafContextMessage;
+    /** Bot info from Telegram */
+    botInfo!: UserFromGetMe;
+
+    customCooldown: Seconds | undefined;
 
     private getQuotePart(quote: boolean | string) {
         return typeof quote == 'boolean'
@@ -109,6 +114,11 @@ export class MessageContext<
         this.responses.push(response);
 
         return this.createCaptureController(response);
+    }
+
+    startCustomCooldown(customCooldown: Seconds) {
+        this.startCooldown = true;
+        this.customCooldown = customCooldown;
     }
 
     /**

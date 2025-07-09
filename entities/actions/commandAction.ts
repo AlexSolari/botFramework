@@ -1,7 +1,6 @@
 import moment from 'moment';
 import { CommandHandler } from '../../types/handlers';
 import { CommandCondition } from '../../types/commandCondition';
-import { Seconds } from '../../types/timeValues';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { toArray } from '../../helpers/toArray';
 import { IActionState } from '../../types/actionState';
@@ -13,6 +12,10 @@ import { Noop } from '../../helpers/noop';
 import { MessageType } from '../../types/messageTypes';
 import { Sema as Semaphore } from 'async-sema';
 import { getOrSetIfNotExists } from '../../helpers/mapUtils';
+import { CooldownInfo } from '../../dtos/cooldownInfo';
+import { TextMessage } from '../../dtos/responses/textMessage';
+import { ReplyInfo } from '../../dtos/replyInfo';
+import { Seconds } from '../../types/timeValues';
 
 export class CommandAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
@@ -22,7 +25,7 @@ export class CommandAction<TActionState extends IActionState>
     readonly triggers: CommandTrigger[];
     readonly handler: CommandHandler<TActionState>;
     readonly name: string;
-    readonly cooldownInSeconds: Seconds;
+    readonly cooldownInfo: CooldownInfo;
     readonly active: boolean;
     readonly chatsBlacklist: number[];
     readonly allowedUsers: number[];
@@ -32,12 +35,14 @@ export class CommandAction<TActionState extends IActionState>
     readonly readmeFactory: (botName: string) => string;
     readonly maxAllowedSimultaniousExecutions: number;
 
+    lastCustomCooldown: Seconds | undefined;
+
     constructor(
         trigger: CommandTrigger | CommandTrigger[],
         handler: CommandHandler<TActionState>,
         name: string,
         active: boolean,
-        cooldown: Seconds,
+        cooldownInfo: CooldownInfo,
         chatsBlacklist: number[],
         allowedUsers: number[],
         maxAllowedSimultaniousExecutions: number,
@@ -48,7 +53,7 @@ export class CommandAction<TActionState extends IActionState>
         this.triggers = toArray(trigger);
         this.handler = handler;
         this.name = name;
-        this.cooldownInSeconds = cooldown;
+        this.cooldownInfo = cooldownInfo;
         this.active = active;
         this.chatsBlacklist = chatsBlacklist;
         this.allowedUsers = allowedUsers;
@@ -87,14 +92,28 @@ export class CommandAction<TActionState extends IActionState>
                 ctx.chatInfo.id
             );
 
-            const { shouldExecute, matchResults, skipCooldown } = this.triggers
-                .map((x) => this.checkIfShouldBeExecuted(ctx, x, state))
-                .reduce(
-                    (acc, curr) => acc.mergeWith(curr),
-                    CommandTriggerCheckResult.DoNotTrigger
-                );
+            const { shouldExecute, matchResults, skipCooldown, reason } =
+                this.triggers
+                    .map((x) => this.checkIfShouldBeExecuted(ctx, x, state))
+                    .reduce(
+                        (acc, curr) => acc.mergeWith(curr),
+                        CommandTriggerCheckResult.DoNotTrigger('Other')
+                    );
 
-            if (!shouldExecute) return Noop.NoResponse;
+            if (!shouldExecute) {
+                if (reason == 'OnCooldown' && this.cooldownInfo.message)
+                    return [
+                        new TextMessage(
+                            this.cooldownInfo.message,
+                            ctx.chatInfo,
+                            ctx.traceId,
+                            this,
+                            new ReplyInfo(ctx.messageId)
+                        )
+                    ];
+
+                return Noop.NoResponse;
+            }
 
             ctx.logger.logWithTraceId(
                 ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
@@ -108,6 +127,8 @@ export class CommandAction<TActionState extends IActionState>
             }
 
             if (ctx.startCooldown) {
+                this.lastCustomCooldown = ctx.customCooldown;
+
                 state.lastExecutedDate = moment().valueOf();
             }
 
@@ -129,27 +150,34 @@ export class CommandAction<TActionState extends IActionState>
         state: TActionState
     ) {
         if (!ctx.fromUserId)
-            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown;
+            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                'UserIdMissing'
+            );
 
         const isUserAllowed =
             this.allowedUsers.length == 0 ||
             this.allowedUsers.includes(ctx.fromUserId);
 
         if (!isUserAllowed)
-            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown;
+            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                'UserForbidden'
+            );
 
         const lastExecutedDate = moment(state.lastExecutedDate);
         const cooldownInMilliseconds = secondsToMilliseconds(
-            this.cooldownInSeconds
+            this.lastCustomCooldown ?? this.cooldownInfo.seconds
         );
         const onCooldown =
             moment().diff(lastExecutedDate) < cooldownInMilliseconds;
 
-        if (onCooldown) return CommandTriggerCheckResult.DoNotTrigger;
+        if (onCooldown)
+            return CommandTriggerCheckResult.DoNotTrigger('OnCooldown');
 
         const isCustomConditionMet = this.condition(ctx, state);
         if (!isCustomConditionMet)
-            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown;
+            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                'CustomConditionNotMet'
+            );
 
         return this.checkTrigger(ctx, trigger);
     }
@@ -159,12 +187,12 @@ export class CommandAction<TActionState extends IActionState>
         trigger: CommandTrigger
     ) {
         if (trigger == MessageType.Any || trigger == ctx.messageType)
-            return CommandTriggerCheckResult.Trigger;
+            return CommandTriggerCheckResult.Trigger();
 
         if (typeof trigger == 'string')
             return ctx.messageText.toLowerCase() == trigger.toLowerCase()
-                ? CommandTriggerCheckResult.Trigger
-                : CommandTriggerCheckResult.DoNotTrigger;
+                ? CommandTriggerCheckResult.Trigger()
+                : CommandTriggerCheckResult.DoNotTrigger('TriggerNotSatisfied');
 
         const matchResults: RegExpExecArray[] = [];
 

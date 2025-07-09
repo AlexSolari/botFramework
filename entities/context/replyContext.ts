@@ -1,4 +1,4 @@
-import { TelegramEmoji } from 'telegraf/types';
+import { TelegramEmoji, UserFromGetMe } from 'telegraf/types';
 import { ReplyInfo } from '../../dtos/replyInfo';
 import { ImageMessage } from '../../dtos/responses/imageMessage';
 import { Reaction } from '../../dtos/responses/reaction';
@@ -36,6 +36,8 @@ export class ReplyContext<
     fromUserName!: string;
     /** Message object recieved from Telegram */
     messageUpdateObject!: TelegrafContextMessage;
+    /** Bot info from Telegram */
+    botInfo!: UserFromGetMe;
 
     isInitialized = false;
 

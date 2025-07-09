@@ -103,7 +103,8 @@ export class ActionProcessingService {
             api,
             this.telegraf,
             commandActions,
-            verboseLoggingForIncomingMessage ?? false
+            verboseLoggingForIncomingMessage ?? false,
+            botInfo
         );
         this.inlineQueryProcessor.initialize(
             api,

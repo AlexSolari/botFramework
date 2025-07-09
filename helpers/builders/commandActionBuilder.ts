@@ -7,6 +7,7 @@ import { IActionState } from '../../types/actionState';
 import { toArray } from '../toArray';
 import { Noop } from '../noop';
 import { CommandTrigger } from '../../types/commandTrigger';
+import { CooldownInfo } from '../../dtos/cooldownInfo';
 
 /**
  * Builder for `CommandAction` with state represented by `TActionState`
@@ -24,6 +25,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     handler: CommandHandler<TActionState> = Noop.call;
     condition: CommandCondition<TActionState> = Noop.true;
     maxAllowedSimultaniousExecutions: number = 0;
+    cooldownMessage: string | undefined;
 
     /**
      * Builder for `CommandAction` with state represented by `TActionState`
@@ -104,6 +106,15 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
         return this;
     }
 
+    /** Sets action cooldown message.
+     * @param message Message that will be sent if action is on cooldown.
+     */
+    withCooldownMessage(message: string) {
+        this.cooldownMessage = message;
+
+        return this;
+    }
+
     /**
      * Adds a chat to ignore list for this action.
      * @param chatId Chat id to ignore.
@@ -121,7 +132,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
             this.handler,
             this.name,
             this.active,
-            this.cooldownSeconds,
+            new CooldownInfo(this.cooldownSeconds, this.cooldownMessage),
             this.blacklist,
             this.allowedUsers,
             this.maxAllowedSimultaniousExecutions,

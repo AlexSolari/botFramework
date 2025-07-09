@@ -45,7 +45,7 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
             .map((x) => this.checkIfShouldBeExecuted(ctx, x))
             .reduce(
                 (acc, curr) => acc.mergeWith(curr),
-                CommandTriggerCheckResult.DoNotTrigger
+                CommandTriggerCheckResult.DoNotTrigger('Other')
             );
 
         if (!shouldExecute) return Noop.NoResponse;
@@ -65,15 +65,20 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
         trigger: CommandTrigger
     ) {
         if (ctx.replyMessageId != this.parentMessageId)
-            return CommandTriggerCheckResult.DoNotTrigger;
+            return CommandTriggerCheckResult.DoNotTrigger(
+                'TriggerNotSatisfied'
+            );
 
         if (trigger == ctx.messageType)
-            return CommandTriggerCheckResult.Trigger;
+            return CommandTriggerCheckResult.Trigger();
 
         if (typeof trigger == 'string')
             if (ctx.messageText.toLowerCase() == trigger.toLowerCase())
-                return CommandTriggerCheckResult.Trigger;
-            else return CommandTriggerCheckResult.DoNotTrigger;
+                return CommandTriggerCheckResult.Trigger();
+            else
+                return CommandTriggerCheckResult.DoNotTrigger(
+                    'TriggerNotSatisfied'
+                );
 
         const matchResults: RegExpExecArray[] = [];
 

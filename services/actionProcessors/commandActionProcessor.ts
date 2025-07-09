@@ -15,9 +15,11 @@ import {
 } from '../../types/messageTypes';
 import { typeSafeObjectFromEntries } from '../../helpers/objectFromEntries';
 import { BaseActionProcessor } from './baseProcessor';
+import { UserFromGetMe } from 'telegraf/types';
 
 export class CommandActionProcessor extends BaseActionProcessor {
     private readonly replyCaptures: ReplyCaptureAction<IActionState>[] = [];
+    private botInfo!: UserFromGetMe;
 
     private commands = typeSafeObjectFromEntries(
         Object.values(MessageType).map((x) => [
@@ -30,8 +32,10 @@ export class CommandActionProcessor extends BaseActionProcessor {
         api: TelegramApiService,
         telegraf: Telegraf,
         commands: CommandAction<IActionState>[],
-        verboseLoggingForIncomingMessage: boolean
+        verboseLoggingForIncomingMessage: boolean,
+        botInfo: UserFromGetMe
     ) {
+        this.botInfo = botInfo;
         this.initializeDependencies(api);
 
         for (const msgType of Object.values(MessageType)) {
@@ -173,6 +177,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         ctx.action = action;
         ctx.chatInfo = message.chatInfo;
         ctx.traceId = message.traceId;
+        ctx.botInfo = this.botInfo;
 
         ctx.isInitialized = true;
         ctx.matchResults = [];
@@ -207,6 +212,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
         ctx.action = action;
         ctx.chatInfo = message.chatInfo;
         ctx.traceId = message.traceId;
+        ctx.botInfo = this.botInfo;
+        ctx.customCooldown = undefined;
 
         ctx.logger = this.logger.createScope(
             this.botName,
