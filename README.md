@@ -26,13 +26,13 @@ botFramework is a TypeScript library that provides a structured approach to buil
 
 ```bash
 # Using npm
-npm install chz-bot-framework
+npm install chz-telegram-bot
 
 # Using yarn
-yarn add chz-bot-framework
+yarn add chz-telegram-bot
 
 # Using bun
-bun add chz-bot-framework
+bun add chz-telegram-bot
 ```
 
 ## Quick Start
@@ -59,6 +59,7 @@ import {
     startBot,
     stopBots,
     CommandActionBuilder,
+    MessageType,
     Seconds
 } from 'chz-telegram-bot';
 
@@ -66,31 +67,52 @@ import {
 const commands = [
     new CommandActionBuilder('HelloWorld')
         .on('/hello')
-        .do(async (ctx) => {
-            ctx.replyWithText('Hello, world!');
+        .do((ctx) => {
+            ctx.reply.withText('Hello, world!');
+        })
+        .build(),
+
+    new CommandActionBuilder('Welcome')
+        .on(MessageType.NewChatMember)
+        .do((ctx) => {
+            ctx.reply, withText('Welcome to the group!');
         })
         .build()
 ];
 
-// Define scheduled actions (if needed)
-const scheduled = [];
-
 async function main() {
-    // Start the bot
-    startBot({
-        name: 'MyFirstBot',
-        tokenFilePath: './token.txt',
-        commands: commands,
-        scheduled: scheduled,
-        chats: {
-            MyChat: -1001234567890 // Replace with your actual chat ID,
-        },
-        scheduledPeriod: (60 * 5) as Seconds
-    });
+    try {
+        // Start the bot
+        const bot = await startBot({
+            name: 'MyFirstBot',
+            tokenFilePath: './token.txt',
+            commands,
+            scheduled: [], // Add scheduled actions if needed
+            chats: {
+                MyChat: -1001234567890 // Replace with your chat ID
+            },
+            scheduledPeriod: (60 * 5) as Seconds,
+            // Optional settings
+            storagePath: './data',
+            verboseLoggingForIncomingMessage: false
+        });
 
-    // Set up graceful shutdown
-    process.on('SIGINT', () => stopBots('SIGINT'));
-    process.on('SIGTERM', () => stopBots('SIGTERM'));
+        // Proper cleanup on shutdown
+        const cleanup = async (signal: string) => {
+            console.log(`Received ${signal}, cleaning up...`);
+            await stopBots(signal);
+            process.exit(0);
+        };
+
+        process.on('SIGINT', () => cleanup('SIGINT'));
+        process.on('SIGTERM', () => cleanup('SIGTERM'));
+
+        console.log('Bot started successfully!');
+        return bot;
+    } catch (error) {
+        console.error('Failed to start bot:', error);
+        process.exit(1);
+    }
 }
 
 main().catch(console.error);
@@ -113,21 +135,21 @@ import { CommandActionBuilder } from 'chz-telegram-bot';
 
 const myCommand = new CommandActionBuilder('StartCommand')
     .on('/start')
-    .do(async (ctx) => {
-        ctx.replyWithText('Welcome to my bot!');
+    .do((ctx) => {
+        ctx.reply.withText('Welcome to my bot!');
     })
     .build();
 ```
 
-Message types are also can trigger commands:
+Message types can also trigger commands:
 
 ```typescript
 import { CommandActionBuilder, MessageType } from 'chz-telegram-bot';
 
 const myCommand = new CommandActionBuilder('WelcomeMessage')
     .on(MessageType.NewChatMember)
-    .do(async (ctx) => {
-        ctx.replyWithText('Welcome to my group chat!');
+    .do((ctx) => {
+        ctx.reply.withText('Welcome to my group chat!');
     })
     .build();
 ```
@@ -141,38 +163,38 @@ import { ScheduledActionBuilder, Hours } from 'chz-telegram-bot';
 
 const dailyNotification = new ScheduledActionBuilder('GM')
     .runAt(9 as Hours) // Run at 9 AM
-    .do(async (ctx) => {
-        ctx.sendTextToChat('Good morning!');
+    .do((ctx) => {
+        ctx.send.text('Good morning!');
     })
     .build();
 ```
 
 ### Replies and message sending
 
-Depending on a type of action, you will have access to following interaction options:
+Depending on the type of action, you will have access to the following interaction options:
 
-| Method            | Action type | Description                                                  |
-| ----------------- | ----------- | ------------------------------------------------------------ |
-| `sendTextToChat`  | Both        | Send text to chat as a standalone message                    |
-| `sendImageToChat` | Both        | Send image to chat as a standalone message                   |
-| `sendVideoToChat` | Both        | Send video/gif to chat as a standalone message               |
-| `unpinMessage`    | Both        | Unpins message by its ID                                     |
-| `wait`            | Both        | Delays next replies from this action by given amount of ms   |
-| `replyWithText`   | Command     | Replies with text to a message that triggered an action      |
-| `replyWithImage`  | Command     | Replies with image to a message that triggered an action     |
-| `replyWithVideo`  | Command     | Replies with video/gif to a message that triggered an action |
-| `react`           | Command     | Sets an emoji reaction to a message that triggered an action |
+| Method               | Action type | Description                                                  |
+| -------------------- | ----------- | ------------------------------------------------------------ |
+| `send.text`          | Both        | Send text to chat as a standalone message                    |
+| `send.image`         | Both        | Send image to chat as a standalone message                   |
+| `send.video`         | Both        | Send video/gif to chat as a standalone message               |
+| `unpinMessage`       | Both        | Unpins message by its ID                                     |
+| `wait`               | Both        | Delays next replies from this action by given amount of ms   |
+| `reply.withText`     | Command     | Replies with text to a message that triggered an action      |
+| `reply.withImage`    | Command     | Replies with image to a message that triggered an action     |
+| `reply.withVideo`    | Command     | Replies with video/gif to a message that triggered an action |
+| `reply.withReaction` | Command     | Sets an emoji reaction to a message that triggered an action |
 
-Keep in mind that reply sending is deferred until action execution finished and will be done in order of calling in action handler.
-Ex:
+Keep in mind that reply sending is deferred until action execution finishes and will be done in order of calling in the action handler.
+Example:
 
 ```typescript
-ctx.sendTextToChat('Message 1');
+ctx.send.text('Message 1');
 ctx.wait(5000 as Millisecond);
-ctx.sendTextToChat('Message 2');
+ctx.send.text('Message 2');
 ```
 
-This will result in `Message 1` text being send, followed by `Message 2` after 5 second delay.
+This will result in `Message 1` being sent, followed by `Message 2` after a 5 second delay.
 
 ## Configuration Options
 
@@ -182,27 +204,19 @@ When starting a bot, you can provide the following configuration:
 | ----------------- | ------------------------ | --------------------------- | ----------------------------------------------------------------------------------------- |
 | `name`            | `string`                 | Yes                         | Bot name used in logging                                                                  |
 | `tokenFilePath`   | `string`                 | Yes                         | Path to file containing Telegram Bot token                                                |
-| `actions`         |                          | Yes                         | Object containing actions to be executed by bot                                           |
+| `commands`        | `CommandAction[]  `      | Yes (can be empty)          | Collection of command actions                                                             |
+| `scheduled`       | `ScheduledAction[]`      | Yes (can be empty)          | Collection of scheduled actions                                                           |
 | `chats`           | `Record<string, number>` | Yes                         | Object containing chat name-id pairs. Used for logging and execution of scheduled action. |
 | `storagePath`     | `string`                 | No                          | Custom storage path for default JsonFileStorage client                                    |
 | `scheduledPeriod` | `Seconds`                | No (will default to 1 hour) | Period between scheduled action executions                                                |
 | `services`        |                          | No                          | Custom services to be used instead of default ones                                        |
 
-Actions object should have following structure:
-
-| Option          | Type                  | Required           | Description                        |
-| --------------- | --------------------- | ------------------ | ---------------------------------- |
-| `commands`      | `CommandAction[]  `   | Yes (can be empty) | Collection of command actions      |
-| `scheduled`     | `ScheduledAction[]`   | Yes (can be empty) | Collection of scheduled actions    |
-| `inlineQueries` | `InlineQueryAction[]` | Yes (can be empty) | Collection of inline query actions |
-
 Services object should have following structure:
-
-| Option          | Type             | Required                                    | Description                        |
-| --------------- | ---------------- | ------------------------------------------- | ---------------------------------- |
-| `storageClient` | `IStorageClient` | No (will default to `JsonFileStorage`)      | Persistance state provide          |
-| `logger`        | `ILogger`        | No (will default to `JsonLogger`)           | Logger service                     |
-| `scheduler`     | `IScheduler`     | No (will default to `NodeTimeoutScheduler`) | Scheduler used to scheduled action |
+| Option | Type | Required | Description |
+|------------------|--------------------------|----------|---------------------------------------------------------------|
+| `storageClient` | `IStorageClient` | No (will default to `JsonFileStorage`) | Persistance state provide |
+| `logger` | `ILogger` | No (will default to `JsonLogger`) | Logger service |
+| `scheduler` | `IScheduler` | No (will default to `NodeTimeoutScheduler`) | Scheduler used to scheduled action|
 
 ## Advanced Usage
 
@@ -224,7 +238,7 @@ const counterCommand = new CommandActionBuilderWithState<MyCustomState>(
     .on('/count')
     .do(async (ctx, state) => {
         state.counter++;
-        ctx.replyWithText(`Count: ${state.counter}`);
+        ctx.reply.withText(`Count: ${state.counter}`);
     })
     .build();
 ```
@@ -239,15 +253,20 @@ The framework provides support for handling inline queries with type-safe builde
 import { InlineQueryActionBuilder } from 'chz-telegram-bot';
 
 const searchCommand = new InlineQueryActionBuilder('Search')
-    .do(async (ctx) => {
+    .do((ctx) => {
         const query = ctx.queryText;
         // Process the query and return inline results
-        ctx.showInlineQueryResult({
-            id: '1',
-            type: 'article',
-            title: `Search results for: ${query}`,
-            description: 'Click to send'
-        });
+        ctx.showInlineQueryResult([
+            {
+                id: '1',
+                type: 'article',
+                title: `Search results for: ${query}`,
+                description: 'Click to send',
+                input_message_content: {
+                    message_text: `Search result for: ${query}`
+                }
+            }
+        ]);
     })
     .build();
 ```
@@ -257,9 +276,9 @@ const searchCommand = new InlineQueryActionBuilder('Search')
 The framework includes a response processing queue that ensures reliable message delivery and proper ordering of responses:
 
 ```typescript
-ctx.sendTextToChat('First message');
-ctx.sendImageToChat('image.jpg');
-ctx.react('👍');
+await ctx.send.text('First message');
+await ctx.send.image('image');
+await ctx.reply.withReaction('👍');
 ```
 
 All responses are queued and processed in order, ensuring proper sequencing of messages and reactions.
