@@ -149,6 +149,10 @@ export class CommandAction<TActionState extends IActionState>
         trigger: CommandTrigger,
         state: TActionState
     ) {
+        const triggerCheckResult = this.checkTrigger(ctx, trigger);
+
+        if (!triggerCheckResult.shouldExecute) return triggerCheckResult;
+
         if (!ctx.fromUserId)
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
                 'UserIdMissing'
@@ -179,7 +183,7 @@ export class CommandAction<TActionState extends IActionState>
                 'CustomConditionNotMet'
             );
 
-        return this.checkTrigger(ctx, trigger);
+        return triggerCheckResult;
     }
 
     private checkTrigger(
