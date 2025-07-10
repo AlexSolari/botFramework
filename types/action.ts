@@ -1,4 +1,4 @@
-import { BaseContext } from '../entities/context/baseContext';
+import { BaseContextInternal } from '../entities/context/baseContext';
 import { IActionState } from './actionState';
 import { BotResponse } from './response';
 
@@ -11,5 +11,5 @@ export interface IActionWithState<TActionState extends IActionState>
 
 export interface IAction {
     readonly key: ActionKey;
-    exec(ctx: BaseContext<IAction>): Promise<BotResponse[]>;
+    exec(ctx: BaseContextInternal<IAction>): Promise<BotResponse[]>;
 }

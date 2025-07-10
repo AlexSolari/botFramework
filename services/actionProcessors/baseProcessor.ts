@@ -3,7 +3,7 @@ import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { TelegramApiService } from '../telegramApi';
 import { IAction } from '../../types/action';
-import { BaseContext } from '../../entities/context/baseContext';
+import { BaseContextInternal } from '../../entities/context/baseContext';
 
 export abstract class BaseActionProcessor {
     protected readonly storage: IStorageClient;
@@ -29,7 +29,7 @@ export abstract class BaseActionProcessor {
 
     private defaultErrorHandler<TAction extends IAction>(
         error: Error,
-        ctx: BaseContext<TAction>
+        ctx: BaseContextInternal<TAction>
     ) {
         ctx.logger.errorWithTraceId(error, ctx);
     }
@@ -40,7 +40,7 @@ export abstract class BaseActionProcessor {
 
     async executeAction<
         TAction extends IAction,
-        TActionContext extends BaseContext<TAction>
+        TActionContext extends BaseContextInternal<TAction>
     >(
         action: TAction,
         ctx: TActionContext,

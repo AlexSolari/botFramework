@@ -1,7 +1,7 @@
 import moment from 'moment';
 import { ChatInfo } from '../../dtos/chatInfo';
 import { ScheduledAction } from '../../entities/actions/scheduledAction';
-import { ChatContext } from '../../entities/context/chatContext';
+import { ChatContextInternal } from '../../entities/context/chatContext';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { createTrace } from '../../helpers/traceFactory';
 import { IActionState } from '../../types/actionState';
@@ -81,14 +81,17 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
     }
 
     private async runScheduled() {
-        const ctx = new ChatContext<IActionState>(this.storage, this.scheduler);
+        const ctx = new ChatContextInternal<IActionState>(
+            this.storage,
+            this.scheduler
+        );
 
         for (const [chatName, chatId] of Object.entries(this.chats)) {
             for (const scheduledAction of this.scheduled) {
                 this.initializeChatContext(
                     ctx,
                     scheduledAction,
-                    new ChatInfo(chatId, chatName),
+                    new ChatInfo(chatId, chatName, []),
                     createTrace(
                         scheduledAction,
                         this.botName,
@@ -104,7 +107,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
     }
 
     private initializeChatContext(
-        ctx: ChatContext<IActionState>,
+        ctx: ChatContextInternal<IActionState>,
         action: ScheduledAction<IActionState>,
         chatInfo: ChatInfo,
         traceId: TraceId

@@ -6,7 +6,7 @@ import { HoursOfDay } from '../../types/timeValues';
 import { IActionState } from '../../types/actionState';
 import { IActionWithState, ActionKey } from '../../types/action';
 import { CachedStateFactory } from '../cachedStateFactory';
-import { ChatContext } from '../context/chatContext';
+import { ChatContextInternal } from '../context/chatContext';
 import { Noop } from '../../helpers/noop';
 import { IScheduler } from '../../types/scheduler';
 import { getOrSetIfNotExists, getOrThrow } from '../../helpers/mapUtils';
@@ -46,7 +46,7 @@ export class ScheduledAction<TActionState extends IActionState>
         this.stateConstructor = stateConstructor;
     }
 
-    async exec(ctx: ChatContext<TActionState>) {
+    async exec(ctx: ChatContextInternal<TActionState>) {
         if (!ctx.isInitialized)
             throw new Error(
                 `Context for ${this.key} is not initialized or already consumed`

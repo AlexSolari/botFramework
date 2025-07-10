@@ -5,51 +5,46 @@ import { ImageMessage } from '../../dtos/responses/imageMessage';
 import { Reaction } from '../../dtos/responses/reaction';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { VideoMessage } from '../../dtos/responses/videoMessage';
-import { ChatContext } from './chatContext';
+import { ChatContextInternal } from './chatContext';
 import {
     MessageSendingOptions,
     TextMessageSendingOptions
 } from '../../types/messageSendingOptions';
-import {
-    MessageTypeValue,
-    TelegrafContextMessage
-} from '../../types/messageTypes';
 import { ReplyInfo } from '../../dtos/replyInfo';
 import { CommandAction } from '../actions/commandAction';
 import { Seconds } from '../../types/timeValues';
+import { BaseContextPropertiesToOmit } from './baseContext';
+import { MessageInfo } from '../../dtos/messageInfo';
+import { UserInfo } from '../../dtos/userInfo';
+
+export type MessageContext<TActionState extends IActionState> = Omit<
+    MessageContextInternal<TActionState>,
+    BaseContextPropertiesToOmit | 'startCooldown' | 'customCooldown'
+>;
 
 /**
  * Context of action executed in chat, in response to a message
  */
-export class MessageContext<
+export class MessageContextInternal<
     TActionState extends IActionState
-> extends ChatContext<TActionState, CommandAction<TActionState>> {
-    /** Id of a message that triggered this action. */
-    messageId!: number;
-    /** Text of a message that triggered this action. */
-    messageText!: string;
+> extends ChatContextInternal<TActionState, CommandAction<TActionState>> {
+    /** Information about the user that triggered this action */
+    userInfo!: UserInfo;
+    /** Information about the message that triggered this action */
+    messageInfo!: MessageInfo;
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
     matchResults: RegExpMatchArray[] = [];
-    /** Id of a user that sent a message that triggered this action. */
-    fromUserId: number | undefined;
     /** Indicates if cooldown should be started after action is executed. Set to `true` by default. */
     startCooldown: boolean = true;
-    /** Name of a user that sent a message that triggered this action. */
-    fromUserName!: string;
-    /** Type of message being received */
-    messageType!: MessageTypeValue;
-    /** Message object recieved from Telegram */
-    messageUpdateObject!: TelegrafContextMessage;
     /** Bot info from Telegram */
     botInfo!: UserFromGetMe;
-
     customCooldown: Seconds | undefined;
 
     private getQuotePart(quote: boolean | string) {
         return typeof quote == 'boolean'
             ? this.matchResults.length != 0
                 ? this.matchResults[0][1]
-                : this.messageText
+                : this.messageInfo.text
             : quote;
     }
 
@@ -65,7 +60,7 @@ export class MessageContext<
             this.chatInfo,
             this.traceId,
             this.action,
-            new ReplyInfo(this.messageId, quote ? quotedPart : undefined),
+            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
             options
         );
 
@@ -86,7 +81,7 @@ export class MessageContext<
             this.chatInfo,
             this.traceId,
             this.action,
-            new ReplyInfo(this.messageId, quote ? quotedPart : undefined),
+            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
             options
         );
 
@@ -107,13 +102,17 @@ export class MessageContext<
             this.chatInfo,
             this.traceId,
             this.action,
-            new ReplyInfo(this.messageId, quote ? quotedPart : undefined),
+            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
             options
         );
 
         this.responses.push(response);
 
         return this.createCaptureController(response);
+    }
+
+    skipCooldown() {
+        this.startCooldown = false;
     }
 
     startCustomCooldown(customCooldown: Seconds) {
@@ -202,7 +201,7 @@ export class MessageContext<
                 new Reaction(
                     this.traceId,
                     this.chatInfo,
-                    this.messageId,
+                    this.messageInfo.id,
                     emoji,
                     this.action
                 )

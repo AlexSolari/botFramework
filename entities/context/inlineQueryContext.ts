@@ -2,9 +2,17 @@ import { InlineQueryResult } from 'telegraf/types';
 import { BotResponse } from '../../types/response';
 import { InlineQueryAction } from '../actions/inlineQueryAction';
 import { InlineQueryResponse } from '../../dtos/responses/inlineQueryResponse';
-import { BaseContext } from './baseContext';
+import {
+    BaseContextInternal,
+    BaseContextPropertiesToOmit
+} from './baseContext';
 
-export class InlineQueryContext extends BaseContext<InlineQueryAction> {
+export type InlineQueryContext = Omit<
+    InlineQueryContextInternal,
+    BaseContextPropertiesToOmit | 'queryResults' | 'queryId'
+>;
+
+export class InlineQueryContextInternal extends BaseContextInternal<InlineQueryAction> {
     queryResults: InlineQueryResult[] = [];
     /**
      * Abort signal to be utilized in query handler.

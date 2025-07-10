@@ -1,5 +1,10 @@
 import { Seconds } from '../types/timeValues';
 
 export class CooldownInfo {
-    constructor(public seconds: Seconds, public message: string | undefined) {}
+    constructor(
+        /** New one-time cooldown in seconds */
+        readonly seconds: Seconds,
+        /** Cooldown message to be shown */
+        readonly message: string | undefined
+    ) {}
 }

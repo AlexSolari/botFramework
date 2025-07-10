@@ -14,17 +14,28 @@ import { Milliseconds } from '../../types/timeValues';
 import { DelayResponse } from '../../dtos/responses/delay';
 import { ICaptureController } from '../../types/capture';
 import { CommandTrigger } from '../../types/commandTrigger';
-import { ReplyContext } from './replyContext';
-import { BaseContext } from './baseContext';
+import { ReplyContextInternal } from './replyContext';
+import {
+    BaseContextInternal,
+    BaseContextPropertiesToOmit
+} from './baseContext';
 import { ScheduledAction } from '../actions/scheduledAction';
+
+export type ChatContext<
+    TActionState extends IActionState,
+    TAction extends IActionWithState<TActionState> = ScheduledAction<TActionState>
+> = Omit<
+    ChatContextInternal<TActionState, TAction>,
+    BaseContextPropertiesToOmit
+>;
 
 /**
  * Context of action executed in chat.
  */
-export class ChatContext<
+export class ChatContextInternal<
     TActionState extends IActionState,
     TAction extends IActionWithState<TActionState> = ScheduledAction<TActionState>
-> extends BaseContext<TAction> {
+> extends BaseContextInternal<TAction> {
     protected createCaptureController(
         response: IReplyResponse
     ): ICaptureController {
@@ -32,7 +43,7 @@ export class ChatContext<
             captureReplies: (
                 trigger: CommandTrigger[],
                 handler: (
-                    replyContext: ReplyContext<TActionState>
+                    replyContext: ReplyContextInternal<TActionState>
                 ) => Promise<void>,
                 abortController: AbortController
             ) => {

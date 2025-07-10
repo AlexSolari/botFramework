@@ -1,6 +1,6 @@
 import { Noop } from '../../helpers/noop';
 import { ActionKey, IAction } from '../../types/action';
-import { InlineQueryContext } from '../context/inlineQueryContext';
+import { InlineQueryContextInternal } from '../context/inlineQueryContext';
 import { InlineQueryHandler } from '../../types/handlers';
 
 export class InlineQueryAction implements IAction {
@@ -24,7 +24,7 @@ export class InlineQueryAction implements IAction {
         this.key = `inline:${this.name.replace('.', '-')}` as ActionKey;
     }
 
-    async exec(ctx: InlineQueryContext) {
+    async exec(ctx: InlineQueryContextInternal) {
         if (!ctx.isInitialized)
             throw new Error(
                 `Context for ${this.key} is not initialized or already consumed`

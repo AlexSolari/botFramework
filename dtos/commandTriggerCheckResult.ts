@@ -20,22 +20,12 @@ export class CommandTriggerCheckResult {
         return new CommandTriggerCheckResult(true, [], false);
     }
 
-    readonly shouldExecute: boolean;
-    readonly matchResults: RegExpExecArray[];
-    readonly skipCooldown: boolean;
-    readonly reason: SkipTriggerReasons | undefined;
-
     constructor(
-        shouldExecute: boolean,
-        matchResults: RegExpExecArray[],
-        skipCooldown: boolean,
-        reason?: SkipTriggerReasons
-    ) {
-        this.shouldExecute = shouldExecute;
-        this.matchResults = matchResults;
-        this.skipCooldown = skipCooldown;
-        this.reason = reason;
-    }
+        readonly shouldExecute: boolean,
+        readonly matchResults: RegExpExecArray[],
+        readonly skipCooldown: boolean,
+        readonly reason?: SkipTriggerReasons
+    ) {}
 
     mergeWith(other: CommandTriggerCheckResult) {
         return new CommandTriggerCheckResult(

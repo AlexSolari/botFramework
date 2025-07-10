@@ -7,7 +7,17 @@ import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { TraceId } from '../../types/trace';
 
-export abstract class BaseContext<TAction extends IAction> {
+export type BaseContextPropertiesToOmit =
+    | 'action'
+    | 'isInitialized'
+    | 'storage'
+    | 'scheduler'
+    | 'logger'
+    | 'responses'
+    | 'traceId'
+    | 'botName';
+
+export abstract class BaseContextInternal<TAction extends IAction> {
     isInitialized = false;
     private _responses: BotResponse[] = [];
 

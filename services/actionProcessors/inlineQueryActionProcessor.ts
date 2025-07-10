@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { IncomingInlineQuery } from '../../dtos/incomingQuery';
 import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
-import { InlineQueryContext } from '../../entities/context/inlineQueryContext';
+import { InlineQueryContextInternal } from '../../entities/context/inlineQueryContext';
 import { createTrace } from '../../helpers/traceFactory';
 import { Milliseconds } from '../../types/timeValues';
 import { TraceId } from '../../types/trace';
@@ -67,7 +67,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
             this.scheduler.createTask(
                 'InlineQueryProcessing',
                 async () => {
-                    const ctx = new InlineQueryContext(
+                    const ctx = new InlineQueryContextInternal(
                         this.storage,
                         this.scheduler
                     );
@@ -119,7 +119,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
     }
 
     private initializeInlineQueryContext(
-        ctx: InlineQueryContext,
+        ctx: InlineQueryContextInternal,
         queryText: string,
         queryId: string,
         action: InlineQueryAction,

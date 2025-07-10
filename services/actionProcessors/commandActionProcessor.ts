@@ -2,8 +2,8 @@ import { Telegraf } from 'telegraf';
 import { IncomingMessage } from '../../dtos/incomingMessage';
 import { CommandAction } from '../../entities/actions/commandAction';
 import { ReplyCaptureAction } from '../../entities/actions/replyCaptureAction';
-import { MessageContext } from '../../entities/context/messageContext';
-import { ReplyContext } from '../../entities/context/replyContext';
+import { MessageContextInternal } from '../../entities/context/messageContext';
+import { ReplyContextInternal } from '../../entities/context/replyContext';
 import { IActionState } from '../../types/actionState';
 import { TelegramApiService } from '../telegramApi';
 import { IReplyCapture } from '../../types/capture';
@@ -16,10 +16,16 @@ import {
 import { typeSafeObjectFromEntries } from '../../helpers/objectFromEntries';
 import { BaseActionProcessor } from './baseProcessor';
 import { UserFromGetMe } from 'telegraf/types';
+import { getOrSetIfNotExists } from '../../helpers/mapUtils';
+import { MessageInfo } from '../../dtos/messageInfo';
+import { UserInfo } from '../../dtos/userInfo';
+
+const MESSAGE_HISTORY_LENGTH_LIMIT = 100;
 
 export class CommandActionProcessor extends BaseActionProcessor {
     private readonly replyCaptures: ReplyCaptureAction<IActionState>[] = [];
     private botInfo!: UserFromGetMe;
+    private lastMessages = new Map<number, IncomingMessage[]>();
 
     private commands = typeSafeObjectFromEntries(
         Object.values(MessageType).map((x) => [
@@ -67,7 +73,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
             telegraf.on('message', (ctx) => {
                 const msg = new IncomingMessage(
                     ctx.update.message,
-                    this.botName
+                    this.botName,
+                    getOrSetIfNotExists(this.lastMessages, ctx.chat.id, [])
                 );
 
                 const logger = this.logger.createScope(
@@ -127,7 +134,16 @@ export class CommandActionProcessor extends BaseActionProcessor {
         });
     }
     private async processMessage(msg: IncomingMessage) {
-        const ctx = new MessageContext<IActionState>(
+        const messageHistoryArray = getOrSetIfNotExists(
+            this.lastMessages,
+            msg.chatInfo.id,
+            []
+        );
+        if (messageHistoryArray.length > MESSAGE_HISTORY_LENGTH_LIMIT)
+            messageHistoryArray.shift();
+        messageHistoryArray.push(msg);
+
+        const ctx = new MessageContextInternal<IActionState>(
             this.storage,
             this.scheduler
         );
@@ -145,7 +161,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         }
 
         if (this.replyCaptures.length != 0) {
-            const replyCtx = new ReplyContext<IActionState>(
+            const replyCtx = new ReplyContextInternal<IActionState>(
                 this.storage,
                 this.scheduler
             );
@@ -160,19 +176,22 @@ export class CommandActionProcessor extends BaseActionProcessor {
     }
 
     private initializeReplyCaptureContext(
-        ctx: ReplyContext<IActionState>,
+        ctx: ReplyContextInternal<IActionState>,
         action: ReplyCaptureAction<IActionState>,
         message: IncomingMessage
     ) {
         ctx.replyMessageId = message.replyToMessageId;
-        ctx.messageId = message.messageId;
-        ctx.messageText = message.text;
-        ctx.messageType = message.type;
-        ctx.fromUserId = message.from?.id;
-        ctx.fromUserName =
+        ctx.messageInfo = new MessageInfo(
+            message.messageId,
+            message.text,
+            message.type,
+            message.updateObject
+        );
+        ctx.userInfo = new UserInfo(
+            message.from?.id ?? -1,
             (message.from?.first_name ?? 'Unknown user') +
-            (message.from?.last_name ? ` ${message.from.last_name}` : '');
-        ctx.messageUpdateObject = message.updateObject;
+                (message.from?.last_name ? ` ${message.from.last_name}` : '')
+        );
         ctx.botName = this.botName;
         ctx.action = action;
         ctx.chatInfo = message.chatInfo;
@@ -190,18 +209,21 @@ export class CommandActionProcessor extends BaseActionProcessor {
     }
 
     private initializeMessageContext(
-        ctx: MessageContext<IActionState>,
+        ctx: MessageContextInternal<IActionState>,
         action: CommandAction<IActionState>,
         message: IncomingMessage
     ) {
-        ctx.messageId = message.messageId;
-        ctx.messageText = message.text;
-        ctx.messageType = message.type;
-        ctx.fromUserId = message.from?.id;
-        ctx.fromUserName =
+        ctx.messageInfo = new MessageInfo(
+            message.messageId,
+            message.text,
+            message.type,
+            message.updateObject
+        );
+        ctx.userInfo = new UserInfo(
+            message.from?.id ?? -1,
             (message.from?.first_name ?? 'Unknown user') +
-            (message.from?.last_name ? ` ${message.from.last_name}` : '');
-        ctx.messageUpdateObject = message.updateObject;
+                (message.from?.last_name ? ` ${message.from.last_name}` : '')
+        );
 
         ctx.matchResults = [];
         ctx.startCooldown = true;

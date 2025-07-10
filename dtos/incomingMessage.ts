@@ -40,7 +40,11 @@ export class IncomingMessage {
         return MessageType.Unknown;
     }
 
-    constructor(ctxMessage: TelegrafContextMessage, botName: string) {
+    constructor(
+        ctxMessage: TelegrafContextMessage,
+        botName: string,
+        history: IncomingMessage[]
+    ) {
         this.traceId = createTrace(
             this,
             botName,
@@ -62,7 +66,8 @@ export class IncomingMessage {
             ctxMessage.chat.id,
             'title' in ctxMessage.chat
                 ? `${ctxMessage.chat.title} ${ctxMessage.chat.id}`
-                : 'DM'
+                : 'DM',
+            history
         );
         this.type = this.detectMessageType(ctxMessage);
         this.updateObject = ctxMessage;

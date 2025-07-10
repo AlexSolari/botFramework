@@ -9,33 +9,34 @@ import {
     TextMessageSendingOptions,
     MessageSendingOptions
 } from '../../types/messageSendingOptions';
-import {
-    MessageTypeValue,
-    TelegrafContextMessage
-} from '../../types/messageTypes';
 import { ReplyCaptureAction } from '../actions/replyCaptureAction';
 import { resolve } from 'path';
-import { BaseContext } from './baseContext';
+import {
+    BaseContextInternal,
+    BaseContextPropertiesToOmit
+} from './baseContext';
+import { UserInfo } from '../../dtos/userInfo';
+import { MessageInfo } from '../../dtos/messageInfo';
 
-export class ReplyContext<
+export type ReplyContext<TActionState extends IActionState> = Omit<
+    ReplyContextInternal<TActionState>,
+    | BaseContextPropertiesToOmit
+    | 'messageId'
+    | 'startCooldown'
+    | 'customCooldown'
+>;
+
+export class ReplyContextInternal<
     TParentActionState extends IActionState
-> extends BaseContext<ReplyCaptureAction<TParentActionState>> {
+> extends BaseContextInternal<ReplyCaptureAction<TParentActionState>> {
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
     matchResults!: RegExpExecArray[];
     /** Id of a message that triggered this action. */
     replyMessageId!: number | undefined;
-    /** Id of a message that triggered this action. */
-    messageId!: number;
-    /** Type of message being received */
-    messageType!: MessageTypeValue;
-    /** Text of a message that triggered this action. */
-    messageText!: string;
-    /** Id of a user that sent a message that triggered this action. */
-    fromUserId: number | undefined;
-    /** Name of a user that sent a message that triggered this action. */
-    fromUserName!: string;
-    /** Message object recieved from Telegram */
-    messageUpdateObject!: TelegrafContextMessage;
+    /** Information about the user that triggered this action */
+    userInfo!: UserInfo;
+    /** Information about the message that triggered this action */
+    messageInfo!: MessageInfo;
     /** Bot info from Telegram */
     botInfo!: UserFromGetMe;
 
@@ -45,7 +46,7 @@ export class ReplyContext<
         return typeof quote == 'boolean'
             ? this.matchResults.length != 0
                 ? this.matchResults[0][1]
-                : this.messageText
+                : this.messageInfo.text
             : quote;
     }
 
@@ -61,7 +62,7 @@ export class ReplyContext<
             this.chatInfo,
             this.traceId,
             this.action,
-            new ReplyInfo(this.messageId, quote ? quotedPart : undefined),
+            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
             options
         );
 
@@ -80,7 +81,7 @@ export class ReplyContext<
             this.chatInfo,
             this.traceId,
             this.action,
-            new ReplyInfo(this.messageId, quote ? quotedPart : undefined),
+            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
             options
         );
 
@@ -99,7 +100,7 @@ export class ReplyContext<
             this.chatInfo,
             this.traceId,
             this.action,
-            new ReplyInfo(this.messageId, quote ? quotedPart : undefined),
+            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
             options
         );
 
@@ -203,7 +204,7 @@ export class ReplyContext<
                 new Reaction(
                     this.traceId,
                     this.chatInfo,
-                    this.messageId,
+                    this.messageInfo.id,
                     emoji,
                     this.action
                 )

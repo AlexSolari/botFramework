@@ -3,7 +3,7 @@ import { Noop } from '../../helpers/noop';
 import { IActionState } from '../../types/actionState';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { ActionKey, IAction, IActionWithState } from '../../types/action';
-import { ReplyContext } from '../context/replyContext';
+import { ReplyContextInternal } from '../context/replyContext';
 
 export class ReplyCaptureAction<TParentActionState extends IActionState>
     implements IAction
@@ -11,7 +11,7 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
     readonly parentMessageId: number;
     readonly key: ActionKey;
     readonly handler: (
-        replyContext: ReplyContext<TParentActionState>
+        replyContext: ReplyContextInternal<TParentActionState>
     ) => Promise<void>;
     readonly triggers: CommandTrigger[];
     readonly abortController: AbortController;
@@ -20,7 +20,7 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
         parentMessageId: number,
         parentAction: IActionWithState<TParentActionState>,
         handler: (
-            replyContext: ReplyContext<TParentActionState>
+            replyContext: ReplyContextInternal<TParentActionState>
         ) => Promise<void>,
         triggers: CommandTrigger[],
         abortController: AbortController
@@ -35,7 +35,7 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
             .replace('.', '')}` as ActionKey;
     }
 
-    async exec(ctx: ReplyContext<TParentActionState>) {
+    async exec(ctx: ReplyContextInternal<TParentActionState>) {
         if (!ctx.isInitialized)
             throw new Error(
                 `Context for ${this.key} is not initialized or already consumed`
@@ -61,7 +61,7 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
     }
 
     private checkIfShouldBeExecuted(
-        ctx: ReplyContext<TParentActionState>,
+        ctx: ReplyContextInternal<TParentActionState>,
         trigger: CommandTrigger
     ) {
         if (ctx.replyMessageId != this.parentMessageId)
@@ -69,11 +69,11 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
                 'TriggerNotSatisfied'
             );
 
-        if (trigger == ctx.messageType)
+        if (trigger == ctx.messageInfo.type)
             return CommandTriggerCheckResult.Trigger();
 
         if (typeof trigger == 'string')
-            if (ctx.messageText.toLowerCase() == trigger.toLowerCase())
+            if (ctx.messageInfo.text.toLowerCase() == trigger.toLowerCase())
                 return CommandTriggerCheckResult.Trigger();
             else
                 return CommandTriggerCheckResult.DoNotTrigger(
@@ -84,14 +84,14 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
 
         trigger.lastIndex = 0;
 
-        const execResult = trigger.exec(ctx.messageText);
+        const execResult = trigger.exec(ctx.messageInfo.text);
         if (execResult != null) {
             let regexMatchLimit = 100;
             matchResults.push(execResult);
 
             if (trigger.global) {
                 while (regexMatchLimit > 0) {
-                    const nextResult = trigger.exec(ctx.messageText);
+                    const nextResult = trigger.exec(ctx.messageInfo.text);
 
                     if (nextResult == null) break;
 

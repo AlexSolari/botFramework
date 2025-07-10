@@ -6,7 +6,7 @@ import { toArray } from '../../helpers/toArray';
 import { IActionState } from '../../types/actionState';
 import { IActionWithState, ActionKey } from '../../types/action';
 import { CommandTriggerCheckResult } from '../../dtos/commandTriggerCheckResult';
-import { MessageContext } from '../context/messageContext';
+import { MessageContextInternal } from '../context/messageContext';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { Noop } from '../../helpers/noop';
 import { MessageType } from '../../types/messageTypes';
@@ -66,7 +66,7 @@ export class CommandAction<TActionState extends IActionState>
         this.key = `command:${this.name.replace('.', '-')}` as ActionKey;
     }
 
-    async exec(ctx: MessageContext<TActionState>) {
+    async exec(ctx: MessageContextInternal<TActionState>) {
         if (!ctx.isInitialized)
             throw new Error(
                 `Context for ${this.key} is not initialized or already consumed`
@@ -108,7 +108,7 @@ export class CommandAction<TActionState extends IActionState>
                             ctx.chatInfo,
                             ctx.traceId,
                             this,
-                            new ReplyInfo(ctx.messageId)
+                            new ReplyInfo(ctx.messageInfo.id)
                         )
                     ];
 
@@ -145,7 +145,7 @@ export class CommandAction<TActionState extends IActionState>
     }
 
     private checkIfShouldBeExecuted(
-        ctx: MessageContext<TActionState>,
+        ctx: MessageContextInternal<TActionState>,
         trigger: CommandTrigger,
         state: TActionState
     ) {
@@ -153,14 +153,14 @@ export class CommandAction<TActionState extends IActionState>
 
         if (!triggerCheckResult.shouldExecute) return triggerCheckResult;
 
-        if (!ctx.fromUserId)
+        if (!ctx.userInfo.id)
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
                 'UserIdMissing'
             );
 
         const isUserAllowed =
             this.allowedUsers.length == 0 ||
-            this.allowedUsers.includes(ctx.fromUserId);
+            this.allowedUsers.includes(ctx.userInfo.id);
 
         if (!isUserAllowed)
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
@@ -187,14 +187,14 @@ export class CommandAction<TActionState extends IActionState>
     }
 
     private checkTrigger(
-        ctx: MessageContext<TActionState>,
+        ctx: MessageContextInternal<TActionState>,
         trigger: CommandTrigger
     ) {
-        if (trigger == MessageType.Any || trigger == ctx.messageType)
+        if (trigger == MessageType.Any || trigger == ctx.messageInfo.type)
             return CommandTriggerCheckResult.Trigger();
 
         if (typeof trigger == 'string')
-            return ctx.messageText.toLowerCase() == trigger.toLowerCase()
+            return ctx.messageInfo.text.toLowerCase() == trigger.toLowerCase()
                 ? CommandTriggerCheckResult.Trigger()
                 : CommandTriggerCheckResult.DoNotTrigger('TriggerNotSatisfied');
 
@@ -202,14 +202,14 @@ export class CommandAction<TActionState extends IActionState>
 
         trigger.lastIndex = 0;
 
-        const execResult = trigger.exec(ctx.messageText);
+        const execResult = trigger.exec(ctx.messageInfo.text);
         if (execResult != null) {
             let regexMatchLimit = 100;
             matchResults.push(execResult);
 
             if (trigger.global) {
                 while (regexMatchLimit > 0) {
-                    const nextResult = trigger.exec(ctx.messageText);
+                    const nextResult = trigger.exec(ctx.messageInfo.text);
 
                     if (nextResult == null) break;
 
