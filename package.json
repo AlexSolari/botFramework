@@ -1,6 +1,20 @@
 {
     "name": "chz-telegram-bot",
-    "version": "0.3.15",
+    "description": "Opinionated TypeScript framework that provides a structured approach to building Telegram bots.",
+    "author": {
+        "name": "Alex Halanin",
+        "url": "https://github.com/AlexSolari"
+    },
+    "license": "MIT",
+    "keywords": [
+        "telegram",
+        "telegram bot"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/AlexSolari/botFramework.git"
+    },
+    "version": "0.3.16",
     "type": "module",
     "dependencies": {
         "async-sema": "^3.1.1",
