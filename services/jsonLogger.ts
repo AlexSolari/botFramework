@@ -62,10 +62,14 @@ export class JsonLogger implements ILogger {
         errorObj: unknown,
         extraData?: unknown
     ) {
+        const dataString = extraData
+            ? `,"extraData":${JSON.stringify(extraData)}`
+            : '';
+
         console.error(
             `{"botName":"${botName}","traceId":"${traceId}","chatName":"${chatName}","error":${this.serializeError(
                 errorObj
-            )}${extraData ? `,"extraData":${JSON.stringify(extraData)}` : ''}}`
+            )}${dataString}}`
         );
     }
 }

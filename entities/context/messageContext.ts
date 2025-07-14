@@ -41,11 +41,11 @@ export class MessageContextInternal<
     customCooldown: Seconds | undefined;
 
     private getQuotePart(quote: boolean | string) {
-        return typeof quote == 'boolean'
-            ? this.matchResults.length != 0
-                ? this.matchResults[0][1]
-                : this.messageInfo.text
-            : quote;
+        if (typeof quote != 'boolean') return quote;
+
+        return this.matchResults.length != 0
+            ? this.matchResults[0][1]
+            : this.messageInfo.text;
     }
 
     private replyWithText(

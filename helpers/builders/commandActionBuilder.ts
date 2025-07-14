@@ -138,7 +138,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
             this.maxAllowedSimultaniousExecutions,
             this.condition,
             this.stateConstructor,
-            this.readmeFactory != null ? this.readmeFactory : (_) => ''
+            this.readmeFactory ?? Noop.emptyString
         );
     }
 }

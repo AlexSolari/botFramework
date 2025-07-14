@@ -73,12 +73,9 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
             return CommandTriggerCheckResult.Trigger();
 
         if (typeof trigger == 'string')
-            if (ctx.messageInfo.text.toLowerCase() == trigger.toLowerCase())
-                return CommandTriggerCheckResult.Trigger();
-            else
-                return CommandTriggerCheckResult.DoNotTrigger(
-                    'TriggerNotSatisfied'
-                );
+            return ctx.messageInfo.text.toLowerCase() == trigger.toLowerCase()
+                ? CommandTriggerCheckResult.Trigger()
+                : CommandTriggerCheckResult.DoNotTrigger('TriggerNotSatisfied');
 
         const matchResults: RegExpExecArray[] = [];
 

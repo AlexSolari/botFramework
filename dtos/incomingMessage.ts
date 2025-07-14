@@ -56,12 +56,7 @@ export class IncomingMessage {
                 ? ctxMessage.reply_to_message?.message_id
                 : undefined;
         this.from = ctxMessage.from;
-        this.text =
-            'text' in ctxMessage
-                ? ctxMessage.text
-                : 'caption' in ctxMessage
-                ? ctxMessage.caption ?? ''
-                : '';
+        this.text = this.getMessageText(ctxMessage);
         this.chatInfo = new ChatInfo(
             ctxMessage.chat.id,
             'title' in ctxMessage.chat
@@ -71,5 +66,11 @@ export class IncomingMessage {
         );
         this.type = this.detectMessageType(ctxMessage);
         this.updateObject = ctxMessage;
+    }
+
+    private getMessageText(ctxMessage: TelegrafContextMessage) {
+        if ('text' in ctxMessage) return ctxMessage.text;
+
+        return 'caption' in ctxMessage ? ctxMessage.caption ?? '' : '';
     }
 }

@@ -24,8 +24,8 @@ const MESSAGE_HISTORY_LENGTH_LIMIT = 100;
 
 export class CommandActionProcessor extends BaseActionProcessor {
     private readonly replyCaptures: ReplyCaptureAction<IActionState>[] = [];
+    private readonly chatHistory = new Map<number, IncomingMessage[]>();
     private botInfo!: UserFromGetMe;
-    private lastMessages = new Map<number, IncomingMessage[]>();
 
     private commands = typeSafeObjectFromEntries(
         Object.values(MessageType).map((x) => [
@@ -74,7 +74,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
                 const msg = new IncomingMessage(
                     ctx.update.message,
                     this.botName,
-                    getOrSetIfNotExists(this.lastMessages, ctx.chat.id, [])
+                    getOrSetIfNotExists(this.chatHistory, ctx.chat.id, [])
                 );
 
                 const logger = this.logger.createScope(
@@ -89,7 +89,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
                     logger.logWithTraceId(
                         `${msg.from?.first_name ?? 'Unknown'} (${
                             msg.from?.id ?? 'Unknown'
-                        }): ${msg.text || `<non-text message: ${msg.type}>`}`
+                        }): ${msg.text || msg.type}`
                     );
                 }
 
@@ -133,15 +133,17 @@ export class CommandActionProcessor extends BaseActionProcessor {
             );
         });
     }
+
     private async processMessage(msg: IncomingMessage) {
-        const messageHistoryArray = getOrSetIfNotExists(
-            this.lastMessages,
+        const chatHistoryArray = getOrSetIfNotExists(
+            this.chatHistory,
             msg.chatInfo.id,
             []
         );
-        if (messageHistoryArray.length > MESSAGE_HISTORY_LENGTH_LIMIT)
-            messageHistoryArray.shift();
-        messageHistoryArray.push(msg);
+
+        while (chatHistoryArray.length > MESSAGE_HISTORY_LENGTH_LIMIT)
+            chatHistoryArray.shift();
+        chatHistoryArray.push(msg);
 
         const ctx = new MessageContextInternal<IActionState>(
             this.storage,
