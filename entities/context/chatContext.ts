@@ -14,7 +14,7 @@ import { Milliseconds } from '../../types/timeValues';
 import { DelayResponse } from '../../dtos/responses/delay';
 import { ICaptureController } from '../../types/capture';
 import { CommandTrigger } from '../../types/commandTrigger';
-import { ReplyContextInternal } from './replyContext';
+import { ReplyContext } from './replyContext';
 import {
     BaseContextInternal,
     BaseContextPropertiesToOmit
@@ -43,7 +43,7 @@ export class ChatContextInternal<
             captureReplies: (
                 trigger: CommandTrigger[],
                 handler: (
-                    replyContext: ReplyContextInternal<TActionState>
+                    replyContext: ReplyContext<TActionState>
                 ) => Promise<void>,
                 abortController: AbortController
             ) => {

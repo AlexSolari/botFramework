@@ -1,4 +1,7 @@
-import { ReplyContextInternal } from '../entities/context/replyContext';
+import {
+    ReplyContext,
+    ReplyContextInternal
+} from '../entities/context/replyContext';
 import { IActionState } from './actionState';
 import { CommandTrigger } from './commandTrigger';
 import { IActionWithState } from './action';
@@ -13,7 +16,7 @@ export interface ICaptureController {
         trigger: CommandTrigger[],
         /** Callback that will be called on trigger */
         handler: (
-            replyContext: ReplyContextInternal<TParentActionState>
+            replyContext: ReplyContext<TParentActionState>
         ) => Promise<void>,
         /** Abort controller to abort capturing manually */
         abortController: AbortController
