@@ -15,3 +15,4 @@ export { ChatContext } from './entities/context/chatContext';
 export { InlineQueryContext } from './entities/context/inlineQueryContext';
 export { MessageContext } from './entities/context/messageContext';
 export { ReplyContext } from './entities/context/replyContext';
+export { ICaptureController } from './types/capture';
