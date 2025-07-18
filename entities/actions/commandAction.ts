@@ -155,7 +155,7 @@ export class CommandAction<TActionState extends IActionState>
 
         const isChatInBlacklist = this.chatsBlacklist.includes(ctx.chatInfo.id);
         const isChatInWhitelist =
-            this.chatsWhitelist.length != 0 &&
+            this.chatsWhitelist.length == 0 ||
             this.chatsWhitelist.includes(ctx.chatInfo.id);
 
         if (isChatInBlacklist || !isChatInWhitelist)
