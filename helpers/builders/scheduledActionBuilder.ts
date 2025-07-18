@@ -12,14 +12,17 @@ import { Noop } from '../noop';
 export class ScheduledActionBuilderWithState<
     TActionState extends IActionState
 > {
-    active = true;
-    time: HoursOfDay = 0;
-    cachedStateFactories = new Map<string, CachedStateFactory>();
-    whitelist: number[] = [];
-    stateConstructor: () => TActionState;
-    handler: ScheduledHandler<TActionState> = Noop.call;
+    private active = true;
+    private time: HoursOfDay = 0;
+    private readonly cachedStateFactories = new Map<
+        string,
+        CachedStateFactory
+    >();
+    private whitelist: number[] = [];
+    private readonly stateConstructor: () => TActionState;
+    private handler: ScheduledHandler<TActionState> = Noop.call;
 
-    name: string;
+    private readonly name: string;
 
     /**
      * Builder for `ScheduledAction` with state represented by `TActionState`
@@ -32,11 +35,11 @@ export class ScheduledActionBuilderWithState<
     }
 
     /**
-     * Adds a chat to whitelist for this action.
-     * @param chatId Chat id to execute in.
+     * Sets whitelist for this action.
+     * @param chatIds Chat ids to execute in.
      */
-    allowIn(chatId: number) {
-        this.whitelist.push(chatId);
+    in(chatIds: number[]) {
+        this.whitelist = chatIds;
 
         return this;
     }

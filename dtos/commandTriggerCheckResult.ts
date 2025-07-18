@@ -4,7 +4,9 @@ const _SkipTriggerReasonsObject = {
     OnCooldown: 'OnCooldown',
     CustomConditionNotMet: 'CustomConditionNotMet',
     TriggerNotSatisfied: 'TriggerNotSatisfied',
-    Other: 'Other'
+    Other: 'Other',
+    ActionDisabled: 'ActionDisabled',
+    ChatForbidden: 'ChatForbidden'
 } as const;
 
 export type SkipTriggerReasons = keyof typeof _SkipTriggerReasonsObject;

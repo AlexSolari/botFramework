@@ -16,6 +16,7 @@ import { CooldownInfo } from '../../dtos/cooldownInfo';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { ReplyInfo } from '../../dtos/replyInfo';
 import { Seconds } from '../../types/timeValues';
+import { ActionPermissionsData } from '../../dtos/actionPermissionsData';
 
 export class CommandAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
@@ -28,14 +29,15 @@ export class CommandAction<TActionState extends IActionState>
     readonly cooldownInfo: CooldownInfo;
     readonly active: boolean;
     readonly chatsBlacklist: number[];
-    readonly allowedUsers: number[];
+    readonly chatsWhitelist: number[];
+    readonly usersWhitelist: number[];
     readonly condition: CommandCondition<TActionState>;
     readonly stateConstructor: () => TActionState;
     readonly key: ActionKey;
     readonly readmeFactory: (botName: string) => string;
     readonly maxAllowedSimultaniousExecutions: number;
 
-    lastCustomCooldown: Seconds | undefined;
+    private lastCustomCooldown: Seconds | undefined;
 
     constructor(
         trigger: CommandTrigger | CommandTrigger[],
@@ -43,8 +45,7 @@ export class CommandAction<TActionState extends IActionState>
         name: string,
         active: boolean,
         cooldownInfo: CooldownInfo,
-        chatsBlacklist: number[],
-        allowedUsers: number[],
+        permissionsData: ActionPermissionsData,
         maxAllowedSimultaniousExecutions: number,
         condition: CommandCondition<TActionState>,
         stateConstructor: () => TActionState,
@@ -55,8 +56,9 @@ export class CommandAction<TActionState extends IActionState>
         this.name = name;
         this.cooldownInfo = cooldownInfo;
         this.active = active;
-        this.chatsBlacklist = chatsBlacklist;
-        this.allowedUsers = allowedUsers;
+        this.chatsBlacklist = permissionsData.chatIdsBlacklist;
+        this.chatsWhitelist = permissionsData.chatIdsWhitelist;
+        this.usersWhitelist = permissionsData.userIdsWhitelist;
         this.condition = condition;
         this.stateConstructor = stateConstructor;
         this.readmeFactory = readmeFactory;
@@ -71,9 +73,6 @@ export class CommandAction<TActionState extends IActionState>
             throw new Error(
                 `Context for ${this.key} is not initialized or already consumed`
             );
-
-        if (!this.active || this.chatsBlacklist.includes(ctx.chatInfo.id))
-            return Noop.NoResponse;
 
         let lock: Semaphore | undefined;
         if (this.maxAllowedSimultaniousExecutions != 0) {
@@ -149,6 +148,21 @@ export class CommandAction<TActionState extends IActionState>
         trigger: CommandTrigger,
         state: TActionState
     ) {
+        if (!this.active)
+            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                'ActionDisabled'
+            );
+
+        const isChatInBlacklist = this.chatsBlacklist.includes(ctx.chatInfo.id);
+        const isChatInWhitelist =
+            this.chatsWhitelist.length != 0 &&
+            this.chatsWhitelist.includes(ctx.chatInfo.id);
+
+        if (isChatInBlacklist || !isChatInWhitelist)
+            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                'ChatForbidden'
+            );
+
         const triggerCheckResult = this.checkTrigger(ctx, trigger);
 
         if (!triggerCheckResult.shouldExecute) return triggerCheckResult;
@@ -159,8 +173,8 @@ export class CommandAction<TActionState extends IActionState>
             );
 
         const isUserAllowed =
-            this.allowedUsers.length == 0 ||
-            this.allowedUsers.includes(ctx.userInfo.id);
+            this.usersWhitelist.length == 0 ||
+            this.usersWhitelist.includes(ctx.userInfo.id);
 
         if (!isUserAllowed)
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(

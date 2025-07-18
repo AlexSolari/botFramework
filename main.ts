@@ -6,8 +6,8 @@ import { BotInstance } from './entities/botInstance';
 import { Seconds } from './types/timeValues';
 import { IScheduler } from './types/scheduler';
 import { ILogger } from './types/logger';
-import { ActionStateBase } from './entities/states/actionStateBase';
 import { InlineQueryAction } from './entities/actions/inlineQueryAction';
+import { IActionState } from './types/actionState';
 
 class BotOrchestrator {
     bots: BotInstance[] = [];
@@ -22,9 +22,9 @@ class BotOrchestrator {
         tokenFilePath: string;
         actions: {
             /** Collection of actions that will be executed as a response to message from used. Created using `CommandActionBuilder`.*/
-            commands: CommandAction<ActionStateBase>[];
+            commands: CommandAction<IActionState>[];
             /** Collection of actions that will be executed on timer. Created using `ScheduledActionBuilder`.*/
-            scheduled: ScheduledAction<ActionStateBase>[];
+            scheduled: ScheduledAction<IActionState>[];
             /** Collection of actions that will handle inline queries */
             inlineQueries: InlineQueryAction[];
         };

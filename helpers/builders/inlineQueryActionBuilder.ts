@@ -1,5 +1,4 @@
 import { InlineQueryHandler } from '../../types/handlers';
-import { Seconds } from '../../types/timeValues';
 import { Noop } from '../noop';
 import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
 
@@ -7,14 +6,11 @@ import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
  * Builder for `InlineQueryAction`
  */
 export class InlineQueryActionBuilder {
-    name: string;
-    pattern: RegExp = /.+/gi;
+    private readonly name: string;
+    private pattern: RegExp = /.+/gi;
 
-    active = true;
-    cooldownSeconds: Seconds = 0 as Seconds;
-    blacklist: number[] = [];
-    allowedUsers: number[] = [];
-    handler: InlineQueryHandler = Noop.call;
+    private active = true;
+    private handler: InlineQueryHandler = Noop.call;
 
     /**
      * Builder for `InlineQueryAction`

@@ -8,24 +8,26 @@ import { toArray } from '../toArray';
 import { Noop } from '../noop';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { CooldownInfo } from '../../dtos/cooldownInfo';
+import { ActionPermissionsData } from '../../dtos/actionPermissionsData';
 
 /**
  * Builder for `CommandAction` with state represented by `TActionState`
  */
 export class CommandActionBuilderWithState<TActionState extends IActionState> {
-    name: string;
-    trigger: CommandTrigger | CommandTrigger[] = [];
+    private readonly name: string;
+    private trigger: CommandTrigger | CommandTrigger[] = [];
 
-    active = true;
-    readmeFactory: null | ((botName: string) => string) = null;
-    cooldownSeconds: Seconds = 0 as Seconds;
-    blacklist: number[] = [];
-    allowedUsers: number[] = [];
-    stateConstructor: () => TActionState;
-    handler: CommandHandler<TActionState> = Noop.call;
-    condition: CommandCondition<TActionState> = Noop.true;
-    maxAllowedSimultaniousExecutions: number = 0;
-    cooldownMessage: string | undefined;
+    private active = true;
+    private cooldownSeconds: Seconds = 0 as Seconds;
+    private blacklist: number[] = [];
+    private whitelist: number[] = [];
+    private allowedUsers: number[] = [];
+    private readmeFactory: (botName: string) => string = Noop.emptyString;
+    private readonly stateConstructor: () => TActionState;
+    private handler: CommandHandler<TActionState> = Noop.call;
+    private condition: CommandCondition<TActionState> = Noop.true;
+    private maxAllowedSimultaniousExecutions: number = 0;
+    private cooldownMessage: string | undefined;
 
     /**
      * Builder for `CommandAction` with state represented by `TActionState`
@@ -58,6 +60,26 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
         return this;
     }
 
+    /**
+     * Sets chats whitelist for this action.
+     * @param chatIds Chats ids to allow.
+     */
+    in(chatIds: number[]) {
+        this.whitelist = chatIds;
+
+        return this;
+    }
+
+    /**
+     * Sets chats blacklist for this action.
+     * @param chatIds Chats ids to ignore.
+     */
+    notIn(chatIds: number[]) {
+        this.blacklist = chatIds;
+
+        return this;
+    }
+
     /** Defines action logic itself, will be executed on trigger.
      * @param handler Callback that will be called on trigger
      */
@@ -76,6 +98,10 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
         return this;
     }
 
+    /**
+     * Sets factory method for readme (shown on /help) for this action.
+     * @param readmeFactory readme factory
+     */
     withHelp(readmeFactory: (botName: string) => string) {
         this.readmeFactory = readmeFactory;
 
@@ -90,37 +116,19 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     }
 
     /** Sets maximum number of simultaniously executing handlers for this command per chat. 0 is treated as unlimited. */
-    ratelimit(maxAllowedSimultaniousExecutions: number) {
+    withRatelimit(maxAllowedSimultaniousExecutions: number) {
         this.maxAllowedSimultaniousExecutions =
             maxAllowedSimultaniousExecutions;
 
         return this;
     }
 
-    /** Sets action cooldown.
-     * @param seconds Cooldown in seconds.
+    /** Sets action cooldown settings.
+     * @param cooldownSettings Settings.
      */
-    cooldown(seconds: Seconds) {
-        this.cooldownSeconds = seconds;
-
-        return this;
-    }
-
-    /** Sets action cooldown message.
-     * @param message Message that will be sent if action is on cooldown.
-     */
-    withCooldownMessage(message: string) {
-        this.cooldownMessage = message;
-
-        return this;
-    }
-
-    /**
-     * Adds a chat to ignore list for this action.
-     * @param chatId Chat id to ignore.
-     */
-    ignoreChat(chatId: number) {
-        this.blacklist.push(chatId);
+    withCooldown(cooldownSettings: { seconds: Seconds; message?: string }) {
+        this.cooldownSeconds = cooldownSettings.seconds;
+        this.cooldownMessage = cooldownSettings.message;
 
         return this;
     }
@@ -133,12 +141,15 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
             this.name,
             this.active,
             new CooldownInfo(this.cooldownSeconds, this.cooldownMessage),
-            this.blacklist,
-            this.allowedUsers,
+            new ActionPermissionsData(
+                this.allowedUsers,
+                this.whitelist,
+                this.blacklist
+            ),
             this.maxAllowedSimultaniousExecutions,
             this.condition,
             this.stateConstructor,
-            this.readmeFactory ?? Noop.emptyString
+            this.readmeFactory
         );
     }
 }
