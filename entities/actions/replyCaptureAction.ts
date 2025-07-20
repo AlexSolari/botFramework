@@ -2,7 +2,7 @@ import { CommandTriggerCheckResult } from '../../dtos/commandTriggerCheckResult'
 import { Noop } from '../../helpers/noop';
 import { IActionState } from '../../types/actionState';
 import { CommandTrigger } from '../../types/commandTrigger';
-import { ActionKey, IAction, IActionWithState } from '../../types/action';
+import { ActionKey, IAction } from '../../types/action';
 import { ReplyContextInternal } from '../context/replyContext';
 
 export class ReplyCaptureAction<TParentActionState extends IActionState>
@@ -18,7 +18,7 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
 
     constructor(
         parentMessageId: number,
-        parentAction: IActionWithState<TParentActionState>,
+        parentAction: IAction,
         handler: (
             replyContext: ReplyContextInternal<TParentActionState>
         ) => Promise<void>,

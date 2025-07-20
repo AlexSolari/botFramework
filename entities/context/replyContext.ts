@@ -17,6 +17,9 @@ import {
 } from './baseContext';
 import { UserInfo } from '../../dtos/userInfo';
 import { MessageInfo } from '../../dtos/messageInfo';
+import { ICaptureController } from '../../types/capture';
+import { CommandTrigger } from '../../types/commandTrigger';
+import { IReplyResponse } from '../../types/response';
 
 export type ReplyContext<TActionState extends IActionState> = Omit<
     ReplyContextInternal<TActionState>,
@@ -29,6 +32,27 @@ export type ReplyContext<TActionState extends IActionState> = Omit<
 export class ReplyContextInternal<
     TParentActionState extends IActionState
 > extends BaseContextInternal<ReplyCaptureAction<TParentActionState>> {
+    protected createCaptureController(
+        response: IReplyResponse
+    ): ICaptureController {
+        return {
+            captureReplies: (
+                trigger: CommandTrigger[],
+                handler: (
+                    replyContext: ReplyContext<TParentActionState>
+                ) => Promise<void>,
+                abortController: AbortController
+            ) => {
+                response.captures.push({
+                    trigger,
+                    handler,
+                    abortController,
+                    action: this.action
+                });
+            }
+        };
+    }
+
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
     matchResults!: RegExpExecArray[];
     /** Id of a message that triggered this action. */
@@ -67,6 +91,8 @@ export class ReplyContextInternal<
         );
 
         this.responses.push(response);
+
+        return this.createCaptureController(response);
     }
 
     private replyWithImage(
@@ -86,6 +112,8 @@ export class ReplyContextInternal<
         );
 
         this.responses.push(response);
+
+        return this.createCaptureController(response);
     }
 
     private replyWithVideo(
@@ -105,6 +133,8 @@ export class ReplyContextInternal<
         );
 
         this.responses.push(response);
+
+        return this.createCaptureController(response);
     }
 
     /**
@@ -134,7 +164,7 @@ export class ReplyContextInternal<
                 quote?: string,
                 options?: TextMessageSendingOptions
             ) => {
-                this.replyWithText(text, quote ?? true, options);
+                return this.replyWithText(text, quote ?? true, options);
             },
             /**
              * Reply with image message to message that triggered this action after action execution is finished.
@@ -147,7 +177,7 @@ export class ReplyContextInternal<
                 quote?: string,
                 options?: MessageSendingOptions
             ) => {
-                this.replyWithImage(name, quote ?? true, options);
+                return this.replyWithImage(name, quote ?? true, options);
             },
 
             /**
@@ -161,7 +191,7 @@ export class ReplyContextInternal<
                 quote?: string,
                 options?: MessageSendingOptions
             ) => {
-                this.replyWithVideo(name, quote ?? true, options);
+                return this.replyWithVideo(name, quote ?? true, options);
             }
         },
 
@@ -172,7 +202,7 @@ export class ReplyContextInternal<
          * @param options Message sending option.
          */
         withText: (text: string, options?: TextMessageSendingOptions) => {
-            this.replyWithText(text, false, options);
+            return this.replyWithText(text, false, options);
         },
         /**
          * Reply with image message to message that triggered this action after action execution is finished.
@@ -181,7 +211,7 @@ export class ReplyContextInternal<
          * @param options Message sending option.
          */
         withImage: (name: string, options?: MessageSendingOptions) => {
-            this.replyWithImage(name, false, options);
+            return this.replyWithImage(name, false, options);
         },
 
         /**
@@ -191,7 +221,7 @@ export class ReplyContextInternal<
          * @param options Message sending option.
          */
         withVideo: (name: string, options?: MessageSendingOptions) => {
-            this.replyWithVideo(name, false, options);
+            return this.replyWithVideo(name, false, options);
         },
 
         /**
