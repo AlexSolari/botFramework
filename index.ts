@@ -16,3 +16,6 @@ export { InlineQueryContext } from './entities/context/inlineQueryContext';
 export { MessageContext } from './entities/context/messageContext';
 export { ReplyContext } from './entities/context/replyContext';
 export { ICaptureController } from './types/capture';
+export { ChatInfo } from './dtos/chatInfo';
+export { MessageInfo } from './dtos/messageInfo';
+export { UserInfo } from './dtos/userInfo';
