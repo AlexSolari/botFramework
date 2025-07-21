@@ -9,12 +9,8 @@ import {
 } from '../../types/messageSendingOptions';
 import { IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
-import { IReplyResponse } from '../../types/response';
 import { Milliseconds } from '../../types/timeValues';
 import { DelayResponse } from '../../dtos/responses/delay';
-import { ICaptureController } from '../../types/capture';
-import { CommandTrigger } from '../../types/commandTrigger';
-import { ReplyContext } from './replyContext';
 import {
     BaseContextInternal,
     BaseContextPropertiesToOmit
@@ -36,27 +32,6 @@ export class ChatContextInternal<
     TActionState extends IActionState,
     TAction extends IActionWithState<TActionState> = ScheduledAction<TActionState>
 > extends BaseContextInternal<TAction> {
-    protected createCaptureController(
-        response: IReplyResponse
-    ): ICaptureController {
-        return {
-            captureReplies: (
-                trigger: CommandTrigger[],
-                handler: (
-                    replyContext: ReplyContext<TActionState>
-                ) => Promise<void>,
-                abortController: AbortController
-            ) => {
-                response.captures.push({
-                    trigger,
-                    handler,
-                    abortController,
-                    action: this.action
-                });
-            }
-        };
-    }
-
     /**
      * Collection of actions that send something to chat as a standalone message.
      */

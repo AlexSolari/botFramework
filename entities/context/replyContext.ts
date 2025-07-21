@@ -17,9 +17,6 @@ import {
 } from './baseContext';
 import { UserInfo } from '../../dtos/userInfo';
 import { MessageInfo } from '../../dtos/messageInfo';
-import { ICaptureController } from '../../types/capture';
-import { CommandTrigger } from '../../types/commandTrigger';
-import { IReplyResponse } from '../../types/response';
 
 export type ReplyContext<TActionState extends IActionState> = Omit<
     ReplyContextInternal<TActionState>,
@@ -32,27 +29,6 @@ export type ReplyContext<TActionState extends IActionState> = Omit<
 export class ReplyContextInternal<
     TParentActionState extends IActionState
 > extends BaseContextInternal<ReplyCaptureAction<TParentActionState>> {
-    protected createCaptureController(
-        response: IReplyResponse
-    ): ICaptureController {
-        return {
-            captureReplies: (
-                trigger: CommandTrigger[],
-                handler: (
-                    replyContext: ReplyContext<TParentActionState>
-                ) => Promise<void>,
-                abortController: AbortController
-            ) => {
-                response.captures.push({
-                    trigger,
-                    handler,
-                    abortController,
-                    action: this.action
-                });
-            }
-        };
-    }
-
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
     matchResults!: RegExpExecArray[];
     /** Id of a message that triggered this action. */

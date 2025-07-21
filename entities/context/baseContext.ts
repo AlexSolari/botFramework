@@ -1,11 +1,14 @@
 import { ChatInfo } from '../../dtos/chatInfo';
 import { IAction, IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
+import { ICaptureController } from '../../types/capture';
+import { CommandTrigger } from '../../types/commandTrigger';
 import { IScopedLogger } from '../../types/logger';
-import { BotResponse } from '../../types/response';
+import { BotResponse, IReplyResponse } from '../../types/response';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { TraceId } from '../../types/trace';
+import { ReplyContext } from './replyContext';
 
 export type BaseContextPropertiesToOmit =
     | 'action'
@@ -46,6 +49,27 @@ export abstract class BaseContextInternal<TAction extends IAction> {
     constructor(storage: IStorageClient, scheduler: IScheduler) {
         this.storage = storage;
         this.scheduler = scheduler;
+    }
+
+    protected createCaptureController(
+        response: IReplyResponse
+    ): ICaptureController {
+        return {
+            captureReplies: (
+                trigger: CommandTrigger[],
+                handler: (
+                    replyContext: ReplyContext<IActionState>
+                ) => Promise<void>,
+                abortController?: AbortController
+            ) => {
+                response.captures.push({
+                    trigger,
+                    handler,
+                    abortController: abortController ?? new AbortController(),
+                    action: this.action
+                });
+            }
+        };
     }
 
     /**

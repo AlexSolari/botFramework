@@ -19,7 +19,7 @@ export interface ICaptureController {
             replyContext: ReplyContext<TParentActionState>
         ) => Promise<void>,
         /** Abort controller to abort capturing manually */
-        abortController: AbortController
+        abortController?: AbortController
     ) => void;
 }
 
