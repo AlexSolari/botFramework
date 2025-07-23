@@ -37,6 +37,9 @@ export abstract class BaseContextInternal<TAction extends IAction> {
     botName!: string;
     /** Chat information. */
     chatInfo!: ChatInfo;
+    get actionKey() {
+        return this.action.key;
+    }
 
     /** Ordered collection of responses to be processed  */
     public get responses(): BotResponse[] {
