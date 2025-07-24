@@ -182,8 +182,12 @@ export class CommandAction<TActionState extends IActionState>
             );
 
         const lastExecutedDate = moment(state.lastExecutedDate);
+        const cooldown =
+            'seconds' in this.cooldownInfo.cooldown
+                ? this.cooldownInfo.cooldown.seconds
+                : this.cooldownInfo.cooldown.provider(ctx);
         const cooldownInMilliseconds = secondsToMilliseconds(
-            this.lastCustomCooldown ?? this.cooldownInfo.seconds
+            this.lastCustomCooldown ?? cooldown
         );
         const onCooldown =
             moment().diff(lastExecutedDate) < cooldownInMilliseconds;

@@ -1,10 +1,15 @@
+import { PropertyProvider } from '../types/propertyProvider';
 import { Seconds } from '../types/timeValues';
+
+export type Cooldown =
+    | { seconds: Seconds }
+    | { provider: PropertyProvider<Seconds> };
 
 export class CooldownInfo {
     constructor(
-        /** New one-time cooldown in seconds */
-        readonly seconds: Seconds,
+        /** Cooldown configuration */
+        readonly cooldown: Cooldown,
         /** Cooldown message to be shown */
-        readonly message: string | undefined
+        readonly message?: string
     ) {}
 }

@@ -7,7 +7,7 @@ import { IActionState } from '../../types/actionState';
 import { toArray } from '../toArray';
 import { Noop } from '../noop';
 import { CommandTrigger } from '../../types/commandTrigger';
-import { CooldownInfo } from '../../dtos/cooldownInfo';
+import { Cooldown, CooldownInfo } from '../../dtos/cooldownInfo';
 import { ActionPermissionsData } from '../../dtos/actionPermissionsData';
 
 /**
@@ -18,7 +18,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     private trigger: CommandTrigger | CommandTrigger[] = [];
 
     private active = true;
-    private cooldownSeconds: Seconds = 0 as Seconds;
+    private cooldownSettings = new CooldownInfo({ seconds: 0 as Seconds });
     private blacklist: number[] = [];
     private whitelist: number[] = [];
     private allowedUsers: number[] = [];
@@ -27,7 +27,6 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     private handler: CommandHandler<TActionState> = Noop.call;
     private condition: CommandCondition<TActionState> = Noop.true;
     private maxAllowedSimultaniousExecutions: number = 0;
-    private cooldownMessage: string | undefined;
 
     /**
      * Builder for `CommandAction` with state represented by `TActionState`
@@ -126,9 +125,11 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     /** Sets action cooldown settings.
      * @param cooldownSettings Settings.
      */
-    withCooldown(cooldownSettings: { seconds: Seconds; message?: string }) {
-        this.cooldownSeconds = cooldownSettings.seconds;
-        this.cooldownMessage = cooldownSettings.message;
+    withCooldown(cooldownSettings: { cooldown: Cooldown; message?: string }) {
+        this.cooldownSettings = new CooldownInfo(
+            cooldownSettings.cooldown,
+            cooldownSettings.message
+        );
 
         return this;
     }
@@ -140,7 +141,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
             this.handler,
             this.name,
             this.active,
-            new CooldownInfo(this.cooldownSeconds, this.cooldownMessage),
+            this.cooldownSettings,
             new ActionPermissionsData(
                 this.allowedUsers,
                 this.whitelist,
