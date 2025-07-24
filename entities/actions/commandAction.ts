@@ -16,26 +16,36 @@ import { CooldownInfo } from '../../dtos/cooldownInfo';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { ReplyInfo } from '../../dtos/replyInfo';
 import { Seconds } from '../../types/timeValues';
-import { ActionPermissionsData } from '../../dtos/actionPermissionsData';
+import { CommandActionPropertyProvider } from '../../types/propertyProvider';
+import { CommandActionProviders } from '../../dtos/propertyProviderSets';
+import { BotResponse } from '../../types/response';
 
 export class CommandAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
 {
+    private readonly cooldownInfoProvider: CommandActionPropertyProvider<CooldownInfo>;
+    private readonly isActiveProvider: CommandActionPropertyProvider<boolean>;
+    private readonly chatsBlacklistProvider: CommandActionPropertyProvider<
+        number[]
+    >;
+    private readonly chatsWhitelistProvider: CommandActionPropertyProvider<
+        number[]
+    >;
+    private readonly usersWhitelistProvider: CommandActionPropertyProvider<
+        number[]
+    >;
+
+    readonly key: ActionKey;
+    readonly name: string;
     readonly ratelimitSemaphores = new Map<number, Semaphore>();
+    readonly maxAllowedSimultaniousExecutions: number;
 
     readonly triggers: CommandTrigger[];
+
     readonly handler: CommandHandler<TActionState>;
-    readonly name: string;
-    readonly cooldownInfo: CooldownInfo;
-    readonly active: boolean;
-    readonly chatsBlacklist: number[];
-    readonly chatsWhitelist: number[];
-    readonly usersWhitelist: number[];
     readonly condition: CommandCondition<TActionState>;
     readonly stateConstructor: () => TActionState;
-    readonly key: ActionKey;
     readonly readmeFactory: (botName: string) => string;
-    readonly maxAllowedSimultaniousExecutions: number;
 
     private lastCustomCooldown: Seconds | undefined;
 
@@ -43,32 +53,35 @@ export class CommandAction<TActionState extends IActionState>
         trigger: CommandTrigger | CommandTrigger[],
         handler: CommandHandler<TActionState>,
         name: string,
-        active: boolean,
-        cooldownInfo: CooldownInfo,
-        permissionsData: ActionPermissionsData,
+        providers: CommandActionProviders,
         maxAllowedSimultaniousExecutions: number,
         condition: CommandCondition<TActionState>,
         stateConstructor: () => TActionState,
         readmeFactory: (botName: string) => string
     ) {
         this.triggers = toArray(trigger);
-        this.handler = handler;
         this.name = name;
-        this.cooldownInfo = cooldownInfo;
-        this.active = active;
-        this.chatsBlacklist = permissionsData.chatIdsBlacklist;
-        this.chatsWhitelist = permissionsData.chatIdsWhitelist;
-        this.usersWhitelist = permissionsData.userIdsWhitelist;
+
+        this.cooldownInfoProvider = providers.cooldownProvider;
+        this.isActiveProvider = providers.isActiveProvider;
+        this.chatsBlacklistProvider = providers.chatsBlacklistProvider;
+        this.chatsWhitelistProvider = providers.chatsWhitelistProvider;
+        this.usersWhitelistProvider = providers.usersWhitelistProvider;
+
+        this.handler = handler;
         this.condition = condition;
         this.stateConstructor = stateConstructor;
         this.readmeFactory = readmeFactory;
+
         this.maxAllowedSimultaniousExecutions =
             maxAllowedSimultaniousExecutions;
 
         this.key = `command:${this.name.replace('.', '-')}` as ActionKey;
     }
 
-    async exec(ctx: MessageContextInternal<TActionState>) {
+    async exec(
+        ctx: MessageContextInternal<TActionState>
+    ): Promise<BotResponse[]> {
         if (!ctx.isInitialized)
             throw new Error(
                 `Context for ${this.key} is not initialized or already consumed`
@@ -100,16 +113,22 @@ export class CommandAction<TActionState extends IActionState>
                     );
 
             if (!shouldExecute) {
-                if (reason == 'OnCooldown' && this.cooldownInfo.message)
-                    return [
-                        new TextMessage(
-                            this.cooldownInfo.message,
-                            ctx.chatInfo,
-                            ctx.traceId,
-                            this,
-                            new ReplyInfo(ctx.messageInfo.id)
-                        )
-                    ];
+                if (reason == 'OnCooldown') {
+                    const cooldownMessage =
+                        this.cooldownInfoProvider(ctx).message;
+
+                    return cooldownMessage
+                        ? [
+                              new TextMessage(
+                                  cooldownMessage,
+                                  ctx.chatInfo,
+                                  ctx.traceId,
+                                  this,
+                                  new ReplyInfo(ctx.messageInfo.id)
+                              )
+                          ]
+                        : Noop.NoResponse;
+                }
 
                 return Noop.NoResponse;
             }
@@ -148,15 +167,18 @@ export class CommandAction<TActionState extends IActionState>
         trigger: CommandTrigger,
         state: TActionState
     ) {
-        if (!this.active)
+        if (!this.isActiveProvider(ctx))
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
                 'ActionDisabled'
             );
 
-        const isChatInBlacklist = this.chatsBlacklist.includes(ctx.chatInfo.id);
+        const chatsBlacklist = this.chatsBlacklistProvider(ctx);
+        const chatsWhitelist = this.chatsWhitelistProvider(ctx);
+
+        const isChatInBlacklist = chatsBlacklist.includes(ctx.chatInfo.id);
         const isChatInWhitelist =
-            this.chatsWhitelist.length == 0 ||
-            this.chatsWhitelist.includes(ctx.chatInfo.id);
+            chatsWhitelist.length == 0 ||
+            chatsWhitelist.includes(ctx.chatInfo.id);
 
         if (isChatInBlacklist || !isChatInWhitelist)
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
@@ -172,9 +194,10 @@ export class CommandAction<TActionState extends IActionState>
                 'UserIdMissing'
             );
 
+        const usersWhitelist = this.usersWhitelistProvider(ctx);
         const isUserAllowed =
-            this.usersWhitelist.length == 0 ||
-            this.usersWhitelist.includes(ctx.userInfo.id);
+            usersWhitelist.length == 0 ||
+            usersWhitelist.includes(ctx.userInfo.id);
 
         if (!isUserAllowed)
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
@@ -182,12 +205,8 @@ export class CommandAction<TActionState extends IActionState>
             );
 
         const lastExecutedDate = moment(state.lastExecutedDate);
-        const cooldown =
-            'seconds' in this.cooldownInfo.cooldown
-                ? this.cooldownInfo.cooldown.seconds
-                : this.cooldownInfo.cooldown.provider(ctx);
         const cooldownInMilliseconds = secondsToMilliseconds(
-            this.lastCustomCooldown ?? cooldown
+            this.lastCustomCooldown ?? this.cooldownInfoProvider(ctx).cooldown
         );
         const onCooldown =
             moment().diff(lastExecutedDate) < cooldownInMilliseconds;

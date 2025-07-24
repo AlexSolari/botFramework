@@ -10,6 +10,8 @@ import { ChatContextInternal } from '../context/chatContext';
 import { Noop } from '../../helpers/noop';
 import { IScheduler } from '../../types/scheduler';
 import { getOrSetIfNotExists, getOrThrow } from '../../helpers/mapUtils';
+import { ScheduledActionPropertyProvider } from '../../types/propertyProvider';
+import { ScheduledActionProviders } from '../../dtos/propertyProviderSets';
 
 export class ScheduledAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
@@ -17,10 +19,13 @@ export class ScheduledAction<TActionState extends IActionState>
     static readonly locks = new Map<string, Semaphore>();
 
     readonly name: string;
-    readonly timeinHours: HoursOfDay;
-    readonly active: boolean;
-    readonly chatsWhitelist: number[];
     readonly key: ActionKey;
+
+    private readonly timeinHoursProvider: ScheduledActionPropertyProvider<HoursOfDay>;
+    private readonly activeProvider: ScheduledActionPropertyProvider<boolean>;
+    private readonly chatsWhitelistProvider: ScheduledActionPropertyProvider<
+        number[]
+    >;
 
     readonly cachedState = new Map<string, unknown>();
     readonly stateConstructor: () => TActionState;
@@ -30,20 +35,20 @@ export class ScheduledAction<TActionState extends IActionState>
     constructor(
         name: string,
         handler: ScheduledHandler<TActionState>,
-        timeinHours: HoursOfDay,
-        active: boolean,
-        whitelist: number[],
+        providers: ScheduledActionProviders,
         cachedStateFactories: Map<string, CachedStateFactory>,
         stateConstructor: () => TActionState
     ) {
         this.name = name;
-        this.handler = handler;
-        this.timeinHours = timeinHours;
-        this.active = active;
-        this.chatsWhitelist = whitelist;
-        this.cachedStateFactories = cachedStateFactories;
         this.key = `scheduled:${this.name.replace('.', '-')}` as ActionKey;
+
+        this.timeinHoursProvider = providers.timeinHoursProvider;
+        this.activeProvider = providers.isActiveProvider;
+        this.chatsWhitelistProvider = providers.chatsWhitelistProvider;
+
+        this.cachedStateFactories = cachedStateFactories;
         this.stateConstructor = stateConstructor;
+        this.handler = handler;
     }
 
     async exec(ctx: ChatContextInternal<TActionState>) {
@@ -52,7 +57,10 @@ export class ScheduledAction<TActionState extends IActionState>
                 `Context for ${this.key} is not initialized or already consumed`
             );
 
-        if (!this.active || !this.chatsWhitelist.includes(ctx.chatInfo.id))
+        if (
+            !this.activeProvider(ctx) ||
+            !this.chatsWhitelistProvider(ctx).includes(ctx.chatInfo.id)
+        )
             return Noop.NoResponse;
 
         const state = await ctx.storage.getActionState<TActionState>(
@@ -60,7 +68,7 @@ export class ScheduledAction<TActionState extends IActionState>
             ctx.chatInfo.id
         );
 
-        const isAllowedToTrigger = this.checkIfShouldBeExecuted(state);
+        const isAllowedToTrigger = this.checkIfShouldBeExecuted(state, ctx);
         if (!isAllowedToTrigger) return Noop.NoResponse;
 
         ctx.logger.logWithTraceId(
@@ -129,13 +137,16 @@ export class ScheduledAction<TActionState extends IActionState>
         }
     }
 
-    private checkIfShouldBeExecuted(state: IActionState): boolean {
+    private checkIfShouldBeExecuted(
+        state: IActionState,
+        ctx: ChatContextInternal<TActionState>
+    ): boolean {
         const startOfToday = moment().startOf('day').valueOf();
         const lastExecutedDate = moment(state.lastExecutedDate);
         const currentTime = moment();
         const scheduledTime = moment()
             .startOf('day')
-            .add(this.timeinHours, 'hours');
+            .add(this.timeinHoursProvider(ctx), 'hours');
 
         const isAllowedToTrigger = currentTime.isSameOrAfter(scheduledTime);
         const hasTriggeredToday = lastExecutedDate.isAfter(startOfToday);

@@ -7,8 +7,8 @@ import { IActionState } from '../../types/actionState';
 import { toArray } from '../toArray';
 import { Noop } from '../noop';
 import { CommandTrigger } from '../../types/commandTrigger';
-import { Cooldown, CooldownInfo } from '../../dtos/cooldownInfo';
-import { ActionPermissionsData } from '../../dtos/actionPermissionsData';
+import { CooldownInfo } from '../../dtos/cooldownInfo';
+import { CommandActionPropertyProvider } from '../../types/propertyProvider';
 
 /**
  * Builder for `CommandAction` with state represented by `TActionState`
@@ -17,11 +17,16 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     private readonly name: string;
     private trigger: CommandTrigger | CommandTrigger[] = [];
 
-    private active = true;
-    private cooldownSettings = new CooldownInfo({ seconds: 0 as Seconds });
-    private blacklist: number[] = [];
-    private whitelist: number[] = [];
-    private allowedUsers: number[] = [];
+    private activeProvider: CommandActionPropertyProvider<boolean> = () => true;
+    private cooldownSettingsProvider: CommandActionPropertyProvider<CooldownInfo> =
+        () => new CooldownInfo(0 as Seconds);
+    private blacklistProvider: CommandActionPropertyProvider<number[]> =
+        () => [];
+    private whitelistProvider: CommandActionPropertyProvider<number[]> =
+        () => [];
+    private allowedUsersProvider: CommandActionPropertyProvider<number[]> =
+        () => [];
+
     private readmeFactory: (botName: string) => string = Noop.emptyString;
     private readonly stateConstructor: () => TActionState;
     private handler: CommandHandler<TActionState> = Noop.call;
@@ -54,7 +59,8 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
      * @param id User id or ids
      */
     from(id: number | number[]) {
-        this.allowedUsers = toArray(id);
+        const ids = toArray(id);
+        this.allowedUsersProvider = () => ids;
 
         return this;
     }
@@ -64,7 +70,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
      * @param chatIds Chats ids to allow.
      */
     in(chatIds: number[]) {
-        this.whitelist = chatIds;
+        this.whitelistProvider = () => chatIds;
 
         return this;
     }
@@ -74,7 +80,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
      * @param chatIds Chats ids to ignore.
      */
     notIn(chatIds: number[]) {
-        this.blacklist = chatIds;
+        this.blacklistProvider = () => chatIds;
 
         return this;
     }
@@ -109,7 +115,7 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
 
     /** If called during building, action is marked as disabled and never checked. */
     disabled() {
-        this.active = false;
+        this.activeProvider = () => false;
 
         return this;
     }
@@ -125,11 +131,40 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     /** Sets action cooldown settings.
      * @param cooldownSettings Settings.
      */
-    withCooldown(cooldownSettings: { cooldown: Cooldown; message?: string }) {
-        this.cooldownSettings = new CooldownInfo(
+    withCooldown(cooldownSettings: { cooldown: Seconds; message?: string }) {
+        const settings = new CooldownInfo(
             cooldownSettings.cooldown,
             cooldownSettings.message
         );
+        this.cooldownSettingsProvider = () => settings;
+
+        return this;
+    }
+
+    /**
+     * Configures action to use property value providers instead of static value to allow changes in runtime
+     */
+    withConfiguration(configuration: {
+        cooldownProvider?: CommandActionPropertyProvider<CooldownInfo>;
+        isActiveProvider?: CommandActionPropertyProvider<boolean>;
+        chatsBlacklistProvider?: CommandActionPropertyProvider<number[]>;
+        chatsWhitelistProvider?: CommandActionPropertyProvider<number[]>;
+        usersWhitelistProvider?: CommandActionPropertyProvider<number[]>;
+    }) {
+        if (configuration.cooldownProvider)
+            this.cooldownSettingsProvider = configuration.cooldownProvider;
+
+        if (configuration.chatsWhitelistProvider)
+            this.whitelistProvider = configuration.chatsWhitelistProvider;
+
+        if (configuration.chatsBlacklistProvider)
+            this.blacklistProvider = configuration.chatsBlacklistProvider;
+
+        if (configuration.usersWhitelistProvider)
+            this.allowedUsersProvider = configuration.usersWhitelistProvider;
+
+        if (configuration.isActiveProvider)
+            this.activeProvider = configuration.isActiveProvider;
 
         return this;
     }
@@ -140,13 +175,13 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
             this.trigger,
             this.handler,
             this.name,
-            this.active,
-            this.cooldownSettings,
-            new ActionPermissionsData(
-                this.allowedUsers,
-                this.whitelist,
-                this.blacklist
-            ),
+            {
+                cooldownProvider: this.cooldownSettingsProvider,
+                isActiveProvider: this.activeProvider,
+                chatsBlacklistProvider: this.blacklistProvider,
+                chatsWhitelistProvider: this.whitelistProvider,
+                usersWhitelistProvider: this.allowedUsersProvider
+            },
             this.maxAllowedSimultaniousExecutions,
             this.condition,
             this.stateConstructor,
