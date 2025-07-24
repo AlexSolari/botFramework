@@ -12,6 +12,25 @@ export class JsonLogger implements ILogger {
         return JSON.stringify(plainObject);
     }
 
+    private getCircularReplacer() {
+        const ancestors: unknown[] = [];
+        return function <V>(this: V, _: unknown, value: V) {
+            if (typeof value !== 'object' || value === null) {
+                return value;
+            }
+            // `this` is the object that value is contained in,
+            // i.e., its direct parent.
+            while (ancestors.length > 0 && ancestors.at(-1) !== this) {
+                ancestors.pop();
+            }
+            if (ancestors.includes(value)) {
+                return '[Circular]';
+            }
+            ancestors.push(value);
+            return value;
+        };
+    }
+
     createScope(botName: string, traceId: TraceId, chatName: string) {
         return {
             logObjectWithTraceId: (data: any) => {
@@ -63,7 +82,10 @@ export class JsonLogger implements ILogger {
         extraData?: unknown
     ) {
         const dataString = extraData
-            ? `,"extraData":${JSON.stringify(extraData)}`
+            ? `,"extraData":${JSON.stringify(
+                  extraData,
+                  this.getCircularReplacer()
+              )}`
             : '';
 
         console.error(
