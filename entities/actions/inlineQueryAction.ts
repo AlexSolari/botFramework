@@ -2,10 +2,11 @@ import { Noop } from '../../helpers/noop';
 import { ActionKey, IAction } from '../../types/action';
 import { InlineQueryContextInternal } from '../context/inlineQueryContext';
 import { InlineQueryHandler } from '../../types/handlers';
+import { InlineActionPropertyProvider } from '../../types/propertyProvider';
 
 export class InlineQueryAction implements IAction {
     readonly key: ActionKey;
-    readonly active: boolean;
+    readonly isActiveProvider: InlineActionPropertyProvider<boolean>;
     readonly handler: InlineQueryHandler;
     readonly name: string;
     readonly pattern: RegExp;
@@ -13,12 +14,12 @@ export class InlineQueryAction implements IAction {
     constructor(
         handler: InlineQueryHandler,
         name: string,
-        active: boolean,
+        activeProvider: InlineActionPropertyProvider<boolean>,
         pattern: RegExp
     ) {
         this.handler = handler;
         this.name = name;
-        this.active = active;
+        this.isActiveProvider = activeProvider;
         this.pattern = pattern;
 
         this.key = `inline:${this.name.replace('.', '-')}` as ActionKey;
@@ -30,7 +31,7 @@ export class InlineQueryAction implements IAction {
                 `Context for ${this.key} is not initialized or already consumed`
             );
 
-        if (!this.active) return Noop.NoResponse;
+        if (!this.isActiveProvider(ctx)) return Noop.NoResponse;
 
         const matchResults: RegExpExecArray[] = [];
 

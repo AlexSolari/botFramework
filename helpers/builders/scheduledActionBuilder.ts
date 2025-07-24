@@ -3,6 +3,7 @@ import { CachedStateFactory } from '../../entities/cachedStateFactory';
 import { ActionStateBase } from '../../entities/states/actionStateBase';
 import { IActionState } from '../../types/actionState';
 import { ScheduledHandler } from '../../types/handlers';
+import { ScheduledActionPropertyProvider } from '../../types/propertyProvider';
 import { Hours, HoursOfDay } from '../../types/timeValues';
 import { Noop } from '../noop';
 
@@ -12,17 +13,20 @@ import { Noop } from '../noop';
 export class ScheduledActionBuilderWithState<
     TActionState extends IActionState
 > {
-    private active = true;
-    private time: HoursOfDay = 0;
+    private readonly name: string;
     private readonly cachedStateFactories = new Map<
         string,
         CachedStateFactory
     >();
-    private whitelist: number[] = [];
     private readonly stateConstructor: () => TActionState;
     private handler: ScheduledHandler<TActionState> = Noop.call;
 
-    private readonly name: string;
+    private whitelistProvider: ScheduledActionPropertyProvider<number[]> =
+        () => [];
+    private activeProvider: ScheduledActionPropertyProvider<boolean> = () =>
+        true;
+    private timeinHoursProvider: ScheduledActionPropertyProvider<HoursOfDay> =
+        () => 0;
 
     /**
      * Builder for `ScheduledAction` with state represented by `TActionState`
@@ -39,7 +43,7 @@ export class ScheduledActionBuilderWithState<
      * @param chatIds Chat ids to execute in.
      */
     in(chatIds: number[]) {
-        this.whitelist = chatIds;
+        this.whitelistProvider = () => chatIds;
 
         return this;
     }
@@ -49,7 +53,7 @@ export class ScheduledActionBuilderWithState<
      * @param time Time of day (0 - 23) to execute action.
      */
     runAt(time: HoursOfDay) {
-        this.time = time;
+        this.timeinHoursProvider = () => time;
 
         return this;
     }
@@ -85,7 +89,27 @@ export class ScheduledActionBuilderWithState<
 
     /** If called during building, action is marked as disabled and never checked. */
     disabled() {
-        this.active = false;
+        this.activeProvider = () => false;
+
+        return this;
+    }
+
+    /**
+     * Configures action to use property value providers instead of static value to allow changes in runtime
+     */
+    withConfiguration(configuration: {
+        timeinHoursProvider?: ScheduledActionPropertyProvider<HoursOfDay>;
+        isActiveProvider?: ScheduledActionPropertyProvider<boolean>;
+        chatsWhitelistProvider?: ScheduledActionPropertyProvider<number[]>;
+    }) {
+        if (configuration.chatsWhitelistProvider)
+            this.whitelistProvider = configuration.chatsWhitelistProvider;
+
+        if (configuration.timeinHoursProvider)
+            this.timeinHoursProvider = configuration.timeinHoursProvider;
+
+        if (configuration.isActiveProvider)
+            this.activeProvider = configuration.isActiveProvider;
 
         return this;
     }
@@ -95,9 +119,11 @@ export class ScheduledActionBuilderWithState<
         return new ScheduledAction<TActionState>(
             this.name,
             this.handler,
-            this.time,
-            this.active,
-            this.whitelist,
+            {
+                chatsWhitelistProvider: this.whitelistProvider,
+                isActiveProvider: this.activeProvider,
+                timeinHoursProvider: this.timeinHoursProvider
+            },
             this.cachedStateFactories,
             this.stateConstructor
         );

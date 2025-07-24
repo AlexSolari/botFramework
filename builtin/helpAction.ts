@@ -8,7 +8,7 @@ export function buildHelpCommand(readmes: string[], botUsername: string) {
             ctx.reply.withText(readmes.join('\n\n'));
         })
         .withCooldown({
-            seconds: 60 as Seconds
+            cooldown: 60 as Seconds
         });
 
     if (readmes.length == 0) helpCommandBuilder.disabled();
