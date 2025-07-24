@@ -17,8 +17,7 @@ export type BaseContextPropertiesToOmit =
     | 'scheduler'
     | 'logger'
     | 'responses'
-    | 'traceId'
-    | 'botName';
+    | 'traceId';
 
 export abstract class BaseContextInternal<TAction extends IAction> {
     isInitialized = false;
