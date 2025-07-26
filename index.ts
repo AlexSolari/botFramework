@@ -6,6 +6,7 @@ export * from './types/actionState';
 export * from './entities/states/actionStateBase';
 export * from './types/messageTypes';
 export * from './helpers/timeConvertions';
+export * from './types/action';
 export { CommandAction } from './entities/actions/commandAction';
 export { InlineQueryAction } from './entities/actions/inlineQueryAction';
 export { ReplyCaptureAction } from './entities/actions/replyCaptureAction';

@@ -144,13 +144,15 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     /**
      * Configures action to use property value providers instead of static value to allow changes in runtime
      */
-    withConfiguration(configuration: {
-        cooldownProvider?: CommandActionPropertyProvider<CooldownInfo>;
-        isActiveProvider?: CommandActionPropertyProvider<boolean>;
-        chatsBlacklistProvider?: CommandActionPropertyProvider<number[]>;
-        chatsWhitelistProvider?: CommandActionPropertyProvider<number[]>;
-        usersWhitelistProvider?: CommandActionPropertyProvider<number[]>;
-    }) {
+    withConfiguration(
+        configuration:
+            | CommandActionProvidersConfiguration
+            | (() => CommandActionProvidersConfiguration)
+    ) {
+        if (typeof configuration == 'function') {
+            configuration = configuration();
+        }
+
         if (configuration.cooldownProvider)
             this.cooldownSettingsProvider = configuration.cooldownProvider;
 
@@ -189,6 +191,14 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
         );
     }
 }
+
+export type CommandActionProvidersConfiguration = {
+    cooldownProvider?: CommandActionPropertyProvider<CooldownInfo>;
+    isActiveProvider?: CommandActionPropertyProvider<boolean>;
+    chatsBlacklistProvider?: CommandActionPropertyProvider<number[]>;
+    chatsWhitelistProvider?: CommandActionPropertyProvider<number[]>;
+    usersWhitelistProvider?: CommandActionPropertyProvider<number[]>;
+};
 
 /**
  * Builder for `CommandAction` with state represented by default state (containing only last execution date).
