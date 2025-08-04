@@ -8,6 +8,7 @@ import {
 import { ChatInfo } from './chatInfo';
 import { createTrace } from '../helpers/traceFactory';
 import { TraceId } from '../types/trace';
+import { ChatHistoryMessage } from './chatHistoryMessage';
 
 export class IncomingMessage {
     readonly messageId: number;
@@ -43,7 +44,7 @@ export class IncomingMessage {
     constructor(
         ctxMessage: TelegrafContextMessage,
         botName: string,
-        history: IncomingMessage[]
+        history: ChatHistoryMessage[]
     ) {
         this.traceId = createTrace(
             this,

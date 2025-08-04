@@ -1,4 +1,4 @@
-import { IncomingMessage } from './incomingMessage';
+import { ChatHistoryMessage } from './chatHistoryMessage';
 
 export class ChatInfo {
     constructor(
@@ -7,6 +7,6 @@ export class ChatInfo {
         /** Name of a chat that action is executed in. */
         readonly name: string,
         /** Last 100 messages in chat where action is executed */
-        readonly messageHistory: IncomingMessage[]
+        readonly messageHistory: ChatHistoryMessage[]
     ) {}
 }

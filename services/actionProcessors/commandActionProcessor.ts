@@ -19,12 +19,13 @@ import { UserFromGetMe } from 'telegraf/types';
 import { getOrSetIfNotExists } from '../../helpers/mapUtils';
 import { MessageInfo } from '../../dtos/messageInfo';
 import { UserInfo } from '../../dtos/userInfo';
+import { ChatHistoryMessage } from '../../dtos/chatHistoryMessage';
 
 const MESSAGE_HISTORY_LENGTH_LIMIT = 100;
 
 export class CommandActionProcessor extends BaseActionProcessor {
     private readonly replyCaptures: ReplyCaptureAction<IActionState>[] = [];
-    private readonly chatHistory = new Map<number, IncomingMessage[]>();
+    private readonly chatHistory = new Map<number, ChatHistoryMessage[]>();
     private botInfo!: UserFromGetMe;
 
     private commands = typeSafeObjectFromEntries(
@@ -143,7 +144,16 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         while (chatHistoryArray.length > MESSAGE_HISTORY_LENGTH_LIMIT)
             chatHistoryArray.shift();
-        chatHistoryArray.push(msg);
+        chatHistoryArray.push(
+            new ChatHistoryMessage(
+                msg.messageId,
+                msg.from,
+                msg.text,
+                msg.type,
+                msg.traceId,
+                msg.replyToMessageId
+            )
+        );
 
         const ctx = new MessageContextInternal<IActionState>(
             this.storage,
