@@ -1,14 +1,10 @@
-import { Message, Update, User } from 'telegraf/types';
 import { randomInt } from 'crypto';
-import {
-    MessageType,
-    MessageTypeValue,
-    TelegrafContextMessage
-} from '../types/messageTypes';
+import { MessageType, MessageTypeValue } from '../types/messageTypes';
 import { ChatInfo } from './chatInfo';
 import { createTrace } from '../helpers/traceFactory';
 import { TraceId } from '../types/trace';
 import { ChatHistoryMessage } from './chatHistoryMessage';
+import { Message, User } from 'node-telegram-bot-api';
 
 export class IncomingMessage {
     readonly messageId: number;
@@ -19,11 +15,9 @@ export class IncomingMessage {
     readonly traceId: TraceId;
     readonly replyToMessageId: number | undefined;
 
-    readonly updateObject: TelegrafContextMessage;
+    readonly updateObject: Message;
 
-    private detectMessageType(
-        message: Update.New & (Update.NonChannel & Message)
-    ) {
+    private detectMessageType(message: Message) {
         if ('forward_origin' in message) return MessageType.Forward;
         if ('text' in message) return MessageType.Text;
         if ('video' in message) return MessageType.Video;
@@ -42,7 +36,7 @@ export class IncomingMessage {
     }
 
     constructor(
-        ctxMessage: TelegrafContextMessage,
+        ctxMessage: Message,
         botName: string,
         history: ChatHistoryMessage[]
     ) {
@@ -69,8 +63,8 @@ export class IncomingMessage {
         this.updateObject = ctxMessage;
     }
 
-    private getMessageText(ctxMessage: TelegrafContextMessage) {
-        if ('text' in ctxMessage) return ctxMessage.text;
+    private getMessageText(ctxMessage: Message) {
+        if ('text' in ctxMessage) return ctxMessage.text ?? '';
 
         return 'caption' in ctxMessage ? ctxMessage.caption ?? '' : '';
     }

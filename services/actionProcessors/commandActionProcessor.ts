@@ -1,4 +1,3 @@
-import { Telegraf } from 'telegraf';
 import { IncomingMessage } from '../../dtos/incomingMessage';
 import { CommandAction } from '../../entities/actions/commandAction';
 import { ReplyCaptureAction } from '../../entities/actions/replyCaptureAction';
@@ -15,18 +14,18 @@ import {
 } from '../../types/messageTypes';
 import { typeSafeObjectFromEntries } from '../../helpers/objectFromEntries';
 import { BaseActionProcessor } from './baseProcessor';
-import { UserFromGetMe } from 'telegraf/types';
 import { getOrSetIfNotExists } from '../../helpers/mapUtils';
 import { MessageInfo } from '../../dtos/messageInfo';
 import { UserInfo } from '../../dtos/userInfo';
 import { ChatHistoryMessage } from '../../dtos/chatHistoryMessage';
+import TelegramBot from 'node-telegram-bot-api';
 
 const MESSAGE_HISTORY_LENGTH_LIMIT = 100;
 
 export class CommandActionProcessor extends BaseActionProcessor {
     private readonly replyCaptures: ReplyCaptureAction<IActionState>[] = [];
     private readonly chatHistory = new Map<number, ChatHistoryMessage[]>();
-    private botInfo!: UserFromGetMe;
+    private botInfo!: TelegramBot.User;
 
     private commands = typeSafeObjectFromEntries(
         Object.values(MessageType).map((x) => [
@@ -37,10 +36,10 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
     initialize(
         api: TelegramApiService,
-        telegraf: Telegraf,
+        telegram: TelegramBot,
         commands: CommandAction<IActionState>[],
         verboseLoggingForIncomingMessage: boolean,
-        botInfo: UserFromGetMe
+        botInfo: TelegramBot.User
     ) {
         this.botInfo = botInfo;
         this.initializeDependencies(api);
@@ -71,30 +70,30 @@ export class CommandActionProcessor extends BaseActionProcessor {
         }
 
         if (commands.length > 0) {
-            telegraf.on('message', (ctx) => {
-                const msg = new IncomingMessage(
-                    ctx.update.message,
+            telegram.on('message', (msg) => {
+                const internalMessage = new IncomingMessage(
+                    msg,
                     this.botName,
-                    getOrSetIfNotExists(this.chatHistory, ctx.chat.id, [])
+                    getOrSetIfNotExists(this.chatHistory, msg.chat.id, [])
                 );
 
                 const logger = this.logger.createScope(
                     this.botName,
-                    msg.traceId,
-                    msg.chatInfo.name
+                    internalMessage.traceId,
+                    internalMessage.chatInfo.name
                 );
 
                 if (verboseLoggingForIncomingMessage) {
-                    logger.logObjectWithTraceId(ctx.update.message);
+                    logger.logObjectWithTraceId(msg);
                 } else {
                     logger.logWithTraceId(
-                        `${msg.from?.first_name ?? 'Unknown'} (${
-                            msg.from?.id ?? 'Unknown'
-                        }): ${msg.text || msg.type}`
+                        `${internalMessage.from?.first_name ?? 'Unknown'} (${
+                            internalMessage.from?.id ?? 'Unknown'
+                        }): ${internalMessage.text || internalMessage.type}`
                     );
                 }
 
-                void this.processMessage(msg);
+                void this.processMessage(internalMessage);
             });
         }
     }

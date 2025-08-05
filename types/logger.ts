@@ -1,10 +1,7 @@
 import { TraceId } from './trace';
 
 export interface IScopedLogger {
-    logObjectWithTraceId(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data: any
-    ): void;
+    logObjectWithTraceId(data: unknown): void;
 
     logWithTraceId(text: string): void;
 
@@ -22,8 +19,7 @@ export interface ILogger {
         botName: string,
         traceId: TraceId,
         chatName: string,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data: any
+        data: unknown
     ): void;
 
     logWithTraceId(
