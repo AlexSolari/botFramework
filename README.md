@@ -4,7 +4,7 @@
 
 ## Overview
 
-botFramework is a TypeScript library that provides a structured approach to building Telegram bots. It offers a comprehensive set of features for managing bot lifecycles, message processing, scheduled tasks, and state persistence, built on top of the popular Telegraf library.
+botFramework is a TypeScript library that provides a structured approach to building Telegram bots. It offers a comprehensive set of features for managing bot lifecycles, message processing, scheduled tasks, and state persistence.
 
 ## Features
 
@@ -56,8 +56,7 @@ Create an `index.ts` file with the following content:
 
 ```typescript
 import {
-    startBot,
-    stopBots,
+    botOrchestrator,
     CommandActionBuilder,
     MessageType,
     Seconds
@@ -75,7 +74,7 @@ const commands = [
     new CommandActionBuilder('Welcome')
         .on(MessageType.NewChatMember)
         .do((ctx) => {
-            ctx.reply, withText('Welcome to the group!');
+            ctx.reply.withText('Welcome to the group!');
         })
         .build()
 ];
@@ -83,7 +82,7 @@ const commands = [
 async function main() {
     try {
         // Start the bot
-        const bot = await startBot({
+        const bot = await botOrchestrator.startBot({
             name: 'MyFirstBot',
             tokenFilePath: './token.txt',
             commands,
@@ -100,7 +99,7 @@ async function main() {
         // Proper cleanup on shutdown
         const cleanup = async (signal: string) => {
             console.log(`Received ${signal}, cleaning up...`);
-            await stopBots(signal);
+            await botOrchestrator.stopBots();
             process.exit(0);
         };
 
@@ -276,9 +275,9 @@ const searchCommand = new InlineQueryActionBuilder('Search')
 The framework includes a response processing queue that ensures reliable message delivery and proper ordering of responses:
 
 ```typescript
-await ctx.send.text('First message');
-await ctx.send.image('image');
-await ctx.reply.withReaction('👍');
+ctx.send.text('First message');
+ctx.send.image('image');
+ctx.reply.withReaction('👍');
 ```
 
 All responses are queued and processed in order, ensuring proper sequencing of messages and reactions.
@@ -291,5 +290,5 @@ To properly terminate your bot and clean up resources:
 import { stopBots } from 'chz-telegram-bot';
 
 // Call when your application is shutting down
-await stopBots('SHUTDOWN');
+await stopBots();
 ```
