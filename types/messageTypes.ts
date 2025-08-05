@@ -1,5 +1,3 @@
-import { Message, Update } from 'telegraf/types';
-
 export const INTERNAL_MESSAGE_TYPE_PREFIX = `__msg:`;
 
 export const MessageType = {
@@ -21,5 +19,3 @@ export const MessageType = {
 } as const;
 
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
-
-export type TelegrafContextMessage = Update.New & (Update.NonChannel & Message);

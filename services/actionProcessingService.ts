@@ -1,6 +1,5 @@
 import { hoursToSeconds } from '../helpers/timeConvertions';
 import { Seconds, Milliseconds, Hours } from '../types/timeValues';
-import { Telegraf } from 'telegraf';
 import { ILogger } from '../types/logger';
 import { IScheduler } from '../types/scheduler';
 import { IStorageClient } from '../types/storage';
@@ -13,6 +12,7 @@ import { buildHelpCommand } from '../builtin/helpAction';
 import { CommandActionProcessor } from './actionProcessors/commandActionProcessor';
 import { InlineQueryActionProcessor } from './actionProcessors/inlineQueryActionProcessor';
 import { ScheduledActionProcessor } from './actionProcessors/scheduledActionProcessor';
+import TelegramBot from 'node-telegram-bot-api';
 
 export class ActionProcessingService {
     private readonly storage: IStorageClient;
@@ -24,7 +24,7 @@ export class ActionProcessingService {
 
     private readonly botName: string;
 
-    private telegraf!: Telegraf;
+    private telegramBot!: TelegramBot;
 
     constructor(
         botName: string,
@@ -69,10 +69,10 @@ export class ActionProcessingService {
         scheduledPeriod?: Seconds,
         verboseLoggingForIncomingMessage?: boolean
     ) {
-        this.telegraf = new Telegraf(token);
+        this.telegramBot = new TelegramBot(token, { polling: true });
         const api = new TelegramApiService(
             this.botName,
-            this.telegraf.telegram,
+            this.telegramBot,
             this.storage,
             this.logger,
             (capture, id, chatInfo, traceId) => {
@@ -85,13 +85,15 @@ export class ActionProcessingService {
             }
         );
 
-        const botInfo = await this.telegraf.telegram.getMe();
+        const botInfo = await this.telegramBot.getMe();
         const commandActions =
-            actions.commands.length > 0
+            actions.commands.length > 0 && botInfo.username
                 ? [
                       buildHelpCommand(
                           actions.commands
-                              .map((x) => x.readmeFactory(botInfo.username))
+                              .map((x) =>
+                                  x.readmeFactory(botInfo.username as string)
+                              )
                               .filter((x) => !!x),
                           botInfo.username
                       ),
@@ -101,14 +103,14 @@ export class ActionProcessingService {
 
         this.commandProcessor.initialize(
             api,
-            this.telegraf,
+            this.telegramBot,
             commandActions,
             verboseLoggingForIncomingMessage ?? false,
             botInfo
         );
         this.inlineQueryProcessor.initialize(
             api,
-            this.telegraf,
+            this.telegramBot,
             actions.inlineQueries,
             300 as Milliseconds
         );
@@ -122,11 +124,9 @@ export class ActionProcessingService {
             ...actions.scheduled,
             ...commandActions
         ]);
-
-        void this.telegraf.launch();
     }
 
-    stop(code: string) {
-        this.telegraf.stop(code);
+    async stop() {
+        await this.telegramBot.stopPolling();
     }
 }

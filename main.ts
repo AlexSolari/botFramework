@@ -73,9 +73,9 @@ class BotOrchestrator {
     /**
      * Terminates all scheduled tasks, closes storage connections and stops all bots.
      */
-    async stopBots(reason: string) {
+    async stopBots() {
         for (const bot of this.bots) {
-            await bot.stop(reason);
+            await bot.stop();
         }
     }
 }

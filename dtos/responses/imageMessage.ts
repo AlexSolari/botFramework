@@ -1,4 +1,3 @@
-import { InputFile } from 'telegraf/types';
 import {
     BotResponseTypes,
     IReplyResponseWithContent
@@ -9,6 +8,7 @@ import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';
 import { ReplyInfo } from '../replyInfo';
 import { IReplyCapture } from '../../types/capture';
+import { InputFile } from '../../types/inputFile';
 
 export class ImageMessage implements IReplyResponseWithContent<InputFile> {
     readonly kind = BotResponseTypes.image;

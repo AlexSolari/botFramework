@@ -83,7 +83,7 @@ export class BotInstance {
         );
     }
 
-    async stop(code: string) {
+    async stop() {
         this.logger.logWithTraceId(
             this.name,
             createTrace(this, this.name, 'Stop'),
@@ -93,6 +93,6 @@ export class BotInstance {
 
         this.scheduler.stopAll();
         await this.storage.close();
-        this.actionProcessingService.stop(code);
+        await this.actionProcessingService.stop();
     }
 }

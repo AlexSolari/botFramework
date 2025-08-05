@@ -1,7 +1,5 @@
-import {
-    MessageTypeValue,
-    TelegrafContextMessage
-} from '../types/messageTypes';
+import { Message } from 'node-telegram-bot-api';
+import { MessageTypeValue } from '../types/messageTypes';
 
 export class MessageInfo {
     constructor(
@@ -12,6 +10,6 @@ export class MessageInfo {
         /** Type of message being received */
         readonly type: MessageTypeValue,
         /** Message object recieved from Telegram */
-        readonly telegramUpdateObject: TelegrafContextMessage
+        readonly telegramUpdateObject: Message
     ) {}
 }

@@ -1,4 +1,4 @@
-import { User } from 'telegraf/types';
+import { User } from 'node-telegram-bot-api';
 import { MessageTypeValue } from '../types/messageTypes';
 import { TraceId } from '../types/trace';
 

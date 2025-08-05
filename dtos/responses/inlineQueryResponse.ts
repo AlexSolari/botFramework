@@ -1,4 +1,4 @@
-import { InlineQueryResult } from 'telegraf/types';
+import { InlineQueryResult } from 'node-telegram-bot-api';
 import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
 import { BotResponseTypes } from '../../types/response';
 import { TraceId } from '../../types/trace';

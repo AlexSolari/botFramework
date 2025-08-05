@@ -1,4 +1,4 @@
-import { Telegraf } from 'telegraf';
+import TelegramBot from 'node-telegram-bot-api';
 import { IncomingInlineQuery } from '../../dtos/incomingQuery';
 import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
 import { InlineQueryContextInternal } from '../../entities/context/inlineQueryContext';
@@ -13,7 +13,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
 
     initialize(
         api: TelegramApiService,
-        telegraf: Telegraf,
+        telegram: TelegramBot,
         inlineQueries: InlineQueryAction[],
         period: Milliseconds
     ) {
@@ -25,12 +25,12 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
         const queriesInProcessing = new Map<number, IncomingInlineQuery>();
 
         if (this.inlineQueries.length > 0) {
-            telegraf.on('inline_query', (ctx) => {
+            telegram.on('inline_query', (inlineQuery) => {
                 const query = new IncomingInlineQuery(
-                    ctx.inlineQuery.id,
-                    ctx.inlineQuery.query,
-                    ctx.inlineQuery.from.id,
-                    createTrace('InlineQuery', this.botName, ctx.inlineQuery.id)
+                    inlineQuery.id,
+                    inlineQuery.query,
+                    inlineQuery.from.id,
+                    createTrace('InlineQuery', this.botName, inlineQuery.id)
                 );
 
                 const logger = this.logger.createScope(
@@ -40,9 +40,9 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                 );
 
                 logger.logWithTraceId(
-                    `${ctx.inlineQuery.from.username ?? 'Unknown'} (${
-                        ctx.inlineQuery.from.id
-                    }): Query for ${ctx.inlineQuery.query}`
+                    `${inlineQuery.from.username ?? 'Unknown'} (${
+                        inlineQuery.from.id
+                    }): Query for ${inlineQuery.query}`
                 );
 
                 const queryBeingProcessed = queriesInProcessing.get(

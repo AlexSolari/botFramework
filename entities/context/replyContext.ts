@@ -1,4 +1,3 @@
-import { TelegramEmoji, UserFromGetMe } from 'telegraf/types';
 import { ReplyInfo } from '../../dtos/replyInfo';
 import { ImageMessage } from '../../dtos/responses/imageMessage';
 import { Reaction } from '../../dtos/responses/reaction';
@@ -17,6 +16,7 @@ import {
 } from './baseContext';
 import { UserInfo } from '../../dtos/userInfo';
 import { MessageInfo } from '../../dtos/messageInfo';
+import { TelegramEmoji, User } from 'node-telegram-bot-api';
 
 export type ReplyContext<TActionState extends IActionState> = Omit<
     ReplyContextInternal<TActionState>,
@@ -38,7 +38,7 @@ export class ReplyContextInternal<
     /** Information about the message that triggered this action */
     messageInfo!: MessageInfo;
     /** Bot info from Telegram */
-    botInfo!: UserFromGetMe;
+    botInfo!: User;
 
     isInitialized = false;
 

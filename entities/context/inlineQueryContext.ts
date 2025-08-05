@@ -1,4 +1,3 @@
-import { InlineQueryResult } from 'telegraf/types';
 import { BotResponse } from '../../types/response';
 import { InlineQueryAction } from '../actions/inlineQueryAction';
 import { InlineQueryResponse } from '../../dtos/responses/inlineQueryResponse';
@@ -6,6 +5,7 @@ import {
     BaseContextInternal,
     BaseContextPropertiesToOmit
 } from './baseContext';
+import { InlineQueryResult } from 'node-telegram-bot-api';
 
 export type InlineQueryContext = Omit<
     InlineQueryContextInternal,
