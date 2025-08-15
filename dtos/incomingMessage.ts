@@ -4,20 +4,20 @@ import { ChatInfo } from './chatInfo';
 import { createTrace } from '../helpers/traceFactory';
 import { TraceId } from '../types/trace';
 import { ChatHistoryMessage } from './chatHistoryMessage';
-import { Message, User } from 'node-telegram-bot-api';
+import { TelegramMessage, TelegramUser } from '../types/externalAliases';
 
 export class IncomingMessage {
     readonly messageId: number;
     readonly chatInfo: ChatInfo;
-    readonly from: User | undefined;
+    readonly from: TelegramUser | undefined;
     readonly text: string;
     readonly type: MessageTypeValue;
     readonly traceId: TraceId;
     readonly replyToMessageId: number | undefined;
 
-    readonly updateObject: Message;
+    readonly updateObject: TelegramMessage;
 
-    private detectMessageType(message: Message) {
+    private detectMessageType(message: TelegramMessage) {
         if ('forward_origin' in message) return MessageType.Forward;
         if ('text' in message) return MessageType.Text;
         if ('video' in message) return MessageType.Video;
@@ -36,7 +36,7 @@ export class IncomingMessage {
     }
 
     constructor(
-        ctxMessage: Message,
+        ctxMessage: TelegramMessage,
         botName: string,
         history: ChatHistoryMessage[]
     ) {
@@ -63,8 +63,8 @@ export class IncomingMessage {
         this.updateObject = ctxMessage;
     }
 
-    private getMessageText(ctxMessage: Message) {
-        if ('text' in ctxMessage) return ctxMessage.text ?? '';
+    private getMessageText(ctxMessage: TelegramMessage) {
+        if ('text' in ctxMessage) return ctxMessage.text;
 
         return 'caption' in ctxMessage ? ctxMessage.caption ?? '' : '';
     }

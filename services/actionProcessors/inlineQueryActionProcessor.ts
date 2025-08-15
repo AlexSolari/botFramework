@@ -1,8 +1,8 @@
-import TelegramBot from 'node-telegram-bot-api';
 import { IncomingInlineQuery } from '../../dtos/incomingQuery';
 import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
 import { InlineQueryContextInternal } from '../../entities/context/inlineQueryContext';
 import { createTrace } from '../../helpers/traceFactory';
+import { TelegramBot } from '../../types/externalAliases';
 import { Milliseconds } from '../../types/timeValues';
 import { TraceId } from '../../types/trace';
 import { TelegramApiService } from '../telegramApi';
@@ -25,7 +25,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
         const queriesInProcessing = new Map<number, IncomingInlineQuery>();
 
         if (this.inlineQueries.length > 0) {
-            telegram.on('inline_query', (inlineQuery) => {
+            telegram.on('inline_query', ({ inlineQuery }) => {
                 const query = new IncomingInlineQuery(
                     inlineQuery.id,
                     inlineQuery.query,

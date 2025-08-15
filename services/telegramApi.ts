@@ -7,14 +7,13 @@ import { IActionWithState } from '../types/action';
 import { IActionState } from '../types/actionState';
 import { TraceId } from '../types/trace';
 import { ChatInfo } from '../dtos/chatInfo';
-import TelegramBot, { Message } from 'node-telegram-bot-api';
-import { createReadStream } from 'fs';
+import { TelegramApiClient, TelegramMessage } from '../types/externalAliases';
 
 export const TELEGRAM_ERROR_QUOTE_INVALID = 'QUOTE_TEXT_INVALID';
 
 export class TelegramApiService {
     private readonly queue = new ResponseProcessingQueue();
-    private readonly telegram: TelegramBot;
+    private readonly telegram: TelegramApiClient;
     private readonly storage: IStorageClient;
     private readonly logger: ILogger;
     private readonly captureRegistrationCallback: (
@@ -28,7 +27,7 @@ export class TelegramApiService {
 
     constructor(
         botName: string,
-        telegram: TelegramBot,
+        telegram: TelegramApiClient,
         storage: IStorageClient,
         logger: ILogger,
         captureRegistrationCallback: (
@@ -105,7 +104,10 @@ export class TelegramApiService {
         void this.queue.flushReadyItems();
     }
 
-    private async pinIfShould(response: IReplyResponse, message: Message) {
+    private async pinIfShould(
+        response: IReplyResponse,
+        message: TelegramMessage
+    ) {
         if (response.shouldPin) {
             await this.telegram.pinChatMessage(
                 response.chatInfo.id,
@@ -124,7 +126,7 @@ export class TelegramApiService {
     }
 
     private async processResponse(response: BotResponse, ignoreQuote = false) {
-        let sentMessage: Message | null = null;
+        let sentMessage: TelegramMessage | null = null;
 
         switch (response.kind) {
             case 'text':
@@ -150,22 +152,24 @@ export class TelegramApiService {
             case 'image':
                 sentMessage = await this.telegram.sendPhoto(
                     response.chatInfo.id,
-                    createReadStream(response.content.source),
+                    response.content,
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                     response.replyInfo?.id
-                        ? {
-                              reply_to_message_id: response.replyInfo.id
-                          }
+                        ? ({
+                              reply_to_message_id: response.replyInfo.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          } as any)
                         : undefined
                 );
                 break;
             case 'video':
                 sentMessage = await this.telegram.sendVideo(
                     response.chatInfo.id,
-                    createReadStream(response.content.source),
+                    response.content,
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                     response.replyInfo?.id
-                        ? {
-                              reply_to_message_id: response.replyInfo.id
-                          }
+                        ? ({
+                              reply_to_message_id: response.replyInfo.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          } as any)
                         : undefined
                 );
                 break;
@@ -173,21 +177,20 @@ export class TelegramApiService {
                 await this.telegram.setMessageReaction(
                     response.chatInfo.id,
                     response.messageId,
-                    {
-                        reaction: [
-                            {
-                                type: 'emoji',
-                                emoji: response.emoji
-                            }
-                        ]
-                    }
+                    [
+                        {
+                            type: 'emoji',
+                            emoji: response.emoji
+                        }
+                    ]
                 );
 
                 return;
             case 'unpin':
-                await this.telegram.unpinChatMessage(response.chatInfo.id, {
-                    message_id: response.messageId
-                });
+                await this.telegram.unpinChatMessage(
+                    response.chatInfo.id,
+                    response.messageId
+                );
 
                 await this.storage.updateStateFor(
                     response.action,

@@ -12,7 +12,8 @@ import { buildHelpCommand } from '../builtin/helpAction';
 import { CommandActionProcessor } from './actionProcessors/commandActionProcessor';
 import { InlineQueryActionProcessor } from './actionProcessors/inlineQueryActionProcessor';
 import { ScheduledActionProcessor } from './actionProcessors/scheduledActionProcessor';
-import TelegramBot from 'node-telegram-bot-api';
+import { TelegramBot } from '../types/externalAliases';
+import { Telegraf } from 'telegraf';
 
 export class ActionProcessingService {
     private readonly storage: IStorageClient;
@@ -69,10 +70,10 @@ export class ActionProcessingService {
         scheduledPeriod?: Seconds,
         verboseLoggingForIncomingMessage?: boolean
     ) {
-        this.telegramBot = new TelegramBot(token, { polling: true });
+        this.telegramBot = new Telegraf(token);
         const api = new TelegramApiService(
             this.botName,
-            this.telegramBot,
+            this.telegramBot.telegram,
             this.storage,
             this.logger,
             (capture, id, chatInfo, traceId) => {
@@ -85,15 +86,13 @@ export class ActionProcessingService {
             }
         );
 
-        const botInfo = await this.telegramBot.getMe();
+        const botInfo = await this.telegramBot.telegram.getMe();
         const commandActions =
             actions.commands.length > 0 && botInfo.username
                 ? [
                       buildHelpCommand(
                           actions.commands
-                              .map((x) =>
-                                  x.readmeFactory(botInfo.username as string)
-                              )
+                              .map((x) => x.readmeFactory(botInfo.username))
                               .filter((x) => !!x),
                           botInfo.username
                       ),
@@ -120,13 +119,15 @@ export class ActionProcessingService {
             scheduledPeriod ?? hoursToSeconds(1 as Hours)
         );
 
+        void this.telegramBot.launch();
+
         void this.storage.saveMetadata([
             ...actions.scheduled,
             ...commandActions
         ]);
     }
 
-    async stop() {
-        await this.telegramBot.stopPolling();
+    stop() {
+        this.telegramBot.stop();
     }
 }

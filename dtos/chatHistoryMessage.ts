@@ -1,11 +1,11 @@
-import { User } from 'node-telegram-bot-api';
+import { TelegramUser } from '../types/externalAliases';
 import { MessageTypeValue } from '../types/messageTypes';
 import { TraceId } from '../types/trace';
 
 export class ChatHistoryMessage {
     constructor(
         readonly id: number,
-        readonly from: User | undefined,
+        readonly from: TelegramUser | undefined,
         readonly text: string,
         readonly type: MessageTypeValue,
         readonly traceId: TraceId,

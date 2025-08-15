@@ -18,14 +18,14 @@ import { getOrSetIfNotExists } from '../../helpers/mapUtils';
 import { MessageInfo } from '../../dtos/messageInfo';
 import { UserInfo } from '../../dtos/userInfo';
 import { ChatHistoryMessage } from '../../dtos/chatHistoryMessage';
-import TelegramBot from 'node-telegram-bot-api';
+import { BotInfo, TelegramBot } from '../../types/externalAliases';
 
 const MESSAGE_HISTORY_LENGTH_LIMIT = 100;
 
 export class CommandActionProcessor extends BaseActionProcessor {
     private readonly replyCaptures: ReplyCaptureAction<IActionState>[] = [];
     private readonly chatHistory = new Map<number, ChatHistoryMessage[]>();
-    private botInfo!: TelegramBot.User;
+    private botInfo!: BotInfo;
 
     private commands = typeSafeObjectFromEntries(
         Object.values(MessageType).map((x) => [
@@ -39,7 +39,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         telegram: TelegramBot,
         commands: CommandAction<IActionState>[],
         verboseLoggingForIncomingMessage: boolean,
-        botInfo: TelegramBot.User
+        botInfo: BotInfo
     ) {
         this.botInfo = botInfo;
         this.initializeDependencies(api);
@@ -70,11 +70,11 @@ export class CommandActionProcessor extends BaseActionProcessor {
         }
 
         if (commands.length > 0) {
-            telegram.on('message', (msg) => {
+            telegram.on('message', ({ message }) => {
                 const internalMessage = new IncomingMessage(
-                    msg,
+                    message,
                     this.botName,
-                    getOrSetIfNotExists(this.chatHistory, msg.chat.id, [])
+                    getOrSetIfNotExists(this.chatHistory, message.chat.id, [])
                 );
 
                 const logger = this.logger.createScope(
@@ -84,7 +84,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
                 );
 
                 if (verboseLoggingForIncomingMessage) {
-                    logger.logObjectWithTraceId(msg);
+                    logger.logObjectWithTraceId(message);
                 } else {
                     logger.logWithTraceId(
                         `${internalMessage.from?.first_name ?? 'Unknown'} (${

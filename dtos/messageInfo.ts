@@ -1,4 +1,4 @@
-import { Message } from 'node-telegram-bot-api';
+import { TelegramMessage } from '../types/externalAliases';
 import { MessageTypeValue } from '../types/messageTypes';
 
 export class MessageInfo {
@@ -10,6 +10,6 @@ export class MessageInfo {
         /** Type of message being received */
         readonly type: MessageTypeValue,
         /** Message object recieved from Telegram */
-        readonly telegramUpdateObject: Message
+        readonly telegramUpdateObject: TelegramMessage
     ) {}
 }

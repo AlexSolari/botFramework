@@ -5,7 +5,7 @@ import {
     BaseContextInternal,
     BaseContextPropertiesToOmit
 } from './baseContext';
-import { InlineQueryResult } from 'node-telegram-bot-api';
+import { TelegramInlineQueryResult } from '../../types/externalAliases';
 
 export type InlineQueryContext = Omit<
     InlineQueryContextInternal,
@@ -13,7 +13,7 @@ export type InlineQueryContext = Omit<
 >;
 
 export class InlineQueryContextInternal extends BaseContextInternal<InlineQueryAction> {
-    queryResults: InlineQueryResult[] = [];
+    queryResults: TelegramInlineQueryResult[] = [];
     /**
      * Abort signal to be utilized in query handler.
      * Signal will be aborted if new query comes from the same user.
@@ -42,7 +42,7 @@ export class InlineQueryContextInternal extends BaseContextInternal<InlineQueryA
      * This result will be shown to user as a response to inline query.
      * @param queryResult Inline query result to be shown to user.
      */
-    showInlineQueryResult(queryResult: InlineQueryResult) {
+    showInlineQueryResult(queryResult: TelegramInlineQueryResult) {
         this.queryResults.push(queryResult);
     }
 }

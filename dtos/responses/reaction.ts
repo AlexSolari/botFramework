@@ -2,7 +2,7 @@ import { BotResponseTypes, IChatResponse } from '../../types/response';
 import { IAction } from '../../types/action';
 import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';
-import { TelegramEmoji } from 'node-telegram-bot-api';
+import { TelegramEmoji } from '../../types/externalAliases';
 
 export class Reaction implements IChatResponse {
     readonly kind = BotResponseTypes.react;

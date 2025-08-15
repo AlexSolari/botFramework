@@ -16,7 +16,7 @@ import {
 } from './baseContext';
 import { UserInfo } from '../../dtos/userInfo';
 import { MessageInfo } from '../../dtos/messageInfo';
-import { TelegramEmoji, User } from 'node-telegram-bot-api';
+import { TelegramUser, TelegramEmoji } from '../../types/externalAliases';
 
 export type ReplyContext<TActionState extends IActionState> = Omit<
     ReplyContextInternal<TActionState>,
@@ -38,7 +38,7 @@ export class ReplyContextInternal<
     /** Information about the message that triggered this action */
     messageInfo!: MessageInfo;
     /** Bot info from Telegram */
-    botInfo!: User;
+    botInfo!: TelegramUser;
 
     isInitialized = false;
 

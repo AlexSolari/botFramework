@@ -15,7 +15,7 @@ import { Seconds } from '../../types/timeValues';
 import { BaseContextPropertiesToOmit } from './baseContext';
 import { MessageInfo } from '../../dtos/messageInfo';
 import { UserInfo } from '../../dtos/userInfo';
-import { TelegramEmoji, User } from 'node-telegram-bot-api';
+import { BotInfo, TelegramEmoji } from '../../types/externalAliases';
 
 export type MessageContext<TActionState extends IActionState> = Omit<
     MessageContextInternal<TActionState>,
@@ -37,7 +37,7 @@ export class MessageContextInternal<
     /** Indicates if cooldown should be started after action is executed. Set to `true` by default. */
     startCooldown: boolean = true;
     /** Bot info from Telegram */
-    botInfo!: User;
+    botInfo!: BotInfo;
     customCooldown: Seconds | undefined;
 
     private getQuotePart(quote: boolean | string) {
