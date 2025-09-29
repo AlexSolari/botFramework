@@ -126,11 +126,29 @@ export class TelegramApiService {
     }
 
     private async processResponse(response: BotResponse, ignoreQuote = false) {
-        let sentMessage: TelegramMessage | null = null;
+        const sentMessage = await this.sendApiRequest(response, ignoreQuote);
 
+        if (sentMessage && 'content' in response) {
+            await this.pinIfShould(response, sentMessage);
+
+            for (const capture of response.captures) {
+                this.captureRegistrationCallback(
+                    capture,
+                    sentMessage.message_id,
+                    response.chatInfo,
+                    response.traceId
+                );
+            }
+        }
+    }
+
+    private async sendApiRequest(
+        response: BotResponse,
+        ignoreQuote: boolean
+    ): Promise<TelegramMessage | null> {
         switch (response.kind) {
             case 'text':
-                sentMessage = await this.telegram.sendMessage(
+                return await this.telegram.sendMessage(
                     response.chatInfo.id,
                     response.content,
                     {
@@ -145,12 +163,16 @@ export class TelegramApiService {
                         parse_mode: 'MarkdownV2',
                         link_preview_options: {
                             is_disabled: response.disableWebPreview
-                        }
+                        },
+                        reply_markup: response.keyboard
+                            ? {
+                                  inline_keyboard: response.keyboard
+                              }
+                            : undefined
                     }
                 );
-                break;
             case 'image':
-                sentMessage = await this.telegram.sendPhoto(
+                return await this.telegram.sendPhoto(
                     response.chatInfo.id,
                     response.content,
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -160,9 +182,8 @@ export class TelegramApiService {
                           } as any)
                         : undefined
                 );
-                break;
             case 'video':
-                sentMessage = await this.telegram.sendVideo(
+                return await this.telegram.sendVideo(
                     response.chatInfo.id,
                     response.content,
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -172,7 +193,6 @@ export class TelegramApiService {
                           } as any)
                         : undefined
                 );
-                break;
             case 'react':
                 await this.telegram.setMessageReaction(
                     response.chatInfo.id,
@@ -185,7 +205,7 @@ export class TelegramApiService {
                     ]
                 );
 
-                return;
+                return null;
             case 'unpin':
                 await this.telegram.unpinChatMessage(
                     response.chatInfo.id,
@@ -201,29 +221,18 @@ export class TelegramApiService {
                         );
                     }
                 );
-                break;
+
+                return null;
             case 'inlineQuery':
                 await this.telegram.answerInlineQuery(
                     response.queryId,
                     response.queryResults,
                     { cache_time: 0 }
                 );
-                break;
+
+                return null;
             case 'delay':
-                break;
-        }
-
-        if ('content' in response && sentMessage) {
-            await this.pinIfShould(response, sentMessage);
-
-            for (const capture of response.captures) {
-                this.captureRegistrationCallback(
-                    capture,
-                    sentMessage.message_id,
-                    response.chatInfo,
-                    response.traceId
-                );
-            }
+                return null;
         }
     }
 }
