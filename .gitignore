@@ -12,3 +12,4 @@ types/userIds.ts
 types/creds.ts
 dist/
 bun.lockb
+bun.lock
