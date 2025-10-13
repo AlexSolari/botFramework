@@ -93,6 +93,6 @@ export class BotInstance {
 
         this.scheduler.stopAll();
         await this.storage.close();
-        await this.actionProcessingService.stop();
+        this.actionProcessingService.stop();
     }
 }

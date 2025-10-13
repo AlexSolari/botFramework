@@ -3,18 +3,22 @@ import tseslint from 'typescript-eslint';
 import parser from '@typescript-eslint/parser';
 
 export default tseslint.config(
+    {
+        ignores: ['dist/**']
+    },
     eslint.configs.recommended,
     tseslint.configs.strictTypeChecked,
     {
         languageOptions: {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             parser,
             parserOptions: {
                 project: './tsconfig.json',
-                tsconfigRootDir: import.meta.dirname,
-                sourceType: 'module'
+                tsconfigRootDir: __dirname,
+                sourceType: 'module',
+                projectService: true
             }
         },
+        plugins: { '@typescript-eslint': tseslint.plugin },
         rules: {
             '@typescript-eslint/switch-exhaustiveness-check': 'error',
             '@typescript-eslint/no-unused-vars': [
@@ -48,7 +52,6 @@ export default tseslint.config(
                     ignoreStatic: true
                 }
             ]
-        },
-        ignores: ['dist/*']
+        }
     }
 );
