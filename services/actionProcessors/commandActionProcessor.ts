@@ -48,9 +48,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
             if (msgType == MessageType.Text) {
                 this.commands[msgType] = commands.filter(
                     (cmd) =>
-                        cmd.triggers.find((x) => typeof x != 'string') !=
-                            undefined ||
-                        cmd.triggers.find(
+                        cmd.triggers.some((x) => typeof x != 'string') ||
+                        cmd.triggers.some(
                             (x) =>
                                 typeof x == 'string' &&
                                 !x.startsWith(INTERNAL_MESSAGE_TYPE_PREFIX)
@@ -161,9 +160,9 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         const commandsToCheck = new Set(this.commands[msg.type]);
         if (msg.type != MessageType.Text && msg.text != '') {
-            this.commands[MessageType.Text].forEach((x) =>
-                commandsToCheck.add(x)
-            );
+            for (const command of this.commands[MessageType.Text]) {
+                commandsToCheck.add(command);
+            }
         }
 
         for (const commandAction of commandsToCheck) {

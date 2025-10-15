@@ -43,9 +43,9 @@ export class MessageContextInternal<
     private getQuotePart(quote: boolean | string) {
         if (typeof quote != 'boolean') return quote;
 
-        return this.matchResults.length != 0
-            ? this.matchResults[0][1]
-            : this.messageInfo.text;
+        return this.matchResults.length == 0
+            ? this.messageInfo.text
+            : this.matchResults[0][1];
     }
 
     private replyWithText(

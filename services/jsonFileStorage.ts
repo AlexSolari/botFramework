@@ -48,7 +48,7 @@ export class JsonFileStorage implements IStorageClient {
         for (const [stringKey, value] of Object.entries(data)) {
             if (value) continue;
 
-            data[parseInt(stringKey)] = action.stateConstructor();
+            data[Number.parseInt(stringKey)] = action.stateConstructor();
         }
 
         return true;
