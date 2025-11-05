@@ -149,7 +149,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
                 msg.text,
                 msg.type,
                 msg.traceId,
-                msg.replyToMessageId
+                msg.replyToMessageId,
+                msg.updateObject.date
             )
         );
 
