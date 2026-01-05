@@ -11,6 +11,7 @@ import { NodeTimeoutScheduler } from '../services/nodeTimeoutScheduler';
 import { createTrace } from '../helpers/traceFactory';
 import { InlineQueryAction } from './actions/inlineQueryAction';
 import { ActionProcessingService } from '../services/actionProcessingService';
+import { TypedEventEmitter } from '../types/events';
 
 export class BotInstance {
     private readonly storage: IStorageClient;
@@ -19,6 +20,7 @@ export class BotInstance {
     private readonly actionProcessingService: ActionProcessingService;
 
     readonly name: string;
+    readonly eventEmitter = new TypedEventEmitter();
 
     constructor(options: {
         name: string;
@@ -48,13 +50,19 @@ export class BotInstance {
             new NodeTimeoutScheduler(this.logger);
         this.storage =
             options.services?.storageClient ??
-            new JsonFileStorage(options.name, actions, options.storagePath);
+            new JsonFileStorage(
+                options.name,
+                actions,
+                this.eventEmitter,
+                options.storagePath
+            );
         this.actionProcessingService = new ActionProcessingService(
             this.name,
             options.chats,
             this.storage,
             this.scheduler,
-            this.logger
+            this.logger,
+            this.eventEmitter
         );
     }
 

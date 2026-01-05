@@ -24,3 +24,4 @@ export { ICaptureController } from './types/capture';
 export { ChatInfo } from './dtos/chatInfo';
 export { MessageInfo } from './dtos/messageInfo';
 export { UserInfo } from './dtos/userInfo';
+export { BotEventType } from './types/events';

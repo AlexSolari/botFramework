@@ -19,6 +19,7 @@ import { MessageInfo } from '../../dtos/messageInfo';
 import { UserInfo } from '../../dtos/userInfo';
 import { ChatHistoryMessage } from '../../dtos/chatHistoryMessage';
 import { BotInfo, TelegramBot } from '../../types/externalAliases';
+import { BotEventType } from '../../types/events';
 
 const MESSAGE_HISTORY_LENGTH_LIMIT = 100;
 
@@ -69,12 +70,17 @@ export class CommandActionProcessor extends BaseActionProcessor {
         }
 
         if (commands.length > 0) {
-            telegram.on('message', ({ message }) => {
+            telegram.on('message', async ({ message }) => {
                 const internalMessage = new IncomingMessage(
                     message,
                     this.botName,
                     getOrSetIfNotExists(this.chatHistory, message.chat.id, [])
                 );
+
+                this.eventEmitter.emit(BotEventType.messageRecieved, {
+                    botInfo: this.botInfo,
+                    message: internalMessage
+                });
 
                 const logger = this.logger.createScope(
                     this.botName,
@@ -92,7 +98,12 @@ export class CommandActionProcessor extends BaseActionProcessor {
                     );
                 }
 
-                void this.processMessage(internalMessage);
+                await this.processMessage(internalMessage);
+
+                this.eventEmitter.emit(BotEventType.messageProcessingFinished, {
+                    botInfo: this.botInfo,
+                    message: internalMessage
+                });
             });
         }
     }
@@ -134,6 +145,11 @@ export class CommandActionProcessor extends BaseActionProcessor {
     }
 
     private async processMessage(msg: IncomingMessage) {
+        this.eventEmitter.emit(BotEventType.messageProcessingStarted, {
+            botInfo: this.botInfo,
+            message: msg
+        });
+
         const chatHistoryArray = getOrSetIfNotExists(
             this.chatHistory,
             msg.chatInfo.id,
@@ -142,6 +158,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         while (chatHistoryArray.length > MESSAGE_HISTORY_LENGTH_LIMIT)
             chatHistoryArray.shift();
+
         chatHistoryArray.push(
             new ChatHistoryMessage(
                 msg.messageId,
@@ -155,7 +172,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         const ctx = new MessageContextInternal<IActionState>(
             this.storage,
-            this.scheduler
+            this.scheduler,
+            this.eventEmitter
         );
 
         const commandsToCheck = new Set(this.commands[msg.type]);
@@ -165,6 +183,11 @@ export class CommandActionProcessor extends BaseActionProcessor {
             }
         }
 
+        this.eventEmitter.emit(BotEventType.beforeActionsExecuting, {
+            botInfo: this.botInfo,
+            message: msg,
+            commands: commandsToCheck
+        });
         for (const commandAction of commandsToCheck) {
             this.initializeMessageContext(ctx, commandAction, msg);
             await this.executeAction(commandAction, ctx);
@@ -173,7 +196,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
         if (this.replyCaptures.length != 0) {
             const replyCtx = new ReplyContextInternal<IActionState>(
                 this.storage,
-                this.scheduler
+                this.scheduler,
+                this.eventEmitter
             );
 
             for (const replyAction of this.replyCaptures) {
