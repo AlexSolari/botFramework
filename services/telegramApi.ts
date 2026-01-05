@@ -1,5 +1,9 @@
 import { IStorageClient } from '../types/storage';
-import { BotResponse, IReplyResponse } from '../types/response';
+import {
+    BotResponse,
+    BotResponseTypes,
+    IReplyResponse
+} from '../types/response';
 import { ILogger } from '../types/logger';
 import { QueueItem, ResponseProcessingQueue } from './responseProcessingQueue';
 import { IReplyCapture } from '../types/capture';
@@ -8,6 +12,7 @@ import { IActionState } from '../types/actionState';
 import { TraceId } from '../types/trace';
 import { ChatInfo } from '../dtos/chatInfo';
 import { TelegramApiClient, TelegramMessage } from '../types/externalAliases';
+import { BotEventType, TypedEventEmitter } from '../types/events';
 
 export const TELEGRAM_ERROR_QUOTE_INVALID = 'QUOTE_TEXT_INVALID';
 
@@ -16,6 +21,7 @@ export class TelegramApiService {
     private readonly telegram: TelegramApiClient;
     private readonly storage: IStorageClient;
     private readonly logger: ILogger;
+    private readonly eventEmitter: TypedEventEmitter;
     private readonly captureRegistrationCallback: (
         capture: IReplyCapture,
         parentMessageId: number,
@@ -25,11 +31,26 @@ export class TelegramApiService {
 
     private readonly botName: string;
 
+    private readonly methodMap: Record<
+        'pin' | keyof typeof BotResponseTypes,
+        string | null
+    > = {
+        inlineQuery: 'answerInlineQuery',
+        text: 'sendMessage',
+        react: 'setMessageReaction',
+        unpin: 'unpinChatMessage',
+        pin: 'pinChatMessage',
+        image: 'sendPhoto',
+        video: 'sendVideo',
+        delay: null
+    };
+
     constructor(
         botName: string,
         telegram: TelegramApiClient,
         storage: IStorageClient,
         logger: ILogger,
+        eventEmitter: TypedEventEmitter,
         captureRegistrationCallback: (
             capture: IReplyCapture,
             parentMessageId: number,
@@ -41,6 +62,7 @@ export class TelegramApiService {
         this.botName = botName;
         this.storage = storage;
         this.logger = logger;
+        this.eventEmitter = eventEmitter;
         this.captureRegistrationCallback = captureRegistrationCallback;
     }
 
@@ -75,6 +97,11 @@ export class TelegramApiService {
                                     TELEGRAM_ERROR_QUOTE_INVALID
                                 )
                             ) {
+                                this.eventEmitter.emit(BotEventType.error, {
+                                    error: new Error(
+                                        'Quote error recieved, retrying without quote'
+                                    )
+                                });
                                 scopedLogger.logWithTraceId(
                                     'Quote error recieved, retrying without quote'
                                 );
@@ -85,6 +112,9 @@ export class TelegramApiService {
                                         error,
                                         response
                                     );
+                                    this.eventEmitter.emit(BotEventType.error, {
+                                        error: error as Error
+                                    });
                                 }
 
                                 return;
@@ -92,6 +122,9 @@ export class TelegramApiService {
                         }
 
                         scopedLogger.errorWithTraceId(error, response);
+                        this.eventEmitter.emit(BotEventType.error, {
+                            error: error as Error
+                        });
                     }
                 },
                 priority: response.createdAt + offset
@@ -109,11 +142,19 @@ export class TelegramApiService {
         message: TelegramMessage
     ) {
         if (response.shouldPin) {
+            this.eventEmitter.emit(BotEventType.apiRequestSending, {
+                response: null,
+                telegramMethod: this.methodMap['pin']
+            });
             await this.telegram.pinChatMessage(
                 response.chatInfo.id,
                 message.message_id,
                 { disable_notification: true }
             );
+            this.eventEmitter.emit(BotEventType.apiRequestSent, {
+                response: null,
+                telegramMethod: this.methodMap['pin']
+            });
 
             await this.storage.updateStateFor(
                 response.action as IActionWithState<IActionState>,
@@ -127,6 +168,10 @@ export class TelegramApiService {
 
     private async processResponse(response: BotResponse, ignoreQuote = false) {
         const sentMessage = await this.sendApiRequest(response, ignoreQuote);
+        this.eventEmitter.emit(BotEventType.apiRequestSent, {
+            response,
+            telegramMethod: this.methodMap[response.kind]
+        });
 
         if (sentMessage && 'content' in response) {
             await this.pinIfShould(response, sentMessage);
@@ -146,6 +191,11 @@ export class TelegramApiService {
         response: BotResponse,
         ignoreQuote: boolean
     ): Promise<TelegramMessage | null> {
+        this.eventEmitter.emit(BotEventType.apiRequestSending, {
+            response,
+            telegramMethod: this.methodMap[response.kind]
+        });
+
         switch (response.kind) {
             case 'text':
                 return await this.telegram.sendMessage(

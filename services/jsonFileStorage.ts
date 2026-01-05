@@ -5,12 +5,14 @@ import { IStorageClient } from '../types/storage';
 import { IActionState } from '../types/actionState';
 import { IActionWithState, ActionKey } from '../types/action';
 import { getOrSetIfNotExists } from '../helpers/mapUtils';
+import { BotEventType, TypedEventEmitter } from '../types/events';
 
 function buildPath(storagePath: string, botName: string, actionKey: string) {
     return `${storagePath}/${botName}/${actionKey.replaceAll(':', '/')}.json`;
 }
 
 export class JsonFileStorage implements IStorageClient {
+    private readonly eventEmitter: TypedEventEmitter;
     private readonly filePaths = new Map<ActionKey, string>();
     private readonly locks = new Map<ActionKey, Semaphore>();
     private readonly cache: Map<string, Record<number, IActionState>>;
@@ -20,8 +22,10 @@ export class JsonFileStorage implements IStorageClient {
     constructor(
         botName: string,
         actions: IActionWithState<IActionState>[],
+        eventEmitter: TypedEventEmitter,
         path?: string
     ) {
+        this.eventEmitter = eventEmitter;
         this.cache = new Map<string, Record<number, IActionState>>();
         this.botName = botName;
         this.storagePath = path ?? 'storage';
@@ -57,12 +61,15 @@ export class JsonFileStorage implements IStorageClient {
     private async lock<TType>(key: ActionKey, action: () => Promise<TType>) {
         const lock = getOrSetIfNotExists(this.locks, key, new Semaphore(1));
 
+        this.eventEmitter.emit(BotEventType.storageLockAcquiring, key);
         await lock.acquire();
+        this.eventEmitter.emit(BotEventType.storageLockAcquired, key);
 
         try {
             return await action();
         } finally {
             lock.release();
+            this.eventEmitter.emit(BotEventType.storageLockReleased, key);
         }
     }
 
@@ -103,6 +110,10 @@ export class JsonFileStorage implements IStorageClient {
         data: Record<number, TActionState>,
         key: ActionKey
     ) {
+        this.eventEmitter.emit(BotEventType.storageStateSaving, {
+            data,
+            key
+        });
         this.cache.set(key, data);
 
         const targetPath = getOrSetIfNotExists(
@@ -112,6 +123,10 @@ export class JsonFileStorage implements IStorageClient {
         );
 
         await writeFile(targetPath, JSON.stringify(data), { flag: 'w+' });
+        this.eventEmitter.emit(BotEventType.storageStateSaved, {
+            data,
+            key
+        });
     }
 
     async load<TActionState extends IActionState>(key: ActionKey) {
@@ -135,13 +150,24 @@ export class JsonFileStorage implements IStorageClient {
         action: IActionWithState<TActionState>,
         chatId: number
     ) {
+        this.eventEmitter.emit(BotEventType.storageStateLoading, {
+            action,
+            chatId
+        });
         const value =
             this.tryGetFromCache<TActionState>(action.key) ??
             (await this.lock(action.key, async () => {
                 return await this.loadFromFile<TActionState>(action.key);
             }));
 
-        return Object.assign(action.stateConstructor(), value[chatId]);
+        const result = Object.assign(action.stateConstructor(), value[chatId]);
+
+        this.eventEmitter.emit(BotEventType.storageStateLoaded, {
+            action,
+            chatId,
+            state: result
+        });
+        return result;
     }
 
     async saveActionExecutionResult<TActionState extends IActionState>(

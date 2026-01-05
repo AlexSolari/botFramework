@@ -3,6 +3,7 @@ import { ActionKey, IAction } from '../../types/action';
 import { InlineQueryContextInternal } from '../context/inlineQueryContext';
 import { InlineQueryHandler } from '../../types/handlers';
 import { InlineActionPropertyProvider } from '../../types/propertyProvider';
+import { BotEventType } from '../../types/events';
 
 export class InlineQueryAction implements IAction {
     readonly key: ActionKey;
@@ -58,10 +59,19 @@ export class InlineQueryAction implements IAction {
 
         ctx.matchResults = matchResults;
 
+        ctx.eventEmitter.emit(BotEventType.inlineActionExecuting, {
+            action: this,
+            ctx
+        });
+
         ctx.logger.logWithTraceId(` - Executing [${this.name}]`);
 
         await this.handler(ctx);
 
+        ctx.eventEmitter.emit(BotEventType.inlineActionExecuted, {
+            action: this,
+            ctx
+        });
         return ctx.responses;
     }
 }

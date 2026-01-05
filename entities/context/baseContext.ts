@@ -3,6 +3,7 @@ import { IAction, IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
 import { ICaptureController } from '../../types/capture';
 import { CommandTrigger } from '../../types/commandTrigger';
+import { TypedEventEmitter } from '../../types/events';
 import { IScopedLogger } from '../../types/logger';
 import { BotResponse, IReplyResponse } from '../../types/response';
 import { IScheduler } from '../../types/scheduler';
@@ -16,6 +17,7 @@ export type BaseContextPropertiesToOmit =
     | 'storage'
     | 'scheduler'
     | 'logger'
+    | 'eventEmitter'
     | 'responses'
     | 'traceId';
 
@@ -29,6 +31,7 @@ export abstract class BaseContextInternal<TAction extends IAction> {
     readonly storage: IStorageClient;
     /** Scheduler instance for the bot executing this action */
     readonly scheduler: IScheduler;
+    readonly eventEmitter: TypedEventEmitter;
     logger!: IScopedLogger;
     /** Trace id of a action execution. */
     traceId!: TraceId;
@@ -48,9 +51,14 @@ export abstract class BaseContextInternal<TAction extends IAction> {
         this._responses = value;
     }
 
-    constructor(storage: IStorageClient, scheduler: IScheduler) {
+    constructor(
+        storage: IStorageClient,
+        scheduler: IScheduler,
+        eventEmitter: TypedEventEmitter
+    ) {
         this.storage = storage;
         this.scheduler = scheduler;
+        this.eventEmitter = eventEmitter;
     }
 
     protected createCaptureController(

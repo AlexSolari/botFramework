@@ -12,6 +12,7 @@ import { Seconds, Milliseconds } from '../../types/timeValues';
 import { TraceId } from '../../types/trace';
 import { TelegramApiService } from '../telegramApi';
 import { BaseActionProcessor } from './baseProcessor';
+import { TypedEventEmitter } from '../../types/events';
 
 export class ScheduledActionProcessor extends BaseActionProcessor {
     private readonly chats: Record<string, number>;
@@ -23,9 +24,10 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
         chats: Record<string, number>,
         storage: IStorageClient,
         scheduler: IScheduler,
-        logger: ILogger
+        logger: ILogger,
+        eventEmitter: TypedEventEmitter
     ) {
-        super(botName, storage, scheduler, logger);
+        super(botName, storage, scheduler, logger, eventEmitter);
         this.chats = chats;
     }
 
@@ -83,7 +85,8 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
     private async runScheduled() {
         const ctx = new ChatContextInternal<IActionState>(
             this.storage,
-            this.scheduler
+            this.scheduler,
+            this.eventEmitter
         );
 
         for (const [chatName, chatId] of Object.entries(this.chats)) {

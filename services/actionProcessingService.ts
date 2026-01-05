@@ -14,8 +14,10 @@ import { InlineQueryActionProcessor } from './actionProcessors/inlineQueryAction
 import { ScheduledActionProcessor } from './actionProcessors/scheduledActionProcessor';
 import { TelegramBot } from '../types/externalAliases';
 import { Telegraf } from 'telegraf';
+import { TypedEventEmitter } from '../types/events';
 
 export class ActionProcessingService {
+    private readonly eventEmitter: TypedEventEmitter;
     private readonly storage: IStorageClient;
     private readonly logger: ILogger;
 
@@ -32,29 +34,34 @@ export class ActionProcessingService {
         chats: Record<string, number>,
         storage: IStorageClient,
         scheduler: IScheduler,
-        logger: ILogger
+        logger: ILogger,
+        eventEmitter: TypedEventEmitter
     ) {
         this.storage = storage;
         this.logger = logger;
+        this.eventEmitter = eventEmitter;
 
         this.commandProcessor = new CommandActionProcessor(
             botName,
             storage,
             scheduler,
-            logger
+            logger,
+            this.eventEmitter
         );
         this.scheduledProcessor = new ScheduledActionProcessor(
             botName,
             chats,
             storage,
             scheduler,
-            logger
+            logger,
+            this.eventEmitter
         );
         this.inlineQueryProcessor = new InlineQueryActionProcessor(
             botName,
             storage,
             scheduler,
-            logger
+            logger,
+            this.eventEmitter
         );
 
         this.botName = botName;
@@ -76,6 +83,7 @@ export class ActionProcessingService {
             this.telegramBot.telegram,
             this.storage,
             this.logger,
+            this.eventEmitter,
             (capture, id, chatInfo, traceId) => {
                 this.commandProcessor.captureRegistrationCallback(
                     capture,
