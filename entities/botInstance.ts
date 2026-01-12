@@ -11,7 +11,7 @@ import { NodeTimeoutScheduler } from '../services/nodeTimeoutScheduler';
 import { createTrace } from '../helpers/traceFactory';
 import { InlineQueryAction } from './actions/inlineQueryAction';
 import { ActionProcessingService } from '../services/actionProcessingService';
-import { TypedEventEmitter } from '../types/events';
+import { BotEventType, TypedEventEmitter } from '../types/events';
 
 export class BotInstance {
     private readonly storage: IStorageClient;
@@ -47,7 +47,7 @@ export class BotInstance {
         this.logger = options.services?.logger ?? new JsonLogger();
         this.scheduler =
             options.services?.scheduler ??
-            new NodeTimeoutScheduler(this.logger);
+            new NodeTimeoutScheduler(this.logger, this.eventEmitter);
         this.storage =
             options.services?.storageClient ??
             new JsonFileStorage(
@@ -82,6 +82,9 @@ export class BotInstance {
             'System',
             'Starting bot...'
         );
+        this.eventEmitter.emit(BotEventType.botStarting, {
+            botName: this.name
+        });
 
         await this.actionProcessingService.initialize(
             token,
@@ -98,6 +101,9 @@ export class BotInstance {
             'System',
             'Stopping bot...'
         );
+        this.eventEmitter.emit(BotEventType.botStopping, {
+            botName: this.name
+        });
 
         this.scheduler.stopAll();
         await this.storage.close();

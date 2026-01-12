@@ -36,6 +36,7 @@ export abstract class BaseActionProcessor {
         ctx: BaseContextInternal<TAction>
     ) {
         ctx.logger.errorWithTraceId(error, ctx);
+        this.eventEmitter.emit(BotEventType.error, { error });
     }
 
     initializeDependencies(api: TelegramApiService) {

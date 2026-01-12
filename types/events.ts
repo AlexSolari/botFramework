@@ -1,3 +1,4 @@
+import { ChatInfo } from '../dtos/chatInfo';
 import { IncomingMessage } from '../dtos/incomingMessage';
 import { IncomingInlineQuery } from '../dtos/incomingQuery';
 import { CommandAction } from '../entities/actions/commandAction';
@@ -9,6 +10,7 @@ import { ActionKey, IAction, IActionWithState } from './action';
 import { IActionState } from './actionState';
 import { BotInfo } from './externalAliases';
 import { BotResponse } from './response';
+import { Milliseconds } from './timeValues';
 
 export const BotEventType = {
     error: 'error.generic',
@@ -21,6 +23,8 @@ export const BotEventType = {
 
     commandActionExecuting: 'command.actionExecuting',
     commandActionExecuted: 'command.actionExecuted',
+    commandActionCaptureStarted: 'command.captionStarted',
+    commandActionCaptureAborted: 'command.captionAborted',
 
     replyActionExecuting: 'reply.actionExecuting',
     replyActionExecuted: 'reply.actionExecuted',
@@ -46,7 +50,13 @@ export const BotEventType = {
     storageStateSaving: 'storage.stateSaving',
     storageStateSaved: 'storage.stateSaved',
     storageStateLoading: 'storage.stateLoading',
-    storageStateLoaded: 'storage.stateLoaded'
+    storageStateLoaded: 'storage.stateLoaded',
+
+    taskCreated: 'task.created',
+    taskRun: 'task.run',
+
+    botStarting: 'bot.starting',
+    botStopping: 'bot.stopping'
 } as const;
 
 type BotEventTypeKeys = (typeof BotEventType)[keyof typeof BotEventType];
@@ -90,6 +100,16 @@ export type BotEventMap = {
         action: IActionWithState<IActionState>;
         ctx: MessageContext<IActionState>;
         state: IActionState;
+    };
+
+    [BotEventType.commandActionCaptureStarted]: {
+        parentMessageId: number;
+        chatInfo: ChatInfo;
+    };
+
+    [BotEventType.commandActionCaptureAborted]: {
+        parentMessageId: number;
+        chatInfo: ChatInfo;
     };
 
     [BotEventType.replyActionExecuting]: {
@@ -178,6 +198,27 @@ export type BotEventMap = {
         action: IActionWithState<IActionState>;
         chatId: number;
         state: IActionState;
+    };
+
+    [BotEventType.taskCreated]: {
+        name: string;
+        ownerName: string;
+        delay?: Milliseconds;
+        interval?: Milliseconds;
+    };
+    [BotEventType.taskRun]: {
+        name: string;
+        ownerName: string;
+        delay?: Milliseconds;
+        interval?: Milliseconds;
+    };
+
+    [BotEventType.botStarting]: {
+        botName: string;
+    };
+
+    [BotEventType.botStopping]: {
+        botName: string;
     };
 };
 

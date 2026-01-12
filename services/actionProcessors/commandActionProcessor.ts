@@ -131,6 +131,10 @@ export class CommandActionProcessor extends BaseActionProcessor {
         logger.logWithTraceId(
             `Starting capturing replies to message ${parentMessageId} with action ${replyAction.key}`
         );
+        this.eventEmitter.emit(BotEventType.commandActionCaptureStarted, {
+            parentMessageId,
+            chatInfo
+        });
 
         this.replyCaptures.push(replyAction);
 
@@ -141,6 +145,10 @@ export class CommandActionProcessor extends BaseActionProcessor {
             logger.logWithTraceId(
                 `Stopping capturing replies to message ${parentMessageId} with action ${replyAction.key}`
             );
+            this.eventEmitter.emit(BotEventType.commandActionCaptureAborted, {
+                parentMessageId,
+                chatInfo
+            });
         });
     }
 
