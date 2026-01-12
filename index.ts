@@ -9,7 +9,6 @@ export * from './helpers/timeConvertions';
 export * from './types/action';
 export * from './types/externalAliases';
 export * from './types/storage';
-export * from './types/logger';
 export * from './types/scheduler';
 export { CommandAction } from './entities/actions/commandAction';
 export { InlineQueryAction } from './entities/actions/inlineQueryAction';

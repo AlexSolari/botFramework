@@ -139,9 +139,6 @@ export class CommandAction<TActionState extends IActionState>
                 ctx,
                 state
             });
-            ctx.logger.logWithTraceId(
-                ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
-            );
             ctx.matchResults = matchResults;
 
             await this.handler(ctx, state);

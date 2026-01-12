@@ -4,7 +4,6 @@ import { IActionState } from '../../types/actionState';
 import { ICaptureController } from '../../types/capture';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { TypedEventEmitter } from '../../types/events';
-import { IScopedLogger } from '../../types/logger';
 import { BotResponse, IReplyResponse } from '../../types/response';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
@@ -16,7 +15,6 @@ export type BaseContextPropertiesToOmit =
     | 'isInitialized'
     | 'storage'
     | 'scheduler'
-    | 'logger'
     | 'eventEmitter'
     | 'responses'
     | 'traceId';
@@ -32,7 +30,6 @@ export abstract class BaseContextInternal<TAction extends IAction> {
     /** Scheduler instance for the bot executing this action */
     readonly scheduler: IScheduler;
     readonly eventEmitter: TypedEventEmitter;
-    logger!: IScopedLogger;
     /** Trace id of a action execution. */
     traceId!: TraceId;
     /** Name of a bot that executes this action. */

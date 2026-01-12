@@ -1,4 +1,3 @@
-import { ILogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { TelegramApiService } from '../telegramApi';
@@ -9,7 +8,6 @@ import { BotEventType, TypedEventEmitter } from '../../types/events';
 export abstract class BaseActionProcessor {
     protected readonly storage: IStorageClient;
     protected readonly scheduler: IScheduler;
-    protected readonly logger: ILogger;
     protected readonly eventEmitter: TypedEventEmitter;
 
     protected readonly botName: string;
@@ -20,22 +18,16 @@ export abstract class BaseActionProcessor {
         botName: string,
         storage: IStorageClient,
         scheduler: IScheduler,
-        logger: ILogger,
         eventEmitter: TypedEventEmitter
     ) {
         this.storage = storage;
         this.scheduler = scheduler;
-        this.logger = logger;
         this.eventEmitter = eventEmitter;
 
         this.botName = botName;
     }
 
-    private defaultErrorHandler<TAction extends IAction>(
-        error: Error,
-        ctx: BaseContextInternal<TAction>
-    ) {
-        ctx.logger.errorWithTraceId(error, ctx);
+    private defaultErrorHandler(error: Error) {
         this.eventEmitter.emit(BotEventType.error, { error });
     }
 

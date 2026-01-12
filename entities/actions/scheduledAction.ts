@@ -76,9 +76,6 @@ export class ScheduledAction<TActionState extends IActionState>
             ctx,
             state
         });
-        ctx.logger.logWithTraceId(
-            ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
-        );
 
         await this.handler(
             ctx,

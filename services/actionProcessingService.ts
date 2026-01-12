@@ -1,6 +1,5 @@
 import { hoursToSeconds } from '../helpers/timeConvertions';
 import { Seconds, Milliseconds, Hours } from '../types/timeValues';
-import { ILogger } from '../types/logger';
 import { IScheduler } from '../types/scheduler';
 import { IStorageClient } from '../types/storage';
 import { TelegramApiService } from './telegramApi';
@@ -19,8 +18,6 @@ import { TypedEventEmitter } from '../types/events';
 export class ActionProcessingService {
     private readonly eventEmitter: TypedEventEmitter;
     private readonly storage: IStorageClient;
-    private readonly logger: ILogger;
-
     private readonly commandProcessor: CommandActionProcessor;
     private readonly scheduledProcessor: ScheduledActionProcessor;
     private readonly inlineQueryProcessor: InlineQueryActionProcessor;
@@ -34,18 +31,15 @@ export class ActionProcessingService {
         chats: Record<string, number>,
         storage: IStorageClient,
         scheduler: IScheduler,
-        logger: ILogger,
         eventEmitter: TypedEventEmitter
     ) {
         this.storage = storage;
-        this.logger = logger;
         this.eventEmitter = eventEmitter;
 
         this.commandProcessor = new CommandActionProcessor(
             botName,
             storage,
             scheduler,
-            logger,
             this.eventEmitter
         );
         this.scheduledProcessor = new ScheduledActionProcessor(
@@ -53,14 +47,12 @@ export class ActionProcessingService {
             chats,
             storage,
             scheduler,
-            logger,
             this.eventEmitter
         );
         this.inlineQueryProcessor = new InlineQueryActionProcessor(
             botName,
             storage,
             scheduler,
-            logger,
             this.eventEmitter
         );
 
@@ -74,22 +66,19 @@ export class ActionProcessingService {
             scheduled: ScheduledAction<IActionState>[];
             inlineQueries: InlineQueryAction[];
         },
-        scheduledPeriod?: Seconds,
-        verboseLoggingForIncomingMessage?: boolean
+        scheduledPeriod?: Seconds
     ) {
         this.telegramBot = new Telegraf(token);
         const api = new TelegramApiService(
             this.botName,
             this.telegramBot.telegram,
             this.storage,
-            this.logger,
             this.eventEmitter,
-            (capture, id, chatInfo, traceId) => {
+            (capture, id, chatInfo) => {
                 this.commandProcessor.captureRegistrationCallback(
                     capture,
                     id,
-                    chatInfo,
-                    traceId
+                    chatInfo
                 );
             }
         );
@@ -112,7 +101,6 @@ export class ActionProcessingService {
             api,
             this.telegramBot,
             commandActions,
-            verboseLoggingForIncomingMessage ?? false,
             botInfo
         );
         this.inlineQueryProcessor.initialize(

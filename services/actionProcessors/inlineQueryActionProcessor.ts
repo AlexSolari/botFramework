@@ -34,20 +34,9 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                     createTrace('InlineQuery', this.botName, inlineQuery.id)
                 );
 
-                const logger = this.logger.createScope(
-                    this.botName,
-                    query.traceId,
-                    'Query'
-                );
-
                 this.eventEmitter.emit(BotEventType.inlineProcessingStarted, {
                     query
                 });
-                logger.logWithTraceId(
-                    `${inlineQuery.from.username ?? 'Unknown'} (${
-                        inlineQuery.from.id
-                    }): Query for ${inlineQuery.query}`
-                );
 
                 const queryBeingProcessed = queriesInProcessing.get(
                     query.userId
@@ -59,9 +48,6 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                             newQuery: query,
                             abortedQuery: queryBeingProcessed
                         }
-                    );
-                    logger.logWithTraceId(
-                        `Aborting query ${queryBeingProcessed.queryId} (${queryBeingProcessed.query}): new query recieved from ${query.userId}`
                     );
 
                     queryBeingProcessed.abortController.abort();
@@ -106,11 +92,8 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                             await this.executeAction(
                                 inlineQueryAction,
                                 ctx,
-                                (error, ctx) => {
+                                (error, _) => {
                                     if (error.name == 'AbortError') {
-                                        ctx.logger.logWithTraceId(
-                                            `Aborting query ${inlineQuery.queryId} (${inlineQuery.query}) successful.`
-                                        );
                                         this.eventEmitter.emit(
                                             BotEventType.inlineProcessingAborted,
                                             {
@@ -124,7 +107,6 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                                                 error
                                             }
                                         );
-                                        ctx.logger.errorWithTraceId(error, ctx);
                                     }
                                 }
                             );
@@ -160,7 +142,5 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
         ctx.isInitialized = true;
         ctx.queryResults = [];
         ctx.matchResults = [];
-
-        ctx.logger = this.logger.createScope(this.botName, traceId, 'Unknown');
     }
 }

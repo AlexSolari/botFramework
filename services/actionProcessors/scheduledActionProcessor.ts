@@ -5,7 +5,6 @@ import { ChatContextInternal } from '../../entities/context/chatContext';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { createTrace } from '../../helpers/traceFactory';
 import { IActionState } from '../../types/actionState';
-import { ILogger } from '../../types/logger';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { Seconds, Milliseconds } from '../../types/timeValues';
@@ -24,10 +23,9 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
         chats: Record<string, number>,
         storage: IStorageClient,
         scheduler: IScheduler,
-        logger: ILogger,
         eventEmitter: TypedEventEmitter
     ) {
-        super(botName, storage, scheduler, logger, eventEmitter);
+        super(botName, storage, scheduler, eventEmitter);
         this.chats = chats;
     }
 
@@ -121,11 +119,5 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
         ctx.action = action;
         ctx.chatInfo = chatInfo;
         ctx.traceId = traceId;
-
-        ctx.logger = this.logger.createScope(
-            this.botName,
-            traceId,
-            chatInfo.name
-        );
     }
 }

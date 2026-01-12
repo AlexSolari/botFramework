@@ -6,7 +6,6 @@ import { ReplyContextInternal } from '../../entities/context/replyContext';
 import { IActionState } from '../../types/actionState';
 import { TelegramApiService } from '../telegramApi';
 import { IReplyCapture } from '../../types/capture';
-import { TraceId } from '../../types/trace';
 import { ChatInfo } from '../../dtos/chatInfo';
 import {
     INTERNAL_MESSAGE_TYPE_PREFIX,
@@ -39,7 +38,6 @@ export class CommandActionProcessor extends BaseActionProcessor {
         api: TelegramApiService,
         telegram: TelegramBot,
         commands: CommandAction<IActionState>[],
-        verboseLoggingForIncomingMessage: boolean,
         botInfo: BotInfo
     ) {
         this.botInfo = botInfo;
@@ -82,22 +80,6 @@ export class CommandActionProcessor extends BaseActionProcessor {
                     message: internalMessage
                 });
 
-                const logger = this.logger.createScope(
-                    this.botName,
-                    internalMessage.traceId,
-                    internalMessage.chatInfo.name
-                );
-
-                if (verboseLoggingForIncomingMessage) {
-                    logger.logObjectWithTraceId(message);
-                } else {
-                    logger.logWithTraceId(
-                        `${internalMessage.from?.first_name ?? 'Unknown'} (${
-                            internalMessage.from?.id ?? 'Unknown'
-                        }): ${internalMessage.text || internalMessage.type}`
-                    );
-                }
-
                 await this.processMessage(internalMessage);
 
                 this.eventEmitter.emit(BotEventType.messageProcessingFinished, {
@@ -111,8 +93,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
     captureRegistrationCallback(
         capture: IReplyCapture,
         parentMessageId: number,
-        chatInfo: ChatInfo,
-        traceId: TraceId
+        chatInfo: ChatInfo
     ) {
         const replyAction = new ReplyCaptureAction(
             parentMessageId,
@@ -122,15 +103,6 @@ export class CommandActionProcessor extends BaseActionProcessor {
             capture.abortController
         );
 
-        const logger = this.logger.createScope(
-            this.botName,
-            traceId,
-            chatInfo.name
-        );
-
-        logger.logWithTraceId(
-            `Starting capturing replies to message ${parentMessageId} with action ${replyAction.key}`
-        );
         this.eventEmitter.emit(BotEventType.commandActionCaptureStarted, {
             parentMessageId,
             chatInfo
@@ -142,9 +114,6 @@ export class CommandActionProcessor extends BaseActionProcessor {
             const index = this.replyCaptures.indexOf(replyAction);
             this.replyCaptures.splice(index, 1);
 
-            logger.logWithTraceId(
-                `Stopping capturing replies to message ${parentMessageId} with action ${replyAction.key}`
-            );
             this.eventEmitter.emit(BotEventType.commandActionCaptureAborted, {
                 parentMessageId,
                 chatInfo
@@ -243,12 +212,6 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         ctx.isInitialized = true;
         ctx.matchResults = [];
-
-        ctx.logger = this.logger.createScope(
-            this.botName,
-            message.traceId,
-            message.chatInfo.name
-        );
     }
 
     private initializeMessageContext(
@@ -279,11 +242,5 @@ export class CommandActionProcessor extends BaseActionProcessor {
         ctx.traceId = message.traceId;
         ctx.botInfo = this.botInfo;
         ctx.customCooldown = undefined;
-
-        ctx.logger = this.logger.createScope(
-            this.botName,
-            message.traceId,
-            message.chatInfo.name
-        );
     }
 }

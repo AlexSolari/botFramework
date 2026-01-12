@@ -55,9 +55,6 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
             action: this,
             ctx
         });
-        ctx.logger.logWithTraceId(
-            ` - Executing [${this.key}] in ${ctx.chatInfo.id}`
-        );
         ctx.matchResults = matchResults;
 
         await this.handler(ctx);

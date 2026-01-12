@@ -64,8 +64,6 @@ export class InlineQueryAction implements IAction {
             ctx
         });
 
-        ctx.logger.logWithTraceId(` - Executing [${this.name}]`);
-
         await this.handler(ctx);
 
         ctx.eventEmitter.emit(BotEventType.inlineActionExecuted, {

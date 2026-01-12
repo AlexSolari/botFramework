@@ -4,7 +4,6 @@ import {
     BotResponseTypes,
     IReplyResponse
 } from '../types/response';
-import { ILogger } from '../types/logger';
 import { QueueItem, ResponseProcessingQueue } from './responseProcessingQueue';
 import { IReplyCapture } from '../types/capture';
 import { IActionWithState } from '../types/action';
@@ -20,7 +19,6 @@ export class TelegramApiService {
     private readonly queue = new ResponseProcessingQueue();
     private readonly telegram: TelegramApiClient;
     private readonly storage: IStorageClient;
-    private readonly logger: ILogger;
     private readonly eventEmitter: TypedEventEmitter;
     private readonly captureRegistrationCallback: (
         capture: IReplyCapture,
@@ -49,19 +47,16 @@ export class TelegramApiService {
         botName: string,
         telegram: TelegramApiClient,
         storage: IStorageClient,
-        logger: ILogger,
         eventEmitter: TypedEventEmitter,
         captureRegistrationCallback: (
             capture: IReplyCapture,
             parentMessageId: number,
-            chatInfo: ChatInfo,
-            traceId: TraceId
+            chatInfo: ChatInfo
         ) => void
     ) {
         this.telegram = telegram;
         this.botName = botName;
         this.storage = storage;
-        this.logger = logger;
         this.eventEmitter = eventEmitter;
         this.captureRegistrationCallback = captureRegistrationCallback;
     }
@@ -76,14 +71,6 @@ export class TelegramApiService {
 
             const queueItem: QueueItem = {
                 callback: async () => {
-                    const scopedLogger = this.logger.createScope(
-                        this.botName,
-                        response.traceId,
-                        'chatInfo' in response
-                            ? response.chatInfo.name
-                            : 'Unknown'
-                    );
-
                     try {
                         await this.processResponse(response);
                     } catch (error) {
@@ -102,16 +89,10 @@ export class TelegramApiService {
                                         'Quote error recieved, retrying without quote'
                                     )
                                 });
-                                scopedLogger.logWithTraceId(
-                                    'Quote error recieved, retrying without quote'
-                                );
+
                                 try {
                                     await this.processResponse(response, true);
                                 } catch (error) {
-                                    scopedLogger.errorWithTraceId(
-                                        error,
-                                        response
-                                    );
                                     this.eventEmitter.emit(BotEventType.error, {
                                         error: error as Error
                                     });
@@ -121,7 +102,6 @@ export class TelegramApiService {
                             }
                         }
 
-                        scopedLogger.errorWithTraceId(error, response);
                         this.eventEmitter.emit(BotEventType.error, {
                             error: error as Error
                         });
