@@ -77,6 +77,8 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                 delay as Milliseconds,
                 this.botName
             );
+
+            void this.runScheduled();
         }
     }
 
