@@ -18,7 +18,6 @@ export const BotEventType = {
     messageRecieved: 'message.recieved',
     messageProcessingStarted: 'message.processingStarted',
     messageProcessingFinished: 'message.processingFinished',
-
     beforeActionsExecuting: 'message.beforeActionsExecuting',
 
     commandActionExecuting: 'command.actionExecuting',
@@ -31,7 +30,6 @@ export const BotEventType = {
 
     inlineActionExecuting: 'inline.actionExecuting',
     inlineActionExecuted: 'inline.actionExecuted',
-
     inlineProcessingStarted: 'inline.processingStarted',
     inlineProcessingAborting: 'inline.processingAborting',
     inlineProcessingAborted: 'inline.processingAborted',
@@ -222,16 +220,19 @@ export type BotEventMap = {
     };
 };
 
-type ListenerArgs<K extends keyof BotEventMap> = BotEventMap[K] extends
-    | undefined
-    ? []
-    : [BotEventMap[K]];
+type ListenerArgs<K extends keyof BotEventMap> =
+    BotEventMap[K] extends undefined ? [] : [BotEventMap[K]];
 
 export type Listener<K extends keyof BotEventMap> = (
+    timestamp: number,
     ...args: ListenerArgs<K>
 ) => void;
 
-export type EachListener = (event: BotEventTypeKeys, data: unknown) => void;
+export type EachListener = (
+    event: BotEventTypeKeys,
+    timestamp: number,
+    data: unknown
+) => void;
 
 export class TypedEventEmitter {
     private readonly listeners = new Map<
@@ -256,20 +257,24 @@ export class TypedEventEmitter {
         event: K,
         ...args: ListenerArgs<K>
     ): void {
+        const timestamp = Date.now();
         const specific = this.listeners.get(event);
         if (specific) {
             for (const fn of specific) {
-                (fn as Listener<K>)(...args);
+                (fn as Listener<K>)(timestamp, ...args);
             }
         }
 
         const anySet = this.listeners.get('*');
         if (anySet) {
             for (const fn of anySet) {
-                (fn as unknown as (e: K, ...a: ListenerArgs<K>) => void)(
-                    event,
-                    ...args
-                );
+                (
+                    fn as unknown as (
+                        e: K,
+                        t: number,
+                        ...a: ListenerArgs<K>
+                    ) => void
+                )(event, timestamp, ...args);
             }
         }
     }
