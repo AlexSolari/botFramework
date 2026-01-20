@@ -1,16 +1,12 @@
 import { TaskRecord } from '../entities/taskRecord';
-import { createTrace } from '../helpers/traceFactory';
-import { ILogger } from '../types/logger';
+import { BotEventType, TypedEventEmitter } from '../types/events';
 import { IScheduler } from '../types/scheduler';
 import { Milliseconds } from '../types/timeValues';
 
 export class NodeTimeoutScheduler implements IScheduler {
-    private readonly logger!: ILogger;
     readonly activeTasks: TaskRecord[] = [];
 
-    constructor(logger: ILogger) {
-        this.logger = logger;
-    }
+    constructor(readonly eventEmitter: TypedEventEmitter) {}
 
     stopAll() {
         for (const task of this.activeTasks) {
@@ -25,19 +21,25 @@ export class NodeTimeoutScheduler implements IScheduler {
         executeRightAway: boolean,
         ownerName: string
     ) {
-        const taskId = setInterval(action, interval);
+        const taskId = setInterval(() => {
+            action();
+            this.eventEmitter.emit(BotEventType.taskRun, {
+                name,
+                ownerName,
+                interval
+            });
+        }, interval);
         const task = new TaskRecord(name, taskId, interval);
 
         if (executeRightAway) {
             setImmediate(action);
         }
 
-        this.logger.logWithTraceId(
+        this.eventEmitter.emit(BotEventType.taskCreated, {
+            name,
             ownerName,
-            createTrace(this, ownerName, name),
-            'System',
-            `Created task ${name}, that will run every ${interval}ms.`
-        );
+            interval
+        });
 
         this.activeTasks.push(task);
     }
@@ -49,21 +51,19 @@ export class NodeTimeoutScheduler implements IScheduler {
         ownerName: string
     ) {
         const actionWrapper = () => {
-            this.logger.logWithTraceId(
+            this.eventEmitter.emit(BotEventType.taskRun, {
+                name,
                 ownerName,
-                createTrace(this, ownerName, name),
-                'System',
-                `Executing delayed oneshot ${name}`
-            );
+                delay
+            });
             action();
         };
         setTimeout(actionWrapper, delay);
 
-        this.logger.logWithTraceId(
+        this.eventEmitter.emit(BotEventType.taskCreated, {
+            name,
             ownerName,
-            createTrace(this, ownerName, name),
-            'System',
-            `Created oneshot task ${name}, that will run in ${delay}ms.`
-        );
+            delay
+        });
     }
 }

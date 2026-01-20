@@ -5,7 +5,6 @@ import { ScheduledAction } from './entities/actions/scheduledAction';
 import { BotInstance } from './entities/botInstance';
 import { Seconds } from './types/timeValues';
 import { IScheduler } from './types/scheduler';
-import { ILogger } from './types/logger';
 import { InlineQueryAction } from './entities/actions/inlineQueryAction';
 import { IActionState } from './types/actionState';
 
@@ -39,8 +38,6 @@ class BotOrchestrator {
         services?: {
             /** Storage client for bot state storage. If not provided, default `JsonFileStorage` will be used. */
             storageClient?: IStorageClient;
-            /** Logger client for bot logging. If not provided, default `JsonFileStorage` will be used. */
-            logger?: ILogger;
             /** Scheduler client for bot scheduling. If not provided, default `NodeTimeoutScheduler` will be used. */
             scheduler?: IScheduler;
         };
@@ -53,18 +50,12 @@ class BotOrchestrator {
             chats: options.chats,
             services: {
                 storageClient: options.services?.storageClient,
-                logger: options.services?.logger,
                 scheduler: options.services?.scheduler
             },
             storagePath: options.storagePath
         });
 
-        await bot.start(
-            token,
-            options.actions,
-            options.scheduledPeriod,
-            options.verboseLoggingForIncomingMessage
-        );
+        await bot.start(token, options.actions, options.scheduledPeriod);
         this.bots.push(bot);
 
         return bot;

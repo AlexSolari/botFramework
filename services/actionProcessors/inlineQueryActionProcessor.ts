@@ -2,6 +2,7 @@ import { IncomingInlineQuery } from '../../dtos/incomingQuery';
 import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
 import { InlineQueryContextInternal } from '../../entities/context/inlineQueryContext';
 import { createTrace } from '../../helpers/traceFactory';
+import { BotEventType } from '../../types/events';
 import { TelegramBot } from '../../types/externalAliases';
 import { Milliseconds } from '../../types/timeValues';
 import { TraceId } from '../../types/trace';
@@ -33,24 +34,20 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                     createTrace('InlineQuery', this.botName, inlineQuery.id)
                 );
 
-                const logger = this.logger.createScope(
-                    this.botName,
-                    query.traceId,
-                    'Query'
-                );
-
-                logger.logWithTraceId(
-                    `${inlineQuery.from.username ?? 'Unknown'} (${
-                        inlineQuery.from.id
-                    }): Query for ${inlineQuery.query}`
-                );
+                this.eventEmitter.emit(BotEventType.inlineProcessingStarted, {
+                    query
+                });
 
                 const queryBeingProcessed = queriesInProcessing.get(
                     query.userId
                 );
                 if (queryBeingProcessed) {
-                    logger.logWithTraceId(
-                        `Aborting query ${queryBeingProcessed.queryId} (${queryBeingProcessed.query}): new query recieved from ${query.userId}`
+                    this.eventEmitter.emit(
+                        BotEventType.inlineProcessingAborting,
+                        {
+                            newQuery: query,
+                            abortedQuery: queryBeingProcessed
+                        }
                     );
 
                     queryBeingProcessed.abortController.abort();
@@ -69,7 +66,8 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                 async () => {
                     const ctx = new InlineQueryContextInternal(
                         this.storage,
-                        this.scheduler
+                        this.scheduler,
+                        this.eventEmitter
                     );
 
                     const queriesToProcess = [...pendingInlineQueries];
@@ -94,13 +92,21 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                             await this.executeAction(
                                 inlineQueryAction,
                                 ctx,
-                                (error, ctx) => {
+                                (error, _) => {
                                     if (error.name == 'AbortError') {
-                                        ctx.logger.logWithTraceId(
-                                            `Aborting query ${inlineQuery.queryId} (${inlineQuery.query}) successful.`
+                                        this.eventEmitter.emit(
+                                            BotEventType.inlineProcessingAborted,
+                                            {
+                                                abortedQuery: inlineQuery
+                                            }
                                         );
                                     } else {
-                                        ctx.logger.errorWithTraceId(error, ctx);
+                                        this.eventEmitter.emit(
+                                            BotEventType.error,
+                                            {
+                                                error
+                                            }
+                                        );
                                     }
                                 }
                             );
@@ -136,7 +142,5 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
         ctx.isInitialized = true;
         ctx.queryResults = [];
         ctx.matchResults = [];
-
-        ctx.logger = this.logger.createScope(this.botName, traceId, 'Unknown');
     }
 }

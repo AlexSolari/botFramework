@@ -19,6 +19,7 @@ import { Seconds } from '../../types/timeValues';
 import { CommandActionPropertyProvider } from '../../types/propertyProvider';
 import { CommandActionProviders } from '../../dtos/propertyProviderSets';
 import { BotResponse } from '../../types/response';
+import { BotEventType } from '../../types/events';
 
 export class CommandAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
@@ -133,9 +134,11 @@ export class CommandAction<TActionState extends IActionState>
                 return Noop.NoResponse;
             }
 
-            ctx.logger.logWithTraceId(
-                ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
-            );
+            ctx.eventEmitter.emit(BotEventType.commandActionExecuting, {
+                action: this,
+                ctx,
+                state
+            });
             ctx.matchResults = matchResults;
 
             await this.handler(ctx, state);
@@ -156,6 +159,11 @@ export class CommandAction<TActionState extends IActionState>
                 state
             );
 
+            ctx.eventEmitter.emit(BotEventType.commandActionExecuted, {
+                action: this,
+                ctx,
+                state
+            });
             return ctx.responses;
         } finally {
             lock?.release();

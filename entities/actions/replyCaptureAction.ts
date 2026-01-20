@@ -4,6 +4,7 @@ import { IActionState } from '../../types/actionState';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { ActionKey, IAction } from '../../types/action';
 import { ReplyContextInternal } from '../context/replyContext';
+import { BotEventType } from '../../types/events';
 
 export class ReplyCaptureAction<TParentActionState extends IActionState>
     implements IAction
@@ -50,13 +51,18 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
 
         if (!shouldExecute) return Noop.NoResponse;
 
-        ctx.logger.logWithTraceId(
-            ` - Executing [${this.key}] in ${ctx.chatInfo.id}`
-        );
+        ctx.eventEmitter.emit(BotEventType.replyActionExecuting, {
+            action: this,
+            ctx
+        });
         ctx.matchResults = matchResults;
 
         await this.handler(ctx);
 
+        ctx.eventEmitter.emit(BotEventType.replyActionExecuted, {
+            action: this,
+            ctx
+        });
         return ctx.responses;
     }
 

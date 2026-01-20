@@ -8,10 +8,10 @@ import { IActionWithState, ActionKey } from '../../types/action';
 import { CachedStateFactory } from '../cachedStateFactory';
 import { ChatContextInternal } from '../context/chatContext';
 import { Noop } from '../../helpers/noop';
-import { IScheduler } from '../../types/scheduler';
 import { getOrSetIfNotExists, getOrThrow } from '../../helpers/mapUtils';
 import { ScheduledActionPropertyProvider } from '../../types/propertyProvider';
 import { ScheduledActionProviders } from '../../dtos/propertyProviderSets';
+import { BotEventType } from '../../types/events';
 
 export class ScheduledAction<TActionState extends IActionState>
     implements IActionWithState<TActionState>
@@ -71,14 +71,15 @@ export class ScheduledAction<TActionState extends IActionState>
         const isAllowedToTrigger = this.checkIfShouldBeExecuted(state, ctx);
         if (!isAllowedToTrigger) return Noop.NoResponse;
 
-        ctx.logger.logWithTraceId(
-            ` - Executing [${this.name}] in ${ctx.chatInfo.id}`
-        );
+        ctx.eventEmitter.emit(BotEventType.scheduledActionExecuting, {
+            action: this,
+            ctx,
+            state
+        });
 
         await this.handler(
             ctx,
-            <TResult>(key: string) =>
-                this.getCachedValue<TResult>(key, ctx.botName, ctx.scheduler),
+            <TResult>(key: string) => this.getCachedValue<TResult>(key, ctx),
             state
         );
 
@@ -90,13 +91,17 @@ export class ScheduledAction<TActionState extends IActionState>
             state
         );
 
+        ctx.eventEmitter.emit(BotEventType.scheduledActionExecuted, {
+            action: this,
+            ctx,
+            state
+        });
         return ctx.responses;
     }
 
     private async getCachedValue<TResult>(
         key: string,
-        botName: string,
-        scheduler: IScheduler
+        ctx: ChatContextInternal<TActionState>
     ): Promise<TResult> {
         const cachedItemFactory = getOrThrow(
             this.cachedStateFactories,
@@ -118,21 +123,37 @@ export class ScheduledAction<TActionState extends IActionState>
                 return this.cachedState.get(key) as TResult;
             }
 
+            ctx.eventEmitter.emit(
+                BotEventType.scheduledActionCacheValueCreating,
+                {
+                    action: this,
+                    ctx,
+                    key
+                }
+            );
             const value = await cachedItemFactory.getValue();
 
             this.cachedState.set(key, value);
 
-            scheduler.createOnetimeTask(
+            ctx.scheduler.createOnetimeTask(
                 `Drop cached value [${this.name} : ${key}]`,
                 () => this.cachedState.delete(key),
                 hoursToMilliseconds(
                     cachedItemFactory.invalidationTimeoutInHours
                 ),
-                botName
+                ctx.botName
             );
 
             return value as TResult;
         } finally {
+            ctx.eventEmitter.emit(
+                BotEventType.scheduledActionCacheValueReturned,
+                {
+                    action: this,
+                    ctx,
+                    key
+                }
+            );
             semaphore.release();
         }
     }
