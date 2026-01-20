@@ -1,4 +1,4 @@
-# chz-bot-Framework
+# chz-telegram-bot
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/AlexSolari/botFramework)
 
@@ -8,19 +8,19 @@ botFramework is a TypeScript library that provides a structured approach to buil
 
 ## Features
 
--   **Type-Safe Command Building**: Fully TypeScript-supported command builders
--   **Stateful Actions**: Built-in state management for commands, scheduled actions, and inline queries
--   **Flexible Triggering**: Support for exact matches, regex patterns, and message types
--   **Scheduled Tasks**: Time-based actions with customizable execution schedules
--   **Access Control**: Built-in user and chat-based permissions
--   **Cooldown Management**: Configurable cooldown periods for commands
--   **Cached Values**: Process-wide caching system for optimizing resource usage
--   **Custom State Types**: Extensible state system for complex bot logic
--   **Comprehensive Logging**: Built-in logging system with trace IDs
--   **Persistent Storage**: JSON-based file storage with automatic state management
--   **Inline Query Support**: Handle inline queries with type-safe builders
--   **Response Queue**: Managed response processing queue for reliable message delivery
--   **Rich Media Support**: Built-in support for text, images, videos, reactions, and inline results
+- **Type-Safe Command Building**: Fully TypeScript-supported command builders
+- **Stateful Actions**: Built-in state management for commands, scheduled actions, and inline queries
+- **Flexible Triggering**: Support for exact matches, regex patterns, and message types
+- **Scheduled Tasks**: Time-based actions with customizable execution schedules
+- **Access Control**: Built-in user and chat-based permissions
+- **Cooldown Management**: Configurable cooldown periods for commands
+- **Cached Values**: Process-wide caching system for optimizing resource usage
+- **Custom State Types**: Extensible state system for complex bot logic
+- **Comprehensive Logging**: Built-in logging system with trace IDs
+- **Persistent Storage**: JSON-based file storage with automatic state management
+- **Inline Query Support**: Handle inline queries with type-safe builders
+- **Response Queue**: Managed response processing queue for reliable message delivery
+- **Rich Media Support**: Built-in support for text, images, videos, reactions, and inline results
 
 ## Installation
 
@@ -85,8 +85,11 @@ async function main() {
         const bot = await botOrchestrator.startBot({
             name: 'MyFirstBot',
             tokenFilePath: './token.txt',
-            commands,
-            scheduled: [], // Add scheduled actions if needed
+            actions: {
+                commands,
+                scheduled: [], // Add scheduled actions if needed
+                inlineQueries: []
+            },
             chats: {
                 MyChat: -1001234567890 // Replace with your chat ID
             },
@@ -95,6 +98,15 @@ async function main() {
             storagePath: './data',
             verboseLoggingForIncomingMessage: false
         });
+
+        // Add logging
+        bot.eventEmitter.onEach(
+            (e: string, timestamp: number, data: unknown) => {
+                console.log(
+                    `${new Date(timestamp).toISOString()} - ${e} - ${JSON.stringify(data)}`
+                );
+            }
+        );
 
         // Proper cleanup on shutdown
         const cleanup = async (signal: string) => {
@@ -199,23 +211,21 @@ This will result in `Message 1` being sent, followed by `Message 2` after a 5 se
 
 When starting a bot, you can provide the following configuration:
 
-| Option            | Type                     | Required                    | Description                                                                               |
-| ----------------- | ------------------------ | --------------------------- | ----------------------------------------------------------------------------------------- |
-| `name`            | `string`                 | Yes                         | Bot name used in logging                                                                  |
-| `tokenFilePath`   | `string`                 | Yes                         | Path to file containing Telegram Bot token                                                |
-| `commands`        | `CommandAction[]  `      | Yes (can be empty)          | Collection of command actions                                                             |
-| `scheduled`       | `ScheduledAction[]`      | Yes (can be empty)          | Collection of scheduled actions                                                           |
-| `chats`           | `Record<string, number>` | Yes                         | Object containing chat name-id pairs. Used for logging and execution of scheduled action. |
-| `storagePath`     | `string`                 | No                          | Custom storage path for default JsonFileStorage client                                    |
-| `scheduledPeriod` | `Seconds`                | No (will default to 1 hour) | Period between scheduled action executions                                                |
-| `services`        |                          | No                          | Custom services to be used instead of default ones                                        |
+| Option            | Type                                                                                              | Required                    | Description                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------- |
+| `name`            | `string`                                                                                          | Yes                         | Bot name used in logging                                                                     |
+| `tokenFilePath`   | `string`                                                                                          | Yes                         | Path to file containing Telegram Bot token                                                   |
+| `actions`         | `{ commands: CommandAction[], scheduled: ScheduledAction[], inlineQueries: InlineQueryAction[] }` | Yes (can be empty)          | Collection of actions grouped under `actions` — `commands`, `scheduled`, and `inlineQueries` |
+| `chats`           | `Record<string, number>`                                                                          | Yes                         | Object containing chat name-id pairs. Used for logging and execution of scheduled action.    |
+| `storagePath`     | `string`                                                                                          | No                          | Custom storage path for default JsonFileStorage client                                       |
+| `scheduledPeriod` | `Seconds`                                                                                         | No (will default to 1 hour) | Period between scheduled action executions                                                   |
+| `services`        |                                                                                                   | No                          | Custom services to be used instead of default ones                                           |
 
 Services object should have following structure:
 | Option | Type | Required | Description |
 |------------------|--------------------------|----------|---------------------------------------------------------------|
-| `storageClient` | `IStorageClient` | No (will default to `JsonFileStorage`) | Persistance state provide |
-| `logger` | `ILogger` | No (will default to `JsonLogger`) | Logger service |
-| `scheduler` | `IScheduler` | No (will default to `NodeTimeoutScheduler`) | Scheduler used to scheduled action|
+| `storageClient` | `IStorageClient` | No (will default to `JsonFileStorage`) | Persistence state provider |
+| `scheduler` | `IScheduler` | No (will default to `NodeTimeoutScheduler`) | Scheduler used to schedule actions |
 
 ## Advanced Usage
 
@@ -287,8 +297,8 @@ All responses are queued and processed in order, ensuring proper sequencing of m
 To properly terminate your bot and clean up resources:
 
 ```typescript
-import { stopBots } from 'chz-telegram-bot';
+import { botOrchestrator } from 'chz-telegram-bot';
 
 // Call when your application is shutting down
-await stopBots();
+await botOrchestrator.stopBots();
 ```
