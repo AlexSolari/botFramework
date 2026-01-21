@@ -96,4 +96,17 @@ export abstract class BaseContextInternal<TAction extends IAction> {
 
         return Object.freeze(stateForChat as TAnotherActionState);
     }
+
+    /**
+     * Mutates state of another action for current chat.
+     * @param action Action to load state of.
+     * @param mutation Fuction that mutates the state.
+     * @template TAnotherActionState - Type of a state that is used by another action.
+     */
+    async updateStateOf<TAnotherActionState extends IActionState>(
+        action: IActionWithState<TAnotherActionState>,
+        mutation: (state: TAnotherActionState) => Promise<void>
+    ) {
+        await this.storage.updateStateFor(action, this.chatInfo.id, mutation);
+    }
 }
