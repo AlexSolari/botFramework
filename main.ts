@@ -33,8 +33,6 @@ class BotOrchestrator {
         storagePath?: string;
         /** Period of time between execution of scheduled actions. */
         scheduledPeriod?: Seconds;
-        /** If true, telegram API objects will be logged instead of message content. */
-        verboseLoggingForIncomingMessage?: boolean;
         services?: {
             /** Storage client for bot state storage. If not provided, default `JsonFileStorage` will be used. */
             storageClient?: IStorageClient;
