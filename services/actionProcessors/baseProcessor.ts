@@ -28,7 +28,11 @@ export abstract class BaseActionProcessor {
     }
 
     private defaultErrorHandler(error: Error) {
-        this.eventEmitter.emit(BotEventType.error, { error });
+        console.error(error);
+        this.eventEmitter.emit(BotEventType.error, {
+            message: error.message,
+            name: error.name
+        });
     }
 
     initializeDependencies(api: TelegramApiService) {
@@ -47,11 +51,9 @@ export abstract class BaseActionProcessor {
             const responses = await action.exec(ctx);
             this.api.enqueueBatchedResponses(responses);
             ctx.isInitialized = false;
-        } catch (error) {
-            (errorHandler ?? this.defaultErrorHandler)(error as Error, ctx);
-            this.eventEmitter.emit(BotEventType.error, {
-                error: error as Error
-            });
+        } catch (e) {
+            const error = e as Error;
+            (errorHandler ?? this.defaultErrorHandler)(error, ctx);
         }
     }
 }

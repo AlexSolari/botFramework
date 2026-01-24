@@ -104,7 +104,8 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                                         this.eventEmitter.emit(
                                             BotEventType.error,
                                             {
-                                                error
+                                                message: error.message,
+                                                name: error.name
                                             }
                                         );
                                     }

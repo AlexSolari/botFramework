@@ -64,7 +64,8 @@ const _checkBotEventMapExhaustive: Record<BotEventTypeKeys, unknown> =
 
 export type BotEventMap = {
     [BotEventType.error]: {
-        error: Error;
+        message: string;
+        name: string;
     };
 
     [BotEventType.messageRecieved]: {

@@ -73,7 +73,8 @@ export class TelegramApiService {
                 callback: async () => {
                     try {
                         await this.processResponse(response);
-                    } catch (error) {
+                    } catch (e) {
+                        const error = e as Error;
                         if ('message' in (error as { message?: string })) {
                             const telegramResponse = error as {
                                 message: string;
@@ -85,16 +86,18 @@ export class TelegramApiService {
                                 )
                             ) {
                                 this.eventEmitter.emit(BotEventType.error, {
-                                    error: new Error(
-                                        'Quote error recieved, retrying without quote'
-                                    )
+                                    message:
+                                        'Quote error recieved, retrying without quote',
+                                    name: 'Quote error'
                                 });
 
                                 try {
                                     await this.processResponse(response, true);
-                                } catch (error) {
+                                } catch (e) {
+                                    const error = e as Error;
                                     this.eventEmitter.emit(BotEventType.error, {
-                                        error: error as Error
+                                        message: error.message,
+                                        name: error.name
                                     });
                                 }
 
@@ -103,7 +106,8 @@ export class TelegramApiService {
                         }
 
                         this.eventEmitter.emit(BotEventType.error, {
-                            error: error as Error
+                            message: error.message,
+                            name: error.name
                         });
                     }
                 },
