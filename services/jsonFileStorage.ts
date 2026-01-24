@@ -210,6 +210,8 @@ export class JsonFileStorage implements IStorageClient {
 
             await update(state);
 
+            data[chatId] = state;
+
             if (this.backfillEmptyActionStates(action, data))
                 await this.updateCacheAndSaveToFile(data, action.key);
         });
