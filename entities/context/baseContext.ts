@@ -87,14 +87,11 @@ export abstract class BaseContextInternal<TAction extends IAction> {
     async loadStateOf<TAnotherActionState extends IActionState>(
         action: IActionWithState<TAnotherActionState>
     ) {
-        const allStates = await this.storage.load(action.key);
-        const stateForChat = allStates[this.chatInfo.id];
+        const allStates = await this.storage.load(action);
+        const stateForChat =
+            allStates[this.chatInfo.id] ?? action.stateConstructor();
 
-        if (!stateForChat) {
-            return Object.freeze(action.stateConstructor());
-        }
-
-        return Object.freeze(stateForChat as TAnotherActionState);
+        return Object.freeze(stateForChat);
     }
 
     /**

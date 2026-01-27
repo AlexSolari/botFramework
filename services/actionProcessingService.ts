@@ -116,11 +116,6 @@ export class ActionProcessingService {
         );
 
         void this.telegramBot.launch();
-
-        void this.storage.saveMetadata([
-            ...actions.scheduled,
-            ...commandActions
-        ]);
     }
 
     stop() {

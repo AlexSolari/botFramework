@@ -1,5 +1,5 @@
 import { IActionState } from './actionState';
-import { ActionKey, IActionWithState } from './action';
+import { IActionWithState } from './action';
 
 export interface IStorageClient {
     updateStateFor<TActionState extends IActionState>(
@@ -9,11 +9,8 @@ export interface IStorageClient {
     ): Promise<void>;
     close(): Promise<void>;
     load<TActionState extends IActionState>(
-        key: ActionKey
-    ): Promise<Record<number, TActionState | undefined>>;
-    saveMetadata<TActionState extends IActionState>(
-        actions: IActionWithState<TActionState>[]
-    ): Promise<void>;
+        action: IActionWithState<TActionState>
+    ): Promise<Record<number, TActionState>>;
     getActionState<TActionState extends IActionState>(
         action: IActionWithState<TActionState>,
         chatId: number

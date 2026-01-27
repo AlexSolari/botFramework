@@ -11,13 +11,12 @@ function buildPath(storagePath: string, botName: string, actionKey: string) {
     return `${storagePath}/${botName}/${actionKey.replaceAll(':', '/')}.json`;
 }
 
-export class JsonFileStorage implements IStorageClient {
+class CachedDataSource {
     private readonly eventEmitter: TypedEventEmitter;
-    private readonly filePaths = new Map<ActionKey, string>();
-    private readonly locks = new Map<ActionKey, Semaphore>();
     private readonly cache: Map<string, Record<number, IActionState>>;
-    private readonly storagePath: string;
+    private readonly filePaths = new Map<ActionKey, string>();
     private readonly botName: string;
+    private readonly storagePath: string;
 
     constructor(
         botName: string,
@@ -37,7 +36,6 @@ export class JsonFileStorage implements IStorageClient {
         }
 
         for (const action of actions) {
-            this.locks.set(action.key, new Semaphore(1));
             this.filePaths.set(
                 action.key,
                 buildPath(this.storagePath, this.botName, action.key)
@@ -45,36 +43,16 @@ export class JsonFileStorage implements IStorageClient {
         }
     }
 
-    private backfillEmptyActionStates<TActionState extends IActionState>(
-        action: IActionWithState<TActionState>,
-        data: Record<number, TActionState | undefined>
-    ): data is Record<number, TActionState> {
-        for (const [stringKey, value] of Object.entries(data)) {
-            if (value) continue;
-
-            data[Number.parseInt(stringKey)] = action.stateConstructor();
-        }
-
-        return true;
-    }
-
-    private async lock<TType>(key: ActionKey, action: () => Promise<TType>) {
-        const lock = getOrSetIfNotExists(this.locks, key, new Semaphore(1));
-
-        this.eventEmitter.emit(BotEventType.storageLockAcquiring, key);
-        await lock.acquire();
-        this.eventEmitter.emit(BotEventType.storageLockAcquired, key);
-
-        try {
-            return await action();
-        } finally {
-            lock.release();
-            this.eventEmitter.emit(BotEventType.storageLockReleased, key);
-        }
-    }
-
     private tryGetFromCache<TActionState extends IActionState>(key: ActionKey) {
-        return this.cache.get(key) as Record<number, TActionState> | undefined;
+        const cachedValue = this.cache.get(key) as
+            | Record<number, TActionState>
+            | undefined;
+
+        if (cachedValue == undefined) {
+            this.eventEmitter.emit(BotEventType.storageCacheMiss, key);
+        }
+
+        return cachedValue;
     }
 
     private async loadFromFile<TActionState extends IActionState>(
@@ -98,51 +76,91 @@ export class JsonFileStorage implements IStorageClient {
             >;
 
             this.cache.set(key, data);
+        } else {
+            this.cache.set(key, {});
         }
 
-        return (this.cache.get(key) ?? {}) as Record<
-            number,
-            TActionState | undefined
-        >;
+        return this.cache.get(key) as Record<number, TActionState>;
+    }
+    public async load<TActionState extends IActionState>(
+        action: IActionWithState<TActionState>
+    ): Promise<Record<number, TActionState>> {
+        return (
+            this.tryGetFromCache<TActionState>(action.key) ??
+            (await this.loadFromFile<TActionState>(action.key))
+        );
     }
 
-    private async updateCacheAndSaveToFile<TActionState extends IActionState>(
+    public async save<TActionState extends IActionState>(
         data: Record<number, TActionState>,
-        key: ActionKey
+        action: IActionWithState<TActionState>
     ) {
         this.eventEmitter.emit(BotEventType.storageStateSaving, {
             data,
-            key
+            key: action.key
         });
-        this.cache.set(key, data);
+        this.cache.set(action.key, data);
 
         const targetPath = getOrSetIfNotExists(
             this.filePaths,
-            key,
-            buildPath(this.storagePath, this.botName, key)
+            action.key,
+            buildPath(this.storagePath, this.botName, action.key)
         );
 
         await writeFile(targetPath, JSON.stringify(data), { flag: 'w+' });
         this.eventEmitter.emit(BotEventType.storageStateSaved, {
             data,
-            key
+            key: action.key
         });
     }
+}
 
-    async load<TActionState extends IActionState>(key: ActionKey) {
-        return (
-            this.tryGetFromCache<TActionState>(key) ??
-            (await this.lock(key, async () => {
-                return await this.loadFromFile<TActionState>(key);
-            }))
+export class JsonFileStorage implements IStorageClient {
+    private readonly eventEmitter: TypedEventEmitter;
+    private readonly locks = new Map<ActionKey, Semaphore>();
+
+    private readonly data: CachedDataSource;
+
+    constructor(
+        botName: string,
+        actions: IActionWithState<IActionState>[],
+        eventEmitter: TypedEventEmitter,
+        path?: string
+    ) {
+        this.eventEmitter = eventEmitter;
+
+        this.data = new CachedDataSource(
+            botName,
+            actions,
+            eventEmitter,
+            path ?? 'storage'
         );
+
+        for (const action of actions) {
+            this.locks.set(action.key, new Semaphore(1));
+        }
     }
 
-    async saveMetadata(actions: IActionWithState<IActionState>[]) {
-        const targetPath = `${this.storagePath}/${this.botName}/Metadata-${this.botName}.json`;
+    private async lock<TType>(key: ActionKey, action: () => Promise<TType>) {
+        const lock = getOrSetIfNotExists(this.locks, key, new Semaphore(1));
 
-        await writeFile(targetPath, JSON.stringify(actions), {
-            flag: 'w+'
+        this.eventEmitter.emit(BotEventType.storageLockAcquiring, key);
+        await lock.acquire();
+        this.eventEmitter.emit(BotEventType.storageLockAcquired, key);
+
+        try {
+            return await action();
+        } finally {
+            lock.release();
+            this.eventEmitter.emit(BotEventType.storageLockReleased, key);
+        }
+    }
+
+    async load<TActionState extends IActionState>(
+        action: IActionWithState<TActionState>
+    ) {
+        return await this.lock(action.key, () => {
+            return this.data.load<TActionState>(action);
         });
     }
 
@@ -150,24 +168,22 @@ export class JsonFileStorage implements IStorageClient {
         action: IActionWithState<TActionState>,
         chatId: number
     ) {
-        this.eventEmitter.emit(BotEventType.storageStateLoading, {
-            action,
-            chatId
-        });
-        const value =
-            this.tryGetFromCache<TActionState>(action.key) ??
-            (await this.lock(action.key, async () => {
-                return await this.loadFromFile<TActionState>(action.key);
-            }));
+        return await this.lock(action.key, async () => {
+            this.eventEmitter.emit(BotEventType.storageStateLoading, {
+                action,
+                chatId
+            });
+            const value = await this.data.load<TActionState>(action);
+            const result = value[chatId] ?? action.stateConstructor();
 
-        const result = Object.assign(action.stateConstructor(), value[chatId]);
+            this.eventEmitter.emit(BotEventType.storageStateLoaded, {
+                action,
+                chatId,
+                state: result
+            });
 
-        this.eventEmitter.emit(BotEventType.storageStateLoaded, {
-            action,
-            chatId,
-            state: result
+            return result;
         });
-        return result;
     }
 
     async saveActionExecutionResult<TActionState extends IActionState>(
@@ -176,14 +192,11 @@ export class JsonFileStorage implements IStorageClient {
         state: TActionState
     ) {
         await this.lock(action.key, async () => {
-            const data =
-                this.tryGetFromCache<TActionState>(action.key) ??
-                (await this.loadFromFile<TActionState>(action.key));
+            const data = await this.data.load(action);
 
             data[chatId] = state;
 
-            if (this.backfillEmptyActionStates(action, data))
-                await this.updateCacheAndSaveToFile(data, action.key);
+            await this.data.save(data, action);
         });
     }
 
@@ -199,21 +212,14 @@ export class JsonFileStorage implements IStorageClient {
         update: (state: TActionState) => Promise<void> | void
     ) {
         await this.lock(action.key, async () => {
-            const data =
-                this.tryGetFromCache<TActionState>(action.key) ??
-                (await this.loadFromFile<TActionState>(action.key));
-
-            const state = Object.assign(
-                action.stateConstructor(),
-                data[chatId]
-            );
+            const data = await this.data.load(action);
+            const state = data[chatId];
 
             await update(state);
 
             data[chatId] = state;
 
-            if (this.backfillEmptyActionStates(action, data))
-                await this.updateCacheAndSaveToFile(data, action.key);
+            await this.data.save(data, action);
         });
     }
 }

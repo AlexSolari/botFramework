@@ -49,6 +49,7 @@ export const BotEventType = {
     storageStateSaved: 'storage.stateSaved',
     storageStateLoading: 'storage.stateLoading',
     storageStateLoaded: 'storage.stateLoaded',
+    storageCacheMiss: 'storage.cacheMiss',
 
     taskCreated: 'task.created',
     taskRun: 'task.run',
@@ -198,6 +199,7 @@ export type BotEventMap = {
         chatId: number;
         state: IActionState;
     };
+    [BotEventType.storageCacheMiss]: ActionKey;
 
     [BotEventType.taskCreated]: {
         name: string;
