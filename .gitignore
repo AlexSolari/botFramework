@@ -2,6 +2,7 @@ token.test
 node_modules/
 package-lock.json
 .vscode/
+.vs/
 token.prod
 token.lviv
 storage/
