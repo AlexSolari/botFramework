@@ -23,11 +23,16 @@ import {
 // =============================================================================
 
 // Helper for async delay
-const delay = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms: number): Promise<void> =>
+    new Promise((resolve) => setTimeout(resolve, ms));
 
 // A minimal mock context that satisfies BaseContextInternal interface
 class MockBaseContext extends BaseContextInternal<IAction> {
-    constructor(storage: IStorageClient, scheduler: IScheduler, eventEmitter: TypedEventEmitter) {
+    constructor(
+        storage: IStorageClient,
+        scheduler: IScheduler,
+        eventEmitter: TypedEventEmitter
+    ) {
         super(storage, scheduler, eventEmitter);
         this.isInitialized = true;
         this.chatInfo = new ChatInfo(12345, 'Test Chat', []);
@@ -38,11 +43,21 @@ class MockBaseContext extends BaseContextInternal<IAction> {
 
 class TestableBaseActionProcessor extends BaseActionProcessor {
     // Expose protected members for testing
-    getStorage() { return this.storage; }
-    getScheduler() { return this.scheduler; }
-    getEventEmitter() { return this.eventEmitter; }
-    getBotName() { return this.botName; }
-    getApi() { return this.api; }
+    getStorage() {
+        return this.storage;
+    }
+    getScheduler() {
+        return this.scheduler;
+    }
+    getEventEmitter() {
+        return this.eventEmitter;
+    }
+    getBotName() {
+        return this.botName;
+    }
+    getApi() {
+        return this.api;
+    }
 
     // Public wrapper for executeAction
     testExecuteAction(
@@ -115,9 +130,9 @@ describe('BaseActionProcessor', () => {
 
         test('should call action.exec with context', async () => {
             const action = createMockAction('test-action');
-            
+
             await processor.testExecuteAction(action, mockContext);
-            
+
             expect(action.getExecCallCount()).toBe(1);
             expect(action.getExecLastArgs()).toEqual([mockContext]);
         });
@@ -137,9 +152,9 @@ describe('BaseActionProcessor', () => {
 
         test('should set isInitialized to false after execution', async () => {
             const action = createMockAction('test-action');
-            
+
             await processor.testExecuteAction(action, mockContext);
-            
+
             expect(mockContext.isInitialized).toBe(false);
         });
 
@@ -147,11 +162,17 @@ describe('BaseActionProcessor', () => {
             const action = createMockAction('test-action');
             const testError = new Error('Test error');
             action.exec = mock(() => Promise.reject(testError));
-            
-            const errorHandler = mock(() => { /* no-op */ });
-            
-            await processor.testExecuteAction(action, mockContext, errorHandler);
-            
+
+            const errorHandler = mock(() => {
+                /* no-op */
+            });
+
+            await processor.testExecuteAction(
+                action,
+                mockContext,
+                errorHandler
+            );
+
             expect(errorHandler).toHaveBeenCalledWith(testError, mockContext);
         });
 
@@ -163,20 +184,20 @@ describe('BaseActionProcessor', () => {
             const testError = new Error('Test error message');
             testError.name = 'TestError';
             action.exec = mock(() => Promise.reject(testError));
-            
+
             const errorEvents: unknown[] = [];
             eventEmitter.on(BotEventType.error, (_ts, data) => {
                 errorEvents.push(data);
             });
-            
+
             // Suppress console.error for cleaner test output
             const originalConsoleError = console.error;
             console.error = () => {};
-            
+
             await processor.testExecuteAction(action, mockContext);
-            
+
             console.error = originalConsoleError;
-            
+
             expect(errorEvents.length).toBe(1);
             expect(errorEvents[0]).toEqual({
                 message: 'Test error message',
@@ -189,17 +210,17 @@ describe('BaseActionProcessor', () => {
             const action = createMockAction('test-action');
             const testError = new Error('Console log test');
             action.exec = mock(() => Promise.reject(testError));
-            
+
             const consoleErrors: unknown[] = [];
             const originalConsoleError = console.error;
             console.error = (...args: unknown[]) => {
                 consoleErrors.push(args[0]);
             };
-            
+
             await processor.testExecuteAction(action, mockContext);
-            
+
             console.error = originalConsoleError;
-            
+
             expect(consoleErrors.length).toBe(1);
             expect(consoleErrors[0]).toBe(testError);
         });
@@ -222,7 +243,7 @@ describe('BaseActionProcessor', () => {
 
             const asyncError = new Error('Async failure');
             asyncError.name = 'AsyncError';
-            
+
             const action: IAction = {
                 key: 'error-action' as ActionKey,
                 exec: mock(async () => {
@@ -237,9 +258,15 @@ describe('BaseActionProcessor', () => {
             });
 
             const originalConsoleError = console.error;
-            console.error = () => { /* no-op */ };
+            console.error = () => {
+                /* no-op */
+            };
 
-            const ctx = new MockBaseContext(localStorage, localScheduler, localEventEmitter);
+            const ctx = new MockBaseContext(
+                localStorage,
+                localScheduler,
+                localEventEmitter
+            );
             ctx.action = action;
             await localProcessor.testExecuteAction(action, ctx);
 
@@ -266,11 +293,15 @@ describe('BaseActionProcessor', () => {
             localProcessor.initializeDependencies(localMockApi);
 
             const action = createMockAction('empty-action', []);
-            const ctx = new MockBaseContext(localStorage, localScheduler, localEventEmitter);
+            const ctx = new MockBaseContext(
+                localStorage,
+                localScheduler,
+                localEventEmitter
+            );
             ctx.action = action;
-            
+
             await localProcessor.testExecuteAction(action, ctx);
-            
+
             expect(localMockApi.getEnqueueCallCount()).toBe(1);
             expect(localMockApi.getEnqueueLastArgs()).toEqual([]);
         });
@@ -291,18 +322,22 @@ describe('BaseActionProcessor', () => {
             const chatInfo = createMockChatInfo();
             const traceId = createMockTraceId();
             const action = createMockAction('multi-action');
-            
+
             const responses = [
                 createMockTextResponse(chatInfo, traceId, action),
                 createMockTextResponse(chatInfo, traceId, action),
                 createMockTextResponse(chatInfo, traceId, action)
             ];
             action.exec = mock(() => Promise.resolve(responses));
-            
-            const ctx = new MockBaseContext(localStorage, localScheduler, localEventEmitter);
+
+            const ctx = new MockBaseContext(
+                localStorage,
+                localScheduler,
+                localEventEmitter
+            );
             ctx.action = action;
             await localProcessor.testExecuteAction(action, ctx);
-            
+
             expect(localMockApi.getEnqueueCallCount()).toBe(1);
             expect(localMockApi.getEnqueueLastArgs()).toEqual(responses);
         });

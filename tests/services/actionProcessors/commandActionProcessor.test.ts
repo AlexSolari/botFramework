@@ -43,12 +43,15 @@ describe('CommandActionProcessor', () => {
         test('should emit captureStarted event', () => {
             const mockApi = createMockTelegramApi();
             processor.initializeDependencies(mockApi);
-            
+
             const captureEvents: unknown[] = [];
-            eventEmitter.on(BotEventType.commandActionCaptureStarted, (_ts, data) => {
-                captureEvents.push(data);
-            });
-            
+            eventEmitter.on(
+                BotEventType.commandActionCaptureStarted,
+                (_ts, data) => {
+                    captureEvents.push(data);
+                }
+            );
+
             const chatInfo = createMockChatInfo();
             const abortController = new AbortController();
             const mockCapture = {
@@ -57,9 +60,9 @@ describe('CommandActionProcessor', () => {
                 trigger: [],
                 abortController
             };
-            
+
             processor.captureRegistrationCallback(mockCapture, 123, chatInfo);
-            
+
             expect(captureEvents.length).toBe(1);
             expect(captureEvents[0]).toEqual({
                 parentMessageId: 123,
@@ -70,12 +73,15 @@ describe('CommandActionProcessor', () => {
         test('should emit captureAborted event when abort controller aborts', async () => {
             const mockApi = createMockTelegramApi();
             processor.initializeDependencies(mockApi);
-            
+
             const abortEvents: unknown[] = [];
-            eventEmitter.on(BotEventType.commandActionCaptureAborted, (_ts, data) => {
-                abortEvents.push(data);
-            });
-            
+            eventEmitter.on(
+                BotEventType.commandActionCaptureAborted,
+                (_ts, data) => {
+                    abortEvents.push(data);
+                }
+            );
+
             const chatInfo = createMockChatInfo();
             const abortController = new AbortController();
             const mockCapture = {
@@ -84,15 +90,15 @@ describe('CommandActionProcessor', () => {
                 trigger: [],
                 abortController
             };
-            
+
             processor.captureRegistrationCallback(mockCapture, 456, chatInfo);
-            
+
             // Abort the controller
             abortController.abort();
-            
+
             // Wait for event listener to fire
-            await new Promise(resolve => setImmediate(resolve));
-            
+            await new Promise((resolve) => setImmediate(resolve));
+
             expect(abortEvents.length).toBe(1);
             expect(abortEvents[0]).toEqual({
                 parentMessageId: 456,
@@ -103,14 +109,17 @@ describe('CommandActionProcessor', () => {
         test('should register multiple captures', () => {
             const mockApi = createMockTelegramApi();
             processor.initializeDependencies(mockApi);
-            
+
             const captureEvents: unknown[] = [];
-            eventEmitter.on(BotEventType.commandActionCaptureStarted, (_ts, data) => {
-                captureEvents.push(data);
-            });
-            
+            eventEmitter.on(
+                BotEventType.commandActionCaptureStarted,
+                (_ts, data) => {
+                    captureEvents.push(data);
+                }
+            );
+
             const chatInfo = createMockChatInfo();
-            
+
             for (let i = 0; i < 3; i++) {
                 const mockCapture = {
                     action: createMockAction(`parent-action-${i}`),
@@ -118,9 +127,13 @@ describe('CommandActionProcessor', () => {
                     trigger: [],
                     abortController: new AbortController()
                 };
-                processor.captureRegistrationCallback(mockCapture, 100 + i, chatInfo);
+                processor.captureRegistrationCallback(
+                    mockCapture,
+                    100 + i,
+                    chatInfo
+                );
             }
-            
+
             expect(captureEvents.length).toBe(3);
         });
     });
@@ -134,20 +147,26 @@ describe('CommandActionProcessor', () => {
                 createMockScheduler(),
                 localEventEmitter
             );
-            
+
             const mockApi = createMockTelegramApi();
             localProcessor.initializeDependencies(mockApi);
-            
+
             const startEvents: unknown[] = [];
             const abortEvents: unknown[] = [];
-            
-            localEventEmitter.on(BotEventType.commandActionCaptureStarted, (_ts, data) => {
-                startEvents.push(data);
-            });
-            localEventEmitter.on(BotEventType.commandActionCaptureAborted, (_ts, data) => {
-                abortEvents.push(data);
-            });
-            
+
+            localEventEmitter.on(
+                BotEventType.commandActionCaptureStarted,
+                (_ts, data) => {
+                    startEvents.push(data);
+                }
+            );
+            localEventEmitter.on(
+                BotEventType.commandActionCaptureAborted,
+                (_ts, data) => {
+                    abortEvents.push(data);
+                }
+            );
+
             const chatInfo = createMockChatInfo();
             const abortController = new AbortController();
             const mockCapture = {
@@ -156,16 +175,20 @@ describe('CommandActionProcessor', () => {
                 trigger: [],
                 abortController
             };
-            
+
             // Register capture
-            localProcessor.captureRegistrationCallback(mockCapture, 789, chatInfo);
+            localProcessor.captureRegistrationCallback(
+                mockCapture,
+                789,
+                chatInfo
+            );
             expect(startEvents.length).toBe(1);
             expect(abortEvents.length).toBe(0);
-            
+
             // Abort capture
             abortController.abort();
-            await new Promise(resolve => setImmediate(resolve));
-            
+            await new Promise((resolve) => setImmediate(resolve));
+
             expect(abortEvents.length).toBe(1);
             expect(abortEvents[0]).toEqual({
                 parentMessageId: 789,
@@ -181,15 +204,18 @@ describe('CommandActionProcessor', () => {
                 createMockScheduler(),
                 localEventEmitter
             );
-            
+
             const mockApi = createMockTelegramApi();
             localProcessor.initializeDependencies(mockApi);
-            
+
             const abortEvents: unknown[] = [];
-            localEventEmitter.on(BotEventType.commandActionCaptureAborted, (_ts, data) => {
-                abortEvents.push(data);
-            });
-            
+            localEventEmitter.on(
+                BotEventType.commandActionCaptureAborted,
+                (_ts, data) => {
+                    abortEvents.push(data);
+                }
+            );
+
             const chatInfo = createMockChatInfo();
             const abortController = new AbortController();
             const mockCapture = {
@@ -198,13 +224,17 @@ describe('CommandActionProcessor', () => {
                 trigger: [],
                 abortController
             };
-            
-            localProcessor.captureRegistrationCallback(mockCapture, 111, chatInfo);
-            
+
+            localProcessor.captureRegistrationCallback(
+                mockCapture,
+                111,
+                chatInfo
+            );
+
             // Abort twice - should only emit once
             abortController.abort();
-            await new Promise(resolve => setImmediate(resolve));
-            
+            await new Promise((resolve) => setImmediate(resolve));
+
             // AbortController can only abort once
             expect(abortEvents.length).toBe(1);
         });

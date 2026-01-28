@@ -1,5 +1,8 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { ResponseProcessingQueue, QueueItem } from '../../src/services/responseProcessingQueue';
+import {
+    ResponseProcessingQueue,
+    QueueItem
+} from '../../src/services/responseProcessingQueue';
 
 // Helper for creating simple void callbacks
 const noopCallback = () => Promise.resolve();
@@ -43,7 +46,7 @@ describe('ResponseProcessingQueue', () => {
             queue.enqueue({ priority: 100, callback: noopCallback });
             queue.enqueue({ priority: 200, callback: noopCallback });
 
-            expect(queue.items.map(i => i.priority)).toEqual([100, 200, 300]);
+            expect(queue.items.map((i) => i.priority)).toEqual([100, 200, 300]);
         });
 
         test('should append item with equal priority to end', () => {
@@ -52,7 +55,7 @@ describe('ResponseProcessingQueue', () => {
             queue.enqueue({ priority: 100, callback: noopCallback });
 
             expect(queue.items.length).toBe(3);
-            expect(queue.items.every(i => i.priority === 100)).toBe(true);
+            expect(queue.items.every((i) => i.priority === 100)).toBe(true);
         });
 
         test('should insert at correct position for mixed priorities', () => {
@@ -62,7 +65,9 @@ describe('ResponseProcessingQueue', () => {
             queue.enqueue({ priority: 150, callback: noopCallback });
             queue.enqueue({ priority: 250, callback: noopCallback });
 
-            expect(queue.items.map(i => i.priority)).toEqual([100, 150, 200, 250, 300]);
+            expect(queue.items.map((i) => i.priority)).toEqual([
+                100, 150, 200, 250, 300
+            ]);
         });
 
         test('should handle inserting lowest priority item', () => {
@@ -70,7 +75,7 @@ describe('ResponseProcessingQueue', () => {
             queue.enqueue({ priority: 300, callback: noopCallback });
             queue.enqueue({ priority: 100, callback: noopCallback }); // Lowest
 
-            expect(queue.items.map(i => i.priority)).toEqual([100, 200, 300]);
+            expect(queue.items.map((i) => i.priority)).toEqual([100, 200, 300]);
         });
 
         test('should handle inserting highest priority item', () => {
@@ -78,7 +83,7 @@ describe('ResponseProcessingQueue', () => {
             queue.enqueue({ priority: 200, callback: noopCallback });
             queue.enqueue({ priority: 300, callback: noopCallback }); // Highest, appended
 
-            expect(queue.items.map(i => i.priority)).toEqual([100, 200, 300]);
+            expect(queue.items.map((i) => i.priority)).toEqual([100, 200, 300]);
         });
     });
 
@@ -89,11 +94,17 @@ describe('ResponseProcessingQueue', () => {
 
             queue.enqueue({
                 priority: now - 100, // Past - should process
-                callback: () => { processed.push(1); return Promise.resolve(); }
+                callback: () => {
+                    processed.push(1);
+                    return Promise.resolve();
+                }
             });
             queue.enqueue({
                 priority: now - 50, // Past - should process
-                callback: () => { processed.push(2); return Promise.resolve(); }
+                callback: () => {
+                    processed.push(2);
+                    return Promise.resolve();
+                }
             });
 
             await queue.flushReadyItems();
@@ -145,15 +156,24 @@ describe('ResponseProcessingQueue', () => {
 
             queue.enqueue({
                 priority: now - 50,
-                callback: () => { processed.push(2); return Promise.resolve(); }
+                callback: () => {
+                    processed.push(2);
+                    return Promise.resolve();
+                }
             });
             queue.enqueue({
                 priority: now - 100,
-                callback: () => { processed.push(1); return Promise.resolve(); }
+                callback: () => {
+                    processed.push(1);
+                    return Promise.resolve();
+                }
             });
             queue.enqueue({
                 priority: now - 25,
-                callback: () => { processed.push(3); return Promise.resolve(); }
+                callback: () => {
+                    processed.push(3);
+                    return Promise.resolve();
+                }
             });
 
             await queue.flushReadyItems();
@@ -172,7 +192,10 @@ describe('ResponseProcessingQueue', () => {
 
             queue.enqueue({
                 priority: now - 100,
-                callback: () => { processed.push(1); return Promise.resolve(); }
+                callback: () => {
+                    processed.push(1);
+                    return Promise.resolve();
+                }
             });
             queue.enqueue({
                 priority: now - 50,
@@ -180,7 +203,10 @@ describe('ResponseProcessingQueue', () => {
             });
             queue.enqueue({
                 priority: now - 25,
-                callback: () => { processed.push(3); return Promise.resolve(); }
+                callback: () => {
+                    processed.push(3);
+                    return Promise.resolve();
+                }
             });
 
             // The queue processes and removes items but error propagates
@@ -198,7 +224,7 @@ describe('ResponseProcessingQueue', () => {
     describe('priority as timestamp pattern', () => {
         // In TelegramApiService, priority = response.createdAt + offset
         // This pattern ensures responses are sent in order with delays
-        
+
         test('should handle timestamp-based priorities', async () => {
             const processed: string[] = [];
             const baseTime = Date.now() - 100;
@@ -206,15 +232,24 @@ describe('ResponseProcessingQueue', () => {
             // Simulate responses with offsets (delays)
             queue.enqueue({
                 priority: baseTime, // First response
-                callback: () => { processed.push('first'); return Promise.resolve(); }
+                callback: () => {
+                    processed.push('first');
+                    return Promise.resolve();
+                }
             });
             queue.enqueue({
                 priority: baseTime + 10, // Second response, 10ms delay
-                callback: () => { processed.push('second'); return Promise.resolve(); }
+                callback: () => {
+                    processed.push('second');
+                    return Promise.resolve();
+                }
             });
             queue.enqueue({
                 priority: baseTime + 20, // Third response, 20ms delay
-                callback: () => { processed.push('third'); return Promise.resolve(); }
+                callback: () => {
+                    processed.push('third');
+                    return Promise.resolve();
+                }
             });
 
             await queue.flushReadyItems();
@@ -228,15 +263,24 @@ describe('ResponseProcessingQueue', () => {
 
             queue.enqueue({
                 priority: now - 100,
-                callback: () => { timestamps.push(Date.now()); return Promise.resolve(); }
+                callback: () => {
+                    timestamps.push(Date.now());
+                    return Promise.resolve();
+                }
             });
             queue.enqueue({
                 priority: now - 50,
-                callback: () => { timestamps.push(Date.now()); return Promise.resolve(); }
+                callback: () => {
+                    timestamps.push(Date.now());
+                    return Promise.resolve();
+                }
             });
             queue.enqueue({
                 priority: now - 25,
-                callback: () => { timestamps.push(Date.now()); return Promise.resolve(); }
+                callback: () => {
+                    timestamps.push(Date.now());
+                    return Promise.resolve();
+                }
             });
 
             await queue.flushReadyItems();
@@ -262,7 +306,10 @@ describe('ResponseProcessingQueue', () => {
                     // Add new item during processing
                     queue.enqueue({
                         priority: now - 50,
-                        callback: () => { processed.push(2); return Promise.resolve(); }
+                        callback: () => {
+                            processed.push(2);
+                            return Promise.resolve();
+                        }
                     });
                     return Promise.resolve();
                 }
@@ -277,20 +324,20 @@ describe('ResponseProcessingQueue', () => {
 
     describe('TelegramApiService usage pattern', () => {
         // TelegramApiService enqueues responses with createdAt + offset as priority
-        
+
         test('should support batched responses with delays', async () => {
             const sentMessages: string[] = [];
             const baseCreatedAt = Date.now() - 200;
 
             // Simulate enqueueBatchedResponses behavior
-            type TestResponse = 
+            type TestResponse =
                 | { text: string; createdAt: number }
                 | { text: string; delay: number };
 
             const responses: TestResponse[] = [
                 { text: 'msg1', createdAt: baseCreatedAt },
                 { text: 'delay', delay: 50 }, // Delay response
-                { text: 'msg2', createdAt: baseCreatedAt },
+                { text: 'msg2', createdAt: baseCreatedAt }
             ];
 
             let offset = 0;
@@ -303,7 +350,10 @@ describe('ResponseProcessingQueue', () => {
                 const text = response.text;
                 queue.enqueue({
                     priority: response.createdAt + offset,
-                    callback: () => { sentMessages.push(text); return Promise.resolve(); }
+                    callback: () => {
+                        sentMessages.push(text);
+                        return Promise.resolve();
+                    }
                 });
             }
 
@@ -320,7 +370,10 @@ describe('ResponseProcessingQueue', () => {
             for (let i = 0; i < itemCount; i++) {
                 queue.enqueue({
                     priority: now - (itemCount - i),
-                    callback: () => { processedCount++; return Promise.resolve(); }
+                    callback: () => {
+                        processedCount++;
+                        return Promise.resolve();
+                    }
                 });
             }
 

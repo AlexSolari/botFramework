@@ -31,19 +31,24 @@ describe('CommandTriggerCheckResult', () => {
 
         describe('DoNotTrigger', () => {
             test('should create result with shouldExecute false', () => {
-                const result = CommandTriggerCheckResult.DoNotTrigger('TriggerNotSatisfied');
+                const result = CommandTriggerCheckResult.DoNotTrigger(
+                    'TriggerNotSatisfied'
+                );
 
                 expect(result.shouldExecute).toBe(false);
             });
 
             test('should create result with skipCooldown false', () => {
-                const result = CommandTriggerCheckResult.DoNotTrigger('CustomConditionNotMet');
+                const result = CommandTriggerCheckResult.DoNotTrigger(
+                    'CustomConditionNotMet'
+                );
 
                 expect(result.skipCooldown).toBe(false);
             });
 
             test('should store the reason', () => {
-                const result = CommandTriggerCheckResult.DoNotTrigger('UserForbidden');
+                const result =
+                    CommandTriggerCheckResult.DoNotTrigger('UserForbidden');
 
                 expect(result.reason).toBe('UserForbidden');
             });
@@ -57,25 +62,37 @@ describe('CommandTriggerCheckResult', () => {
 
         describe('DontTriggerAndSkipCooldown', () => {
             test('should create result with shouldExecute false', () => {
-                const result = CommandTriggerCheckResult.DontTriggerAndSkipCooldown('ActionDisabled');
+                const result =
+                    CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                        'ActionDisabled'
+                    );
 
                 expect(result.shouldExecute).toBe(false);
             });
 
             test('should create result with skipCooldown true', () => {
-                const result = CommandTriggerCheckResult.DontTriggerAndSkipCooldown('ActionDisabled');
+                const result =
+                    CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                        'ActionDisabled'
+                    );
 
                 expect(result.skipCooldown).toBe(true);
             });
 
             test('should store the reason', () => {
-                const result = CommandTriggerCheckResult.DontTriggerAndSkipCooldown('ChatForbidden');
+                const result =
+                    CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                        'ChatForbidden'
+                    );
 
                 expect(result.reason).toBe('ChatForbidden');
             });
 
             test('should create result with empty matchResults', () => {
-                const result = CommandTriggerCheckResult.DontTriggerAndSkipCooldown('OnCooldown');
+                const result =
+                    CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                        'OnCooldown'
+                    );
 
                 expect(result.matchResults).toEqual([]);
             });
@@ -85,7 +102,12 @@ describe('CommandTriggerCheckResult', () => {
     describe('constructor', () => {
         test('should set all properties correctly', () => {
             const matchResults = [['test'] as unknown as RegExpExecArray];
-            const result = new CommandTriggerCheckResult(true, matchResults, false, 'Other');
+            const result = new CommandTriggerCheckResult(
+                true,
+                matchResults,
+                false,
+                'Other'
+            );
 
             expect(result.shouldExecute).toBe(true);
             expect(result.matchResults).toBe(matchResults);
@@ -103,7 +125,9 @@ describe('CommandTriggerCheckResult', () => {
     describe('mergeWith', () => {
         test('should merge shouldExecute with OR logic - both false', () => {
             const result1 = CommandTriggerCheckResult.DoNotTrigger('Other');
-            const result2 = CommandTriggerCheckResult.DoNotTrigger('TriggerNotSatisfied');
+            const result2 = CommandTriggerCheckResult.DoNotTrigger(
+                'TriggerNotSatisfied'
+            );
 
             const merged = result1.mergeWith(result2);
 
@@ -140,8 +164,16 @@ describe('CommandTriggerCheckResult', () => {
         test('should concatenate matchResults', () => {
             const match1 = ['match1'] as unknown as RegExpExecArray;
             const match2 = ['match2'] as unknown as RegExpExecArray;
-            const result1 = new CommandTriggerCheckResult(true, [match1], false);
-            const result2 = new CommandTriggerCheckResult(false, [match2], false);
+            const result1 = new CommandTriggerCheckResult(
+                true,
+                [match1],
+                false
+            );
+            const result2 = new CommandTriggerCheckResult(
+                false,
+                [match2],
+                false
+            );
 
             const merged = result1.mergeWith(result2);
 
@@ -158,7 +190,10 @@ describe('CommandTriggerCheckResult', () => {
         });
 
         test('should merge skipCooldown with OR logic - first true', () => {
-            const result1 = CommandTriggerCheckResult.DontTriggerAndSkipCooldown('ActionDisabled');
+            const result1 =
+                CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                    'ActionDisabled'
+                );
             const result2 = CommandTriggerCheckResult.DoNotTrigger('Other');
 
             const merged = result1.mergeWith(result2);
@@ -168,7 +203,10 @@ describe('CommandTriggerCheckResult', () => {
 
         test('should merge skipCooldown with OR logic - second true', () => {
             const result1 = CommandTriggerCheckResult.DoNotTrigger('Other');
-            const result2 = CommandTriggerCheckResult.DontTriggerAndSkipCooldown('ActionDisabled');
+            const result2 =
+                CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                    'ActionDisabled'
+                );
 
             const merged = result1.mergeWith(result2);
 
@@ -176,8 +214,10 @@ describe('CommandTriggerCheckResult', () => {
         });
 
         test('should take reason from other result', () => {
-            const result1 = CommandTriggerCheckResult.DoNotTrigger('UserForbidden');
-            const result2 = CommandTriggerCheckResult.DoNotTrigger('ChatForbidden');
+            const result1 =
+                CommandTriggerCheckResult.DoNotTrigger('UserForbidden');
+            const result2 =
+                CommandTriggerCheckResult.DoNotTrigger('ChatForbidden');
 
             const merged = result1.mergeWith(result2);
 
@@ -212,12 +252,14 @@ describe('CommandTriggerCheckResult', () => {
 
     describe('SkipTriggerReasons', () => {
         test('should accept UserIdMissing reason', () => {
-            const result = CommandTriggerCheckResult.DoNotTrigger('UserIdMissing');
+            const result =
+                CommandTriggerCheckResult.DoNotTrigger('UserIdMissing');
             expect(result.reason).toBe('UserIdMissing');
         });
 
         test('should accept UserForbidden reason', () => {
-            const result = CommandTriggerCheckResult.DoNotTrigger('UserForbidden');
+            const result =
+                CommandTriggerCheckResult.DoNotTrigger('UserForbidden');
             expect(result.reason).toBe('UserForbidden');
         });
 
@@ -227,22 +269,32 @@ describe('CommandTriggerCheckResult', () => {
         });
 
         test('should accept CustomConditionNotMet reason', () => {
-            const result = CommandTriggerCheckResult.DoNotTrigger('CustomConditionNotMet');
+            const result = CommandTriggerCheckResult.DoNotTrigger(
+                'CustomConditionNotMet'
+            );
             expect(result.reason).toBe('CustomConditionNotMet');
         });
 
         test('should accept TriggerNotSatisfied reason', () => {
-            const result = CommandTriggerCheckResult.DoNotTrigger('TriggerNotSatisfied');
+            const result = CommandTriggerCheckResult.DoNotTrigger(
+                'TriggerNotSatisfied'
+            );
             expect(result.reason).toBe('TriggerNotSatisfied');
         });
 
         test('should accept ActionDisabled reason', () => {
-            const result = CommandTriggerCheckResult.DontTriggerAndSkipCooldown('ActionDisabled');
+            const result =
+                CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                    'ActionDisabled'
+                );
             expect(result.reason).toBe('ActionDisabled');
         });
 
         test('should accept ChatForbidden reason', () => {
-            const result = CommandTriggerCheckResult.DontTriggerAndSkipCooldown('ChatForbidden');
+            const result =
+                CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                    'ChatForbidden'
+                );
             expect(result.reason).toBe('ChatForbidden');
         });
     });

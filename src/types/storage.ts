@@ -10,11 +10,11 @@ export interface IStorageClient {
     close(): Promise<void>;
     load<TActionState extends IActionState>(
         action: IActionWithState<TActionState>
-    ): Promise<Record<number, TActionState>>;
+    ): Record<number, TActionState>;
     getActionState<TActionState extends IActionState>(
         action: IActionWithState<TActionState>,
         chatId: number
-    ): Promise<TActionState>;
+    ): TActionState;
     saveActionExecutionResult<TActionState extends IActionState>(
         action: IActionWithState<TActionState>,
         chatId: number,

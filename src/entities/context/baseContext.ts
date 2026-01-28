@@ -84,10 +84,10 @@ export abstract class BaseContextInternal<TAction extends IAction> {
      * @param action Action to load state of.
      * @template TAnotherActionState - Type of a state that is used by another action.
      */
-    async loadStateOf<TAnotherActionState extends IActionState>(
+    loadStateOf<TAnotherActionState extends IActionState>(
         action: IActionWithState<TAnotherActionState>
     ) {
-        const allStates = await this.storage.load(action);
+        const allStates = this.storage.load(action);
         const stateForChat =
             allStates[this.chatInfo.id] ?? action.stateConstructor();
 

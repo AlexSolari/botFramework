@@ -21,9 +21,9 @@ import { CommandActionProviders } from '../../dtos/propertyProviderSets';
 import { BotResponse } from '../../types/response';
 import { BotEventType } from '../../types/events';
 
-export class CommandAction<TActionState extends IActionState>
-    implements IActionWithState<TActionState>
-{
+export class CommandAction<
+    TActionState extends IActionState
+> implements IActionWithState<TActionState> {
     private readonly cooldownInfoProvider: CommandActionPropertyProvider<CooldownInfo>;
     private readonly isActiveProvider: CommandActionPropertyProvider<boolean>;
     private readonly chatsBlacklistProvider: CommandActionPropertyProvider<
@@ -100,7 +100,7 @@ export class CommandAction<TActionState extends IActionState>
         }
 
         try {
-            const state = await ctx.storage.getActionState<TActionState>(
+            const state = ctx.storage.getActionState<TActionState>(
                 this,
                 ctx.chatInfo.id
             );

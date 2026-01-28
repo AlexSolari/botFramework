@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync } from 'fs';
-import { readFile, writeFile } from 'fs/promises';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
+import { writeFile } from 'fs/promises';
 import { Sema as Semaphore } from 'async-sema';
 import { IStorageClient } from '../types/storage';
 import { IActionState } from '../types/actionState';
@@ -55,16 +55,14 @@ class CachedDataSource {
         return cachedValue;
     }
 
-    private async loadFromFile<TActionState extends IActionState>(
-        key: ActionKey
-    ) {
+    private loadFromFile<TActionState extends IActionState>(key: ActionKey) {
         const targetPath = getOrSetIfNotExists(
             this.filePaths,
             key,
             buildPath(this.storagePath, this.botName, key)
         );
 
-        const fileContent = await readFile(targetPath, {
+        const fileContent = readFileSync(targetPath, {
             encoding: 'utf-8',
             flag: 'a+'
         });
@@ -82,12 +80,13 @@ class CachedDataSource {
 
         return this.cache.get(key) as Record<number, TActionState>;
     }
-    public async load<TActionState extends IActionState>(
+
+    public load<TActionState extends IActionState>(
         action: IActionWithState<TActionState>
-    ): Promise<Record<number, TActionState>> {
+    ) {
         return (
             this.tryGetFromCache<TActionState>(action.key) ??
-            (await this.loadFromFile<TActionState>(action.key))
+            this.loadFromFile<TActionState>(action.key)
         );
     }
 
@@ -156,34 +155,30 @@ export class JsonFileStorage implements IStorageClient {
         }
     }
 
-    async load<TActionState extends IActionState>(
+    load<TActionState extends IActionState>(
         action: IActionWithState<TActionState>
     ) {
-        return await this.lock(action.key, () => {
-            return this.data.load<TActionState>(action);
-        });
+        return this.data.load<TActionState>(action);
     }
 
-    async getActionState<TActionState extends IActionState>(
+    getActionState<TActionState extends IActionState>(
         action: IActionWithState<TActionState>,
         chatId: number
     ) {
-        return await this.lock(action.key, async () => {
-            this.eventEmitter.emit(BotEventType.storageStateLoading, {
-                action,
-                chatId
-            });
-            const value = await this.data.load<TActionState>(action);
-            const result = value[chatId] ?? action.stateConstructor();
-
-            this.eventEmitter.emit(BotEventType.storageStateLoaded, {
-                action,
-                chatId,
-                state: result
-            });
-
-            return result;
+        this.eventEmitter.emit(BotEventType.storageStateLoading, {
+            action,
+            chatId
         });
+        const value = this.data.load<TActionState>(action);
+        const result = value[chatId] ?? action.stateConstructor();
+
+        this.eventEmitter.emit(BotEventType.storageStateLoaded, {
+            action,
+            chatId,
+            state: result
+        });
+
+        return result;
     }
 
     async saveActionExecutionResult<TActionState extends IActionState>(
@@ -192,7 +187,7 @@ export class JsonFileStorage implements IStorageClient {
         state: TActionState
     ) {
         await this.lock(action.key, async () => {
-            const data = await this.data.load(action);
+            const data = this.data.load(action);
 
             data[chatId] = state;
 
@@ -212,7 +207,7 @@ export class JsonFileStorage implements IStorageClient {
         update: (state: TActionState) => Promise<void> | void
     ) {
         await this.lock(action.key, async () => {
-            const data = await this.data.load(action);
+            const data = this.data.load(action);
             const state = data[chatId];
 
             await update(state);

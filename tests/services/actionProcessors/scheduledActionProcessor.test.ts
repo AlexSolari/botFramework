@@ -19,7 +19,7 @@ describe('ScheduledActionProcessor', () => {
     let eventEmitter: TypedEventEmitter;
     let storage: IStorageClient;
     let scheduler: MockScheduler;
-    const chats = { 'chat1': 111, 'chat2': 222 };
+    const chats = { chat1: 111, chat2: 222 };
 
     beforeEach(() => {
         eventEmitter = new TypedEventEmitter();
@@ -44,16 +44,16 @@ describe('ScheduledActionProcessor', () => {
         test('should store api reference', () => {
             const mockApi = createMockTelegramApi();
             processor.initialize(mockApi, [], 3600 as Seconds);
-            
+
             // If no scheduled actions, no tasks should be created
             expect(scheduler.createTaskCallCount()).toBe(0);
         });
 
         test('should call initializeDependencies with api when no actions', () => {
             const mockApi = createMockTelegramApi();
-            
+
             processor.initialize(mockApi, [], 3600 as Seconds);
-            
+
             // After initialize, the processor should still be defined
             expect(processor).toBeDefined();
         });
@@ -63,12 +63,12 @@ describe('ScheduledActionProcessor', () => {
         test('should handle empty chats object', () => {
             const localProcessor = new ScheduledActionProcessor(
                 'empty-chats-bot',
-                {},  // Empty chats
+                {}, // Empty chats
                 createMockStorage(),
                 createMockScheduler(),
                 new TypedEventEmitter()
             );
-            
+
             expect(localProcessor).toBeDefined();
         });
 
@@ -76,15 +76,15 @@ describe('ScheduledActionProcessor', () => {
             const localScheduler = createMockScheduler();
             const localProcessor = new ScheduledActionProcessor(
                 'no-actions-bot',
-                { 'test': 123 },
+                { test: 123 },
                 createMockStorage(),
                 localScheduler,
                 new TypedEventEmitter()
             );
-            
+
             const mockApi = createMockTelegramApi();
             localProcessor.initialize(mockApi, [], 3600 as Seconds);
-            
+
             // Should not create any tasks
             expect(localScheduler.createTaskCallCount()).toBe(0);
             expect(localScheduler.createOnetimeTaskCallCount()).toBe(0);
@@ -93,12 +93,12 @@ describe('ScheduledActionProcessor', () => {
 
     describe('multi-chat configuration', () => {
         test('should accept multiple chats in configuration', () => {
-            const multiChats = { 
-                'general': 100, 
-                'random': 200, 
-                'dev': 300 
+            const multiChats = {
+                general: 100,
+                random: 200,
+                dev: 300
             };
-            
+
             const localProcessor = new ScheduledActionProcessor(
                 'multi-chat-bot',
                 multiChats,
@@ -106,7 +106,7 @@ describe('ScheduledActionProcessor', () => {
                 createMockScheduler(),
                 new TypedEventEmitter()
             );
-            
+
             // The processor should be properly instantiated with multiple chats
             expect(localProcessor).toBeDefined();
         });

@@ -57,7 +57,9 @@ describe('CachedStateFactory', () => {
         });
 
         test('should propagate errors from factory', async () => {
-            const factory = mock(() => Promise.reject(new Error('Factory error')));
+            const factory = mock(() =>
+                Promise.reject(new Error('Factory error'))
+            );
             const cached = new CachedStateFactory(factory, 1 as Hours);
 
             let caught = false;
@@ -74,7 +76,10 @@ describe('CachedStateFactory', () => {
     describe('invalidationTimeoutInHours', () => {
         test('should be readonly', () => {
             const timeout = 12 as Hours;
-            const cached = new CachedStateFactory(() => Promise.resolve(null), timeout);
+            const cached = new CachedStateFactory(
+                () => Promise.resolve(null),
+                timeout
+            );
 
             // TypeScript enforces readonly, but we can verify it exists
             expect(cached.invalidationTimeoutInHours).toBe(timeout);
@@ -82,7 +87,10 @@ describe('CachedStateFactory', () => {
 
         test('should preserve Hours type value', () => {
             const timeout = 48 as Hours;
-            const cached = new CachedStateFactory(() => Promise.resolve(null), timeout);
+            const cached = new CachedStateFactory(
+                () => Promise.resolve(null),
+                timeout
+            );
 
             expect(cached.invalidationTimeoutInHours).toBe(timeout);
         });

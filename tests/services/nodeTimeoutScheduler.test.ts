@@ -38,7 +38,9 @@ describe('NodeTimeoutScheduler', () => {
 
             expect(scheduler.activeTasks.length).toBe(1);
             expect(scheduler.activeTasks[0].name).toBe('test-task');
-            expect(scheduler.activeTasks[0].interval).toBe(1000 as Milliseconds);
+            expect(scheduler.activeTasks[0].interval).toBe(
+                1000 as Milliseconds
+            );
         });
 
         test('should emit taskCreated event', () => {
@@ -68,14 +70,16 @@ describe('NodeTimeoutScheduler', () => {
 
             scheduler.createTask(
                 'immediate-task',
-                () => { executed = true; },
+                () => {
+                    executed = true;
+                },
                 10000 as Milliseconds, // Long interval so it won't re-trigger
                 true,
                 'test-bot'
             );
 
             // Wait for setImmediate to execute
-            await new Promise(resolve => setImmediate(resolve));
+            await new Promise((resolve) => setImmediate(resolve));
 
             expect(executed).toBe(true);
         });
@@ -85,14 +89,16 @@ describe('NodeTimeoutScheduler', () => {
 
             scheduler.createTask(
                 'delayed-task',
-                () => { executed = true; },
+                () => {
+                    executed = true;
+                },
                 10000 as Milliseconds,
                 false,
                 'test-bot'
             );
 
             // Wait a tick
-            await new Promise(resolve => setImmediate(resolve));
+            await new Promise((resolve) => setImmediate(resolve));
 
             expect(executed).toBe(false);
         });
@@ -102,14 +108,16 @@ describe('NodeTimeoutScheduler', () => {
 
             scheduler.createTask(
                 'interval-task',
-                () => { executionCount++; },
+                () => {
+                    executionCount++;
+                },
                 50 as Milliseconds,
                 false,
                 'test-bot'
             );
 
             // Wait for 2-3 intervals
-            await new Promise(resolve => setTimeout(resolve, 130));
+            await new Promise((resolve) => setTimeout(resolve, 130));
 
             expect(executionCount).toBeGreaterThanOrEqual(2);
         });
@@ -128,7 +136,7 @@ describe('NodeTimeoutScheduler', () => {
                 'test-bot'
             );
 
-            await new Promise(resolve => setTimeout(resolve, 130));
+            await new Promise((resolve) => setTimeout(resolve, 130));
 
             expect(runEvents.length).toBeGreaterThanOrEqual(2);
             expect(runEvents[0]).toEqual({
@@ -139,12 +147,34 @@ describe('NodeTimeoutScheduler', () => {
         });
 
         test('should create multiple independent tasks', () => {
-            scheduler.createTask('task-1', () => {}, 100 as Milliseconds, false, 'bot');
-            scheduler.createTask('task-2', () => {}, 200 as Milliseconds, false, 'bot');
-            scheduler.createTask('task-3', () => {}, 300 as Milliseconds, false, 'bot');
+            scheduler.createTask(
+                'task-1',
+                () => {},
+                100 as Milliseconds,
+                false,
+                'bot'
+            );
+            scheduler.createTask(
+                'task-2',
+                () => {},
+                200 as Milliseconds,
+                false,
+                'bot'
+            );
+            scheduler.createTask(
+                'task-3',
+                () => {},
+                300 as Milliseconds,
+                false,
+                'bot'
+            );
 
             expect(scheduler.activeTasks.length).toBe(3);
-            expect(scheduler.activeTasks.map(t => t.name)).toEqual(['task-1', 'task-2', 'task-3']);
+            expect(scheduler.activeTasks.map((t) => t.name)).toEqual([
+                'task-1',
+                'task-2',
+                'task-3'
+            ]);
         });
     });
 
@@ -175,14 +205,16 @@ describe('NodeTimeoutScheduler', () => {
 
             scheduler.createOnetimeTask(
                 'delayed-onetime',
-                () => { executed = true; },
+                () => {
+                    executed = true;
+                },
                 50 as Milliseconds,
                 'test-bot'
             );
 
             expect(executed).toBe(false);
 
-            await new Promise(resolve => setTimeout(resolve, 80));
+            await new Promise((resolve) => setTimeout(resolve, 80));
 
             expect(executed).toBe(true);
         });
@@ -200,7 +232,7 @@ describe('NodeTimeoutScheduler', () => {
                 'test-bot'
             );
 
-            await new Promise(resolve => setTimeout(resolve, 80));
+            await new Promise((resolve) => setTimeout(resolve, 80));
 
             expect(runEvents.length).toBe(1);
             expect(runEvents[0]).toEqual({
@@ -227,12 +259,14 @@ describe('NodeTimeoutScheduler', () => {
 
             scheduler.createOnetimeTask(
                 'execute-once',
-                () => { executionCount++; },
+                () => {
+                    executionCount++;
+                },
                 30 as Milliseconds,
                 'test-bot'
             );
 
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 100));
 
             expect(executionCount).toBe(1);
         });
@@ -243,11 +277,27 @@ describe('NodeTimeoutScheduler', () => {
             let task1Count = 0;
             let task2Count = 0;
 
-            scheduler.createTask('task-1', () => { task1Count++; }, 30 as Milliseconds, false, 'bot');
-            scheduler.createTask('task-2', () => { task2Count++; }, 30 as Milliseconds, false, 'bot');
+            scheduler.createTask(
+                'task-1',
+                () => {
+                    task1Count++;
+                },
+                30 as Milliseconds,
+                false,
+                'bot'
+            );
+            scheduler.createTask(
+                'task-2',
+                () => {
+                    task2Count++;
+                },
+                30 as Milliseconds,
+                false,
+                'bot'
+            );
 
             // Let them run a bit
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise((resolve) => setTimeout(resolve, 50));
 
             const countBeforeStop1 = task1Count;
             const countBeforeStop2 = task2Count;
@@ -255,7 +305,7 @@ describe('NodeTimeoutScheduler', () => {
             scheduler.stopAll();
 
             // Wait more time
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 100));
 
             // Counts should not have increased after stop
             expect(task1Count).toBe(countBeforeStop1);
@@ -263,11 +313,21 @@ describe('NodeTimeoutScheduler', () => {
         });
 
         test('should handle being called with no tasks', () => {
-            expect(() => { scheduler.stopAll(); }).not.toThrow();
+            expect(() => {
+                scheduler.stopAll();
+            }).not.toThrow();
         });
 
         test('should handle being called multiple times', () => {
-            scheduler.createTask('task', () => { /* no-op */ }, 100 as Milliseconds, false, 'bot');
+            scheduler.createTask(
+                'task',
+                () => {
+                    /* no-op */
+                },
+                100 as Milliseconds,
+                false,
+                'bot'
+            );
 
             expect(() => {
                 scheduler.stopAll();
@@ -302,7 +362,9 @@ describe('NodeTimeoutScheduler', () => {
                     // Then create recurring task
                     scheduler.createTask(
                         'ScheduledProcessing',
-                        () => { executions.push('scheduled-run'); },
+                        () => {
+                            executions.push('scheduled-run');
+                        },
                         50 as Milliseconds,
                         true, // Execute right away
                         'test-bot'
@@ -312,10 +374,14 @@ describe('NodeTimeoutScheduler', () => {
                 'test-bot'
             );
 
-            await new Promise(resolve => setTimeout(resolve, 150));
+            await new Promise((resolve) => setTimeout(resolve, 150));
 
             // Should have the recurring task in activeTasks
-            expect(scheduler.activeTasks.some(t => t.name === 'ScheduledProcessing')).toBe(true);
+            expect(
+                scheduler.activeTasks.some(
+                    (t) => t.name === 'ScheduledProcessing'
+                )
+            ).toBe(true);
             // Should have executed multiple times
             expect(executions.length).toBeGreaterThanOrEqual(2);
         });
@@ -326,19 +392,21 @@ describe('NodeTimeoutScheduler', () => {
 
             scheduler.createTask(
                 'ScheduledProcessing',
-                () => { runCount++; },
+                () => {
+                    runCount++;
+                },
                 30 as Milliseconds,
                 false,
                 'test-bot'
             );
 
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise((resolve) => setTimeout(resolve, 50));
             const countBeforeShutdown = runCount;
 
             // Simulate bot shutdown
             scheduler.stopAll();
 
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 100));
 
             // No more executions after stop
             expect(runCount).toBe(countBeforeShutdown);

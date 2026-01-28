@@ -81,12 +81,20 @@ describe('mapUtils', () => {
 
             const locks = new Map<string, MockSemaphore>();
 
-            const lock1 = getOrSetIfNotExists(locks, 'action:key', new MockSemaphore(1));
+            const lock1 = getOrSetIfNotExists(
+                locks,
+                'action:key',
+                new MockSemaphore(1)
+            );
             expect(lock1.limit).toBe(1);
             expect(locks.size).toBe(1);
 
             // Second call should return same instance
-            const lock2 = getOrSetIfNotExists(locks, 'action:key', new MockSemaphore(5));
+            const lock2 = getOrSetIfNotExists(
+                locks,
+                'action:key',
+                new MockSemaphore(5)
+            );
             expect(lock2).toBe(lock1);
             expect(lock2.limit).toBe(1); // Original limit, not 5
         });
@@ -105,13 +113,17 @@ describe('mapUtils', () => {
         test('should throw default error if key does not exist', () => {
             const map = new Map<string, number>();
 
-            expect(() => getOrThrow(map, 'missing')).toThrow('Key not found in collection');
+            expect(() => getOrThrow(map, 'missing')).toThrow(
+                'Key not found in collection'
+            );
         });
 
         test('should throw custom error message if provided', () => {
             const map = new Map<string, number>();
 
-            expect(() => getOrThrow(map, 'missing', 'Custom error message')).toThrow('Custom error message');
+            expect(() =>
+                getOrThrow(map, 'missing', 'Custom error message')
+            ).toThrow('Custom error message');
         });
 
         test('should work with complex value types', () => {
@@ -130,7 +142,8 @@ describe('mapUtils', () => {
             map.set('key', 100);
 
             // Cast to readonly-like interface
-            const readonlyMap: { get: (key: string) => number | undefined } = map;
+            const readonlyMap: { get: (key: string) => number | undefined } =
+                map;
 
             const result = getOrThrow(readonlyMap, 'key');
 
@@ -142,7 +155,9 @@ describe('mapUtils', () => {
             map.set('zero', 0);
 
             // Note: current implementation treats 0 as falsy, so it throws
-            expect(() => getOrThrow(map, 'zero')).toThrow('Key not found in collection');
+            expect(() => getOrThrow(map, 'zero')).toThrow(
+                'Key not found in collection'
+            );
         });
     });
 });

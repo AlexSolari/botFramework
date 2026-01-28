@@ -1,10 +1,16 @@
 import { describe, test, expect, mock } from 'bun:test';
 import { InlineQueryAction } from '../../../src/entities/actions/inlineQueryAction';
-import { InlineQueryContextInternal, InlineQueryContext } from '../../../src/entities/context/inlineQueryContext';
+import {
+    InlineQueryContextInternal,
+    InlineQueryContext
+} from '../../../src/entities/context/inlineQueryContext';
 import { ActionKey } from '../../../src/types/action';
 import { TypedEventEmitter, BotEventType } from '../../../src/types/events';
 import { Noop } from '../../../src/helpers/noop';
-import { createMockStorage, createMockScheduler } from '../../services/actionProcessors/processorTestHelpers';
+import {
+    createMockStorage,
+    createMockScheduler
+} from '../../services/actionProcessors/processorTestHelpers';
 
 function createMockInlineContext(
     queryText: string,
@@ -13,13 +19,17 @@ function createMockInlineContext(
     const storage = createMockStorage();
     const scheduler = createMockScheduler();
     const eventEmitter = new TypedEventEmitter();
-    
-    const ctx = new InlineQueryContextInternal(storage, scheduler, eventEmitter);
+
+    const ctx = new InlineQueryContextInternal(
+        storage,
+        scheduler,
+        eventEmitter
+    );
     ctx.isInitialized = true;
     ctx.queryText = queryText;
     ctx.queryId = 'query-123';
     ctx.abortSignal = new AbortController().signal;
-    
+
     return ctx;
 }
 
@@ -280,7 +290,7 @@ describe('InlineQueryAction', () => {
         test('should reset regex lastIndex before matching', async () => {
             const pattern = /test/g;
             pattern.lastIndex = 100; // Simulate a previously used regex
-            
+
             const action = new InlineQueryAction(
                 mock(() => Promise.resolve()),
                 'test',

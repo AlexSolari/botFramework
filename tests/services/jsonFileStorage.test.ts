@@ -61,11 +61,11 @@ describe('JsonFileStorage', () => {
         if (existsSync(TEST_STORAGE_PATH)) {
             rmSync(TEST_STORAGE_PATH, { recursive: true, force: true });
         }
-        
+
         eventEmitter = createEventEmitter();
         testAction = createTestAction('test:action');
         storage = null;
-        
+
         // Pre-create the storage structure for the default test action
         ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'test:action');
     });
@@ -74,7 +74,7 @@ describe('JsonFileStorage', () => {
         // Don't call close() in cleanup - it acquires locks permanently
         // Just reset the reference
         storage = null;
-        
+
         // Clean up test storage after each test
         if (existsSync(TEST_STORAGE_PATH)) {
             rmSync(TEST_STORAGE_PATH, { recursive: true, force: true });
@@ -90,16 +90,26 @@ describe('JsonFileStorage', () => {
                 TEST_STORAGE_PATH
             );
 
-            expect(existsSync(`${TEST_STORAGE_PATH}/${TEST_BOT_NAME}/`)).toBe(true);
+            expect(existsSync(`${TEST_STORAGE_PATH}/${TEST_BOT_NAME}/`)).toBe(
+                true
+            );
         });
 
-        test('should initialize locks for all actions', async () => {
+        test('should initialize locks for all actions', () => {
             const action1 = createTestAction('action:one');
             const action2 = createTestAction('action:two');
 
             // Pre-create files for these actions
-            ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'action:one');
-            ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'action:two');
+            ensureActionFileExists(
+                TEST_STORAGE_PATH,
+                TEST_BOT_NAME,
+                'action:one'
+            );
+            ensureActionFileExists(
+                TEST_STORAGE_PATH,
+                TEST_BOT_NAME,
+                'action:two'
+            );
 
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -109,10 +119,10 @@ describe('JsonFileStorage', () => {
             );
 
             // Both actions should be loadable without deadlock
-            const [result1, result2] = await Promise.all([
+            const [result1, result2] = [
                 storage.load(action1),
                 storage.load(action2)
-            ]);
+            ];
 
             expect(result1).toEqual({});
             expect(result2).toEqual({});
@@ -120,7 +130,7 @@ describe('JsonFileStorage', () => {
     });
 
     describe('load', () => {
-        test('should return empty object for new action', async () => {
+        test('should return empty object for new action', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
@@ -128,16 +138,16 @@ describe('JsonFileStorage', () => {
                 TEST_STORAGE_PATH
             );
 
-            const result = await storage.load(testAction);
+            const result = storage.load(testAction);
 
             expect(result).toEqual({});
         });
 
-        test('should load existing data from file', async () => {
+        test('should load existing data from file', () => {
             // Pre-create the file with data
             const dirPath = `${TEST_STORAGE_PATH}/${TEST_BOT_NAME}/test`;
             mkdirSync(dirPath, { recursive: true });
-            
+
             const existingData: Record<number, TestActionState> = {
                 123: {
                     lastExecutedDate: 1000,
@@ -157,12 +167,12 @@ describe('JsonFileStorage', () => {
                 TEST_STORAGE_PATH
             );
 
-            const result = await storage.load(testAction);
+            const result = storage.load(testAction);
 
             expect(result).toEqual(existingData);
         });
 
-        test('should cache loaded data', async () => {
+        test('should cache loaded data', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
@@ -171,14 +181,17 @@ describe('JsonFileStorage', () => {
             );
 
             const cacheMissEvents: ActionKey[] = [];
-            eventEmitter.on(BotEventType.storageCacheMiss, (_timestamp, key) => {
-                cacheMissEvents.push(key);
-            });
+            eventEmitter.on(
+                BotEventType.storageCacheMiss,
+                (_timestamp, key) => {
+                    cacheMissEvents.push(key);
+                }
+            );
 
             // First load - cache miss
-            await storage.load(testAction);
+            storage.load(testAction);
             // Second load - should use cache (no cache miss event)
-            await storage.load(testAction);
+            storage.load(testAction);
 
             // Only one cache miss should occur
             expect(cacheMissEvents.length).toBe(1);
@@ -186,7 +199,7 @@ describe('JsonFileStorage', () => {
     });
 
     describe('getActionState', () => {
-        test('should return default state for new chat', async () => {
+        test('should return default state for new chat', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
@@ -194,7 +207,7 @@ describe('JsonFileStorage', () => {
                 TEST_STORAGE_PATH
             );
 
-            const result = await storage.getActionState(testAction, 123);
+            const result = storage.getActionState(testAction, 123);
 
             expect(result).toEqual({
                 lastExecutedDate: 0,
@@ -203,11 +216,11 @@ describe('JsonFileStorage', () => {
             });
         });
 
-        test('should return existing state for known chat', async () => {
+        test('should return existing state for known chat', () => {
             // Pre-create file with data
             const dirPath = `${TEST_STORAGE_PATH}/${TEST_BOT_NAME}/test`;
             mkdirSync(dirPath, { recursive: true });
-            
+
             const existingData: Record<number, TestActionState> = {
                 456: {
                     lastExecutedDate: 2000,
@@ -227,12 +240,12 @@ describe('JsonFileStorage', () => {
                 TEST_STORAGE_PATH
             );
 
-            const result = await storage.getActionState(testAction, 456);
+            const result = storage.getActionState(testAction, 456);
 
             expect(result).toEqual(existingData[456]);
         });
 
-        test('should emit loading and loaded events', async () => {
+        test('should emit loading and loaded events', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
@@ -243,14 +256,20 @@ describe('JsonFileStorage', () => {
             const loadingEvents: unknown[] = [];
             const loadedEvents: unknown[] = [];
 
-            eventEmitter.on(BotEventType.storageStateLoading, (_timestamp, data) => {
-                loadingEvents.push(data);
-            });
-            eventEmitter.on(BotEventType.storageStateLoaded, (_timestamp, data) => {
-                loadedEvents.push(data);
-            });
+            eventEmitter.on(
+                BotEventType.storageStateLoading,
+                (_timestamp, data) => {
+                    loadingEvents.push(data);
+                }
+            );
+            eventEmitter.on(
+                BotEventType.storageStateLoaded,
+                (_timestamp, data) => {
+                    loadedEvents.push(data);
+                }
+            );
 
-            await storage.getActionState(testAction, 789);
+            storage.getActionState(testAction, 789);
 
             expect(loadingEvents.length).toBe(1);
             expect(loadedEvents.length).toBe(1);
@@ -275,7 +294,7 @@ describe('JsonFileStorage', () => {
             await storage.saveActionExecutionResult(testAction, 123, newState);
 
             // Verify by loading
-            const result = await storage.getActionState(testAction, 123);
+            const result = storage.getActionState(testAction, 123);
             expect(result).toEqual(newState);
         });
 
@@ -290,12 +309,18 @@ describe('JsonFileStorage', () => {
             const savingEvents: unknown[] = [];
             const savedEvents: unknown[] = [];
 
-            eventEmitter.on(BotEventType.storageStateSaving, (_timestamp, data) => {
-                savingEvents.push(data);
-            });
-            eventEmitter.on(BotEventType.storageStateSaved, (_timestamp, data) => {
-                savedEvents.push(data);
-            });
+            eventEmitter.on(
+                BotEventType.storageStateSaving,
+                (_timestamp, data) => {
+                    savingEvents.push(data);
+                }
+            );
+            eventEmitter.on(
+                BotEventType.storageStateSaved,
+                (_timestamp, data) => {
+                    savedEvents.push(data);
+                }
+            );
 
             await storage.saveActionExecutionResult(testAction, 123, {
                 lastExecutedDate: 1000,
@@ -329,8 +354,8 @@ describe('JsonFileStorage', () => {
             await storage.saveActionExecutionResult(testAction, 111, state1);
             await storage.saveActionExecutionResult(testAction, 222, state2);
 
-            const result1 = await storage.getActionState(testAction, 111);
-            const result2 = await storage.getActionState(testAction, 222);
+            const result1 = storage.getActionState(testAction, 111);
+            const result2 = storage.getActionState(testAction, 222);
 
             expect(result1).toEqual(state1);
             expect(result2).toEqual(state2);
@@ -359,7 +384,7 @@ describe('JsonFileStorage', () => {
                 state.pinnedMessages.push(2);
             });
 
-            const result = await storage.getActionState(testAction, 123);
+            const result = storage.getActionState(testAction, 123);
 
             expect(result.customField).toBe('updated');
             expect(result.pinnedMessages).toEqual([1, 2]);
@@ -385,7 +410,7 @@ describe('JsonFileStorage', () => {
             };
             await storage.updateStateFor(testAction, 123, asyncUpdate);
 
-            const result = await storage.getActionState(testAction, 123);
+            const result = storage.getActionState(testAction, 123);
 
             expect(result.customField).toBe('async-updated');
         });
@@ -406,7 +431,7 @@ describe('JsonFileStorage', () => {
     });
 
     describe('locking behavior', () => {
-        test('should emit lock events in correct order', async () => {
+        test('should not lock on read', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
@@ -426,9 +451,9 @@ describe('JsonFileStorage', () => {
                 events.push('released');
             });
 
-            await storage.load(testAction);
+            storage.load(testAction);
 
-            expect(events).toEqual(['acquiring', 'acquired', 'released']);
+            expect(events).toEqual([]);
         });
 
         test('should serialize concurrent operations on same action', async () => {
@@ -464,7 +489,11 @@ describe('JsonFileStorage', () => {
             const nestedAction = createTestAction('nested:path:action');
 
             // Pre-create the nested action file
-            ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'nested:path:action');
+            ensureActionFileExists(
+                TEST_STORAGE_PATH,
+                TEST_BOT_NAME,
+                'nested:path:action'
+            );
 
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -481,7 +510,9 @@ describe('JsonFileStorage', () => {
 
             // Verify the file was created at the correct nested path
             expect(
-                existsSync(`${TEST_STORAGE_PATH}/${TEST_BOT_NAME}/nested/path/action.json`)
+                existsSync(
+                    `${TEST_STORAGE_PATH}/${TEST_BOT_NAME}/nested/path/action.json`
+                )
             ).toBe(true);
         });
 
@@ -496,7 +527,10 @@ describe('JsonFileStorage', () => {
             expect(existsSync(`storage/${TEST_BOT_NAME}/`)).toBe(true);
 
             // Cleanup default storage
-            rmSync(`storage/${TEST_BOT_NAME}/`, { recursive: true, force: true });
+            rmSync(`storage/${TEST_BOT_NAME}/`, {
+                recursive: true,
+                force: true
+            });
         });
     });
 
@@ -505,7 +539,11 @@ describe('JsonFileStorage', () => {
             const dynamicAction = createTestAction('dynamic:action');
 
             // Pre-create file for the dynamic action
-            ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'dynamic:action');
+            ensureActionFileExists(
+                TEST_STORAGE_PATH,
+                TEST_BOT_NAME,
+                'dynamic:action'
+            );
 
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -515,7 +553,7 @@ describe('JsonFileStorage', () => {
             );
 
             // Should be able to load and save for unregistered action
-            const loadResult = await storage.load(dynamicAction);
+            const loadResult = storage.load(dynamicAction);
             expect(loadResult).toEqual({});
 
             await storage.saveActionExecutionResult(dynamicAction, 123, {
@@ -524,7 +562,7 @@ describe('JsonFileStorage', () => {
                 customField: 'dynamic'
             });
 
-            const result = await storage.getActionState(dynamicAction, 123);
+            const result = storage.getActionState(dynamicAction, 123);
             expect(result.customField).toBe('dynamic');
         });
     });
@@ -533,7 +571,7 @@ describe('JsonFileStorage', () => {
     describe('command/scheduled action workflow', () => {
         // Pattern: getActionState -> handler executes -> saveActionExecutionResult
         // Used by CommandAction and ScheduledAction
-        
+
         test('should support get-modify-save workflow (command action pattern)', async () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -545,7 +583,7 @@ describe('JsonFileStorage', () => {
             const chatId = 12345;
 
             // Step 1: Get initial state (like CommandAction.exec does)
-            const initialState = await storage.getActionState(testAction, chatId);
+            const initialState = storage.getActionState(testAction, chatId);
             expect(initialState.lastExecutedDate).toBe(0);
 
             // Step 2: Modify state (simulating action execution)
@@ -556,11 +594,17 @@ describe('JsonFileStorage', () => {
             };
 
             // Step 3: Save the result (like CommandAction.exec does after handler)
-            await storage.saveActionExecutionResult(testAction, chatId, newState);
+            await storage.saveActionExecutionResult(
+                testAction,
+                chatId,
+                newState
+            );
 
             // Verify persistence
-            const loadedState = await storage.getActionState(testAction, chatId);
-            expect(loadedState.lastExecutedDate).toBe(newState.lastExecutedDate);
+            const loadedState = storage.getActionState(testAction, chatId);
+            expect(loadedState.lastExecutedDate).toBe(
+                newState.lastExecutedDate
+            );
             expect(loadedState.customField).toBe('executed');
         });
 
@@ -589,9 +633,9 @@ describe('JsonFileStorage', () => {
             });
 
             // Verify each chat has its own state
-            const state1 = await storage.getActionState(testAction, chat1);
-            const state2 = await storage.getActionState(testAction, chat2);
-            const state3 = await storage.getActionState(testAction, chat3);
+            const state1 = storage.getActionState(testAction, chat1);
+            const state2 = storage.getActionState(testAction, chat2);
+            const state3 = storage.getActionState(testAction, chat3);
 
             expect(state1.customField).toBe('chat1');
             expect(state2.customField).toBe('chat2');
@@ -602,8 +646,16 @@ describe('JsonFileStorage', () => {
             const commandAction = createTestAction('command:myCommand');
             const scheduledAction = createTestAction('scheduled:myScheduled');
 
-            ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'command:myCommand');
-            ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'scheduled:myScheduled');
+            ensureActionFileExists(
+                TEST_STORAGE_PATH,
+                TEST_BOT_NAME,
+                'command:myCommand'
+            );
+            ensureActionFileExists(
+                TEST_STORAGE_PATH,
+                TEST_BOT_NAME,
+                'scheduled:myScheduled'
+            );
 
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -627,8 +679,8 @@ describe('JsonFileStorage', () => {
             });
 
             // Each action should have its own state
-            const cmdState = await storage.getActionState(commandAction, chatId);
-            const schedState = await storage.getActionState(scheduledAction, chatId);
+            const cmdState = storage.getActionState(commandAction, chatId);
+            const schedState = storage.getActionState(scheduledAction, chatId);
 
             expect(cmdState.customField).toBe('from-command');
             expect(schedState.customField).toBe('from-scheduled');
@@ -638,7 +690,7 @@ describe('JsonFileStorage', () => {
     describe('cross-action state access (BaseContext pattern)', () => {
         // Pattern: load() to get all states, then access specific chat
         // Used by BaseContext.loadStateOf()
-        
+
         test('should support loading all states for an action', async () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -660,7 +712,7 @@ describe('JsonFileStorage', () => {
             });
 
             // Load all states (like BaseContext.loadStateOf does)
-            const allStates = await storage.load(testAction);
+            const allStates = storage.load(testAction);
 
             expect(Object.keys(allStates).length).toBe(2);
             expect(allStates[100].customField).toBe('chat100');
@@ -669,7 +721,11 @@ describe('JsonFileStorage', () => {
 
         test('should support updateStateFor from another action context', async () => {
             const otherAction = createTestAction('other:action');
-            ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'other:action');
+            ensureActionFileExists(
+                TEST_STORAGE_PATH,
+                TEST_BOT_NAME,
+                'other:action'
+            );
 
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -693,7 +749,7 @@ describe('JsonFileStorage', () => {
                 state.customField = 'modified-externally';
             });
 
-            const result = await storage.getActionState(otherAction, chatId);
+            const result = storage.getActionState(otherAction, chatId);
             expect(result.pinnedMessages).toEqual([1, 2, 3]);
             expect(result.customField).toBe('modified-externally');
         });
@@ -701,7 +757,7 @@ describe('JsonFileStorage', () => {
 
     describe('pinnedMessages array handling', () => {
         // IActionState includes pinnedMessages array - test array operations
-        
+
         test('should correctly persist and restore arrays', async () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -716,7 +772,7 @@ describe('JsonFileStorage', () => {
                 customField: 'test'
             });
 
-            const loaded = await storage.getActionState(testAction, 123);
+            const loaded = storage.getActionState(testAction, 123);
             expect(loaded.pinnedMessages).toEqual([101, 102, 103, 104, 105]);
             expect(loaded.pinnedMessages.length).toBe(5);
         });
@@ -735,7 +791,7 @@ describe('JsonFileStorage', () => {
                 customField: 'test'
             });
 
-            const loaded = await storage.getActionState(testAction, 123);
+            const loaded = storage.getActionState(testAction, 123);
             expect(loaded.pinnedMessages).toEqual([]);
             expect(Array.isArray(loaded.pinnedMessages)).toBe(true);
         });
@@ -743,7 +799,7 @@ describe('JsonFileStorage', () => {
 
     describe('lastExecutedDate handling', () => {
         // CommandAction and ScheduledAction update lastExecutedDate after execution
-        
+
         test('should persist timestamp values correctly', async () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -760,11 +816,11 @@ describe('JsonFileStorage', () => {
                 customField: 'test'
             });
 
-            const loaded = await storage.getActionState(testAction, 123);
+            const loaded = storage.getActionState(testAction, 123);
             expect(loaded.lastExecutedDate).toBe(timestamp);
         });
 
-        test('should handle zero timestamps (never executed)', async () => {
+        test('should handle zero timestamps (never executed)', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
@@ -772,21 +828,25 @@ describe('JsonFileStorage', () => {
                 TEST_STORAGE_PATH
             );
 
-            const state = await storage.getActionState(testAction, 999);
+            const state = storage.getActionState(testAction, 999);
             expect(state.lastExecutedDate).toBe(0);
         });
     });
 
     describe('state constructor usage', () => {
         // Actions provide stateConstructor for default state
-        
-        test('should use stateConstructor for new chats', async () => {
+
+        test('should use stateConstructor for new chats', () => {
             const actionWithDefaults = createTestAction('action:defaults', {
                 lastExecutedDate: 0,
                 pinnedMessages: [999],
                 customField: 'custom-default'
             });
-            ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'action:defaults');
+            ensureActionFileExists(
+                TEST_STORAGE_PATH,
+                TEST_BOT_NAME,
+                'action:defaults'
+            );
 
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -795,24 +855,29 @@ describe('JsonFileStorage', () => {
                 TEST_STORAGE_PATH
             );
 
-            const state = await storage.getActionState(actionWithDefaults, 12345);
+            const state = storage.getActionState(actionWithDefaults, 12345);
             expect(state.customField).toBe('custom-default');
             expect(state.pinnedMessages).toEqual([999]);
         });
 
-        test('should not use stateConstructor for existing chats', async () => {
+        test('should not use stateConstructor for existing chats', () => {
             const actionWithDefaults = createTestAction('action:defaults', {
                 customField: 'should-not-see-this'
             });
-            
+
             // Pre-populate with existing data
-            ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'action:defaults', {
-                123: {
-                    lastExecutedDate: 5000,
-                    pinnedMessages: [1],
-                    customField: 'existing-value'
+            ensureActionFileExists(
+                TEST_STORAGE_PATH,
+                TEST_BOT_NAME,
+                'action:defaults',
+                {
+                    123: {
+                        lastExecutedDate: 5000,
+                        pinnedMessages: [1],
+                        customField: 'existing-value'
+                    }
                 }
-            });
+            );
 
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -821,7 +886,7 @@ describe('JsonFileStorage', () => {
                 TEST_STORAGE_PATH
             );
 
-            const state = await storage.getActionState(actionWithDefaults, 123);
+            const state = storage.getActionState(actionWithDefaults, 123);
             expect(state.customField).toBe('existing-value');
             expect(state.lastExecutedDate).toBe(5000);
         });
@@ -829,7 +894,7 @@ describe('JsonFileStorage', () => {
 
     describe('concurrent action execution (multiple chats)', () => {
         // Bot can receive messages from multiple chats simultaneously
-        
+
         test('should handle concurrent operations on different chats', async () => {
             const localStorage = new JsonFileStorage(
                 TEST_BOT_NAME,
@@ -842,17 +907,21 @@ describe('JsonFileStorage', () => {
 
             // Simulate concurrent message handling for different chats
             const operations = chatIds.map(async (chatId) => {
-                const state = await localStorage.getActionState(testAction, chatId);
+                const state = localStorage.getActionState(testAction, chatId);
                 state.customField = `processed-${chatId}`;
                 state.lastExecutedDate = chatId * 1000;
-                await localStorage.saveActionExecutionResult(testAction, chatId, state);
+                await localStorage.saveActionExecutionResult(
+                    testAction,
+                    chatId,
+                    state
+                );
             });
 
             await Promise.all(operations);
 
             // Verify all states were saved correctly
             for (const chatId of chatIds) {
-                const state = await localStorage.getActionState(testAction, chatId);
+                const state = localStorage.getActionState(testAction, chatId);
                 expect(state.customField).toBe(`processed-${chatId}`);
                 expect(state.lastExecutedDate).toBe(chatId * 1000);
             }
@@ -877,7 +946,7 @@ describe('JsonFileStorage', () => {
                 });
             }
 
-            const finalState = await storage.getActionState(testAction, chatId);
+            const finalState = storage.getActionState(testAction, chatId);
             expect(finalState.customField).toBe('update-10');
             expect(finalState.lastExecutedDate).toBe(1000);
         });
@@ -917,9 +986,9 @@ describe('JsonFileStorage', () => {
             });
 
             // Verify chat 1 and 3 are unchanged
-            const state1 = await storage.getActionState(testAction, 1);
-            const state2 = await storage.getActionState(testAction, 2);
-            const state3 = await storage.getActionState(testAction, 3);
+            const state1 = storage.getActionState(testAction, 1);
+            const state2 = storage.getActionState(testAction, 2);
+            const state3 = storage.getActionState(testAction, 3);
 
             expect(state1.customField).toBe('one');
             expect(state2.customField).toBe('two-updated');

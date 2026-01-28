@@ -9,7 +9,10 @@ import { MessageInfo } from '../../../src/dtos/messageInfo';
 import { MessageType, MessageTypeValue } from '../../../src/types/messageTypes';
 import { UserInfo } from '../../../src/dtos/userInfo';
 import { Message } from '@telegraf/types';
-import { createMockStorage, createMockScheduler } from '../../services/actionProcessors/processorTestHelpers';
+import {
+    createMockStorage,
+    createMockScheduler
+} from '../../services/actionProcessors/processorTestHelpers';
 
 function createMockParentAction(): IAction {
     return {
@@ -26,13 +29,22 @@ function createMockReplyContext(
     const storage = createMockStorage();
     const scheduler = createMockScheduler();
     const eventEmitter = new TypedEventEmitter();
-    
-    const ctx = new ReplyContextInternal<ActionStateBase>(storage, scheduler, eventEmitter);
+
+    const ctx = new ReplyContextInternal<ActionStateBase>(
+        storage,
+        scheduler,
+        eventEmitter
+    );
     ctx.isInitialized = true;
     ctx.replyMessageId = replyMessageId;
-    ctx.messageInfo = new MessageInfo(100, messageText, messageType, {} as Message);
+    ctx.messageInfo = new MessageInfo(
+        100,
+        messageText,
+        messageType,
+        {} as Message
+    );
     ctx.userInfo = new UserInfo(123, 'TestUser');
-    
+
     return ctx;
 }
 
@@ -99,12 +111,14 @@ describe('ReplyCaptureAction', () => {
                 new AbortController()
             );
 
-            expect(action.key.startsWith('capture:command:parent-action:')).toBe(true);
+            expect(
+                action.key.startsWith('capture:command:parent-action:')
+            ).toBe(true);
         });
 
         test('should generate unique keys for different instances', () => {
             const parentAction = createMockParentAction();
-            
+
             const action1 = new ReplyCaptureAction(
                 123,
                 parentAction,
@@ -403,7 +417,7 @@ describe('ReplyCaptureAction', () => {
         test('should reset regex lastIndex before matching', async () => {
             const pattern = /test/g;
             pattern.lastIndex = 100;
-            
+
             const handler = mock(() => Promise.resolve());
             const action = new ReplyCaptureAction(
                 123,

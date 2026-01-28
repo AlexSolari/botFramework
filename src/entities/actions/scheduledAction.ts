@@ -13,9 +13,9 @@ import { ScheduledActionPropertyProvider } from '../../types/propertyProvider';
 import { ScheduledActionProviders } from '../../dtos/propertyProviderSets';
 import { BotEventType } from '../../types/events';
 
-export class ScheduledAction<TActionState extends IActionState>
-    implements IActionWithState<TActionState>
-{
+export class ScheduledAction<
+    TActionState extends IActionState
+> implements IActionWithState<TActionState> {
     static readonly locks = new Map<string, Semaphore>();
 
     readonly name: string;
@@ -63,7 +63,7 @@ export class ScheduledAction<TActionState extends IActionState>
         )
             return Noop.NoResponse;
 
-        const state = await ctx.storage.getActionState<TActionState>(
+        const state = ctx.storage.getActionState<TActionState>(
             this,
             ctx.chatInfo.id
         );
