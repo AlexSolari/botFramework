@@ -4,7 +4,7 @@ import parser from '@typescript-eslint/parser';
 
 export default tseslint.config(
     {
-        ignores: ['dist/**']
+        ignores: ['dist/**', 'eslint.config.ts']
     },
     eslint.configs.recommended,
     tseslint.configs.strictTypeChecked,
@@ -12,7 +12,6 @@ export default tseslint.config(
         languageOptions: {
             parser,
             parserOptions: {
-                project: './tsconfig.json',
                 tsconfigRootDir: __dirname,
                 sourceType: 'module',
                 projectService: true
