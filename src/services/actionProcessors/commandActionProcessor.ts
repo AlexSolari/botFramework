@@ -168,7 +168,12 @@ export class CommandActionProcessor extends BaseActionProcessor {
         });
         for (const commandAction of commandsToCheck) {
             this.initializeMessageContext(ctx, commandAction, msg);
-            await this.executeAction(commandAction, ctx);
+
+            const { proxy, revoke } = Proxy.revocable(ctx, {});
+
+            await this.executeAction(commandAction, proxy);
+
+            revoke();
         }
 
         if (this.replyCaptures.length != 0) {
@@ -180,7 +185,9 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
             for (const replyAction of this.replyCaptures) {
                 this.initializeReplyCaptureContext(replyCtx, replyAction, msg);
-                await this.executeAction(replyAction, replyCtx);
+                const { proxy, revoke } = Proxy.revocable(replyCtx, {});
+                await this.executeAction(replyAction, proxy);
+                revoke();
             }
         }
 

@@ -102,7 +102,9 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                     )
                 );
 
-                await this.executeAction(scheduledAction, ctx);
+                const { proxy, revoke } = Proxy.revocable(ctx, {});
+                await this.executeAction(scheduledAction, proxy);
+                revoke();
             }
         }
 
