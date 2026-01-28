@@ -53,7 +53,12 @@ export abstract class BaseActionProcessor {
             ctx.isInitialized = false;
         } catch (e) {
             const error = e as Error;
-            (errorHandler ?? this.defaultErrorHandler)(error, ctx);
+
+            if (errorHandler) {
+                errorHandler(error, ctx);
+            } else {
+                this.defaultErrorHandler(error);
+            }
         }
     }
 }
