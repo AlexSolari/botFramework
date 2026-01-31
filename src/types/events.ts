@@ -28,12 +28,16 @@ export const BotEventType = {
     replyActionExecuting: 'reply.actionExecuting',
     replyActionExecuted: 'reply.actionExecuted',
 
+    inlineProcessingStarted: 'inline.processingStarted',
+    inlineProcessingFinished: 'inline.processingFinished',
+    inlineQueryRecieved: 'inline.queryRecieved',
     inlineActionExecuting: 'inline.actionExecuting',
     inlineActionExecuted: 'inline.actionExecuted',
-    inlineProcessingStarted: 'inline.processingStarted',
     inlineProcessingAborting: 'inline.processingAborting',
     inlineProcessingAborted: 'inline.processingAborted',
 
+    scheduledProcessingStarted: 'scheduled.processingStarted',
+    scheduledProcessingFinished: 'scheduled.processingFinished',
     scheduledActionExecuting: 'scheduled.actionExecuting',
     scheduledActionExecuted: 'scheduled.actionExecuted',
     scheduledActionCacheValueReturned: 'scheduled.cachedValueReturned',
@@ -73,12 +77,10 @@ export type BotEventMap = {
         botInfo: BotInfo;
         message: IncomingMessage;
     };
-
     [BotEventType.messageProcessingStarted]: {
         botInfo: BotInfo;
         message: IncomingMessage;
     };
-
     [BotEventType.messageProcessingFinished]: {
         botInfo: BotInfo;
         message: IncomingMessage;
@@ -89,24 +91,20 @@ export type BotEventMap = {
         message: IncomingMessage;
         commands: Set<CommandAction<IActionState>>;
     };
-
     [BotEventType.commandActionExecuting]: {
         action: IActionWithState<IActionState>;
         ctx: MessageContext<IActionState>;
         state: IActionState;
     };
-
     [BotEventType.commandActionExecuted]: {
         action: IActionWithState<IActionState>;
         ctx: MessageContext<IActionState>;
         state: IActionState;
     };
-
     [BotEventType.commandActionCaptureStarted]: {
         parentMessageId: number;
         chatInfo: ChatInfo;
     };
-
     [BotEventType.commandActionCaptureAborted]: {
         parentMessageId: number;
         chatInfo: ChatInfo;
@@ -116,53 +114,49 @@ export type BotEventMap = {
         action: IAction;
         ctx: ReplyContext<IActionState>;
     };
-
     [BotEventType.replyActionExecuted]: {
         action: IAction;
         ctx: ReplyContext<IActionState>;
     };
 
+    [BotEventType.inlineProcessingStarted]: string;
+    [BotEventType.inlineProcessingFinished]: string;
     [BotEventType.inlineActionExecuting]: {
         action: IAction;
         ctx: InlineQueryContext;
     };
-
     [BotEventType.inlineActionExecuted]: {
         action: IAction;
         ctx: InlineQueryContext;
     };
-
-    [BotEventType.inlineProcessingStarted]: {
-        query: IncomingInlineQuery;
-    };
-
     [BotEventType.inlineProcessingAborting]: {
         abortedQuery: IncomingInlineQuery;
         newQuery: IncomingInlineQuery;
     };
-
     [BotEventType.inlineProcessingAborted]: {
         abortedQuery: IncomingInlineQuery;
     };
+    [BotEventType.inlineQueryRecieved]: {
+        query: IncomingInlineQuery;
+    };
 
+    [BotEventType.scheduledProcessingStarted]: string;
+    [BotEventType.scheduledProcessingFinished]: string;
     [BotEventType.scheduledActionExecuting]: {
         action: IAction;
         ctx: ChatContext<IActionState>;
         state: IActionState;
     };
-
     [BotEventType.scheduledActionExecuted]: {
         action: IAction;
         ctx: ChatContext<IActionState>;
         state: IActionState;
     };
-
     [BotEventType.scheduledActionCacheValueCreating]: {
         action: IAction;
         ctx: ChatContext<IActionState>;
         key: string;
     };
-
     [BotEventType.scheduledActionCacheValueReturned]: {
         action: IAction;
         ctx: ChatContext<IActionState>;
@@ -173,7 +167,6 @@ export type BotEventMap = {
         response: BotResponse | null;
         telegramMethod: string | null;
     };
-
     [BotEventType.apiRequestSent]: {
         response: BotResponse | null;
         telegramMethod: string | null;
@@ -217,7 +210,6 @@ export type BotEventMap = {
     [BotEventType.botStarting]: {
         botName: string;
     };
-
     [BotEventType.botStopping]: {
         botName: string;
     };

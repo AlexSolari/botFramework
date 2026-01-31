@@ -40,7 +40,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                     createTrace('InlineQuery', this.botName, inlineQuery.id)
                 );
 
-                this.eventEmitter.emit(BotEventType.inlineProcessingStarted, {
+                this.eventEmitter.emit(BotEventType.inlineQueryRecieved, {
                     query
                 });
 
@@ -70,6 +70,11 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
             this.scheduler.createTask(
                 'InlineQueryProcessing',
                 () => {
+                    this.eventEmitter.emit(
+                        BotEventType.inlineProcessingStarted,
+                        this.botName
+                    );
+
                     const queriesToProcess = [...pendingInlineQueries];
                     pendingInlineQueries = [];
                     const promises = [];
@@ -136,7 +141,12 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                         promises.push(queryPromise);
                     }
 
-                    void Promise.allSettled(promises);
+                    void Promise.allSettled(promises).then(() => {
+                        this.eventEmitter.emit(
+                            BotEventType.inlineProcessingFinished,
+                            this.botName
+                        );
+                    });
                 },
                 period,
                 false,

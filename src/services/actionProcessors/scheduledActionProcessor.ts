@@ -10,7 +10,7 @@ import { IStorageClient } from '../../types/storage';
 import { Seconds, Milliseconds } from '../../types/timeValues';
 import { TelegramApiService } from '../telegramApi';
 import { BaseActionProcessor } from './baseProcessor';
-import { TypedEventEmitter } from '../../types/events';
+import { BotEventType, TypedEventEmitter } from '../../types/events';
 
 export class ScheduledActionProcessor extends BaseActionProcessor {
     private readonly chats: Record<string, number>;
@@ -82,6 +82,11 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
     }
 
     private runScheduled() {
+        this.eventEmitter.emit(
+            BotEventType.scheduledProcessingStarted,
+            this.botName
+        );
+
         const promises = Object.entries(this.chats).flatMap(
             ([chatName, chatId]) => {
                 const chatInfo = new ChatInfo(chatId, chatName, []);
@@ -116,6 +121,11 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
             }
         );
 
-        void Promise.allSettled(promises);
+        void Promise.allSettled(promises).then(() => {
+            this.eventEmitter.emit(
+                BotEventType.scheduledProcessingStarted,
+                this.botName
+            );
+        });
     }
 }

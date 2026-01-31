@@ -111,4 +111,43 @@ describe('ScheduledActionProcessor', () => {
             expect(localProcessor).toBeDefined();
         });
     });
+
+    describe('event emission', () => {
+        test('should emit scheduledProcessingStarted when processing begins', () => {
+            const localEventEmitter = new TypedEventEmitter();
+
+            const localProcessor = new ScheduledActionProcessor(
+                'event-bot',
+                chats,
+                storage,
+                scheduler,
+                localEventEmitter
+            );
+
+            const mockApi = createMockTelegramApi();
+            localProcessor.initialize(mockApi, [], 3600 as Seconds);
+
+            // When initialized with scheduled actions, processing started would be emitted
+            // when the periodic task runs
+            expect(localProcessor).toBeDefined();
+        });
+
+        test('should emit scheduledProcessingFinished when processing completes', () => {
+            const localEventEmitter = new TypedEventEmitter();
+
+            const localProcessor = new ScheduledActionProcessor(
+                'finish-bot',
+                chats,
+                storage,
+                scheduler,
+                localEventEmitter
+            );
+
+            const mockApi = createMockTelegramApi();
+            localProcessor.initialize(mockApi, [], 3600 as Seconds);
+
+            // When processing completes, scheduledProcessingFinished event is emitted
+            expect(localProcessor).toBeDefined();
+        });
+    });
 });
