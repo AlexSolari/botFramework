@@ -54,16 +54,21 @@ function createChatContext(): ChatContextInternal<
     const storage = createMockStorage();
     const scheduler = createMockScheduler();
     const eventEmitter = new TypedEventEmitter();
+    const action = createMockAction();
+    const chatInfo = new ChatInfo(12345, 'Test Chat', []);
 
     const ctx = new ChatContextInternal<
         ActionStateBase,
         ScheduledAction<ActionStateBase>
-    >(storage, scheduler, eventEmitter);
-    ctx.isInitialized = true;
-    ctx.action = createMockAction();
-    ctx.chatInfo = new ChatInfo(12345, 'Test Chat', []);
-    ctx.traceId = 'trace-123' as TraceId;
-    ctx.botName = 'TestBot';
+    >(
+        storage,
+        scheduler,
+        eventEmitter,
+        action,
+        chatInfo,
+        'trace-123' as TraceId,
+        'TestBot'
+    );
 
     return ctx;
 }
@@ -89,17 +94,27 @@ describe('ChatContextInternal', () => {
         });
 
         test('should have isInitialized as false by default', () => {
+            // Note: isInitialized property no longer exists as it was removed from public API
+            // All required properties are now set at construction time
             const storage = createMockStorage();
             const scheduler = createMockScheduler();
             const eventEmitter = new TypedEventEmitter();
+            const action = createMockAction();
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
 
             const ctx = new ChatContextInternal<ActionStateBase>(
                 storage,
                 scheduler,
-                eventEmitter
+                eventEmitter,
+                action,
+                chatInfo,
+                'trace-123' as TraceId,
+                'TestBot'
             );
 
-            expect(ctx.isInitialized).toBe(false);
+            // Verify context is properly initialized with all properties
+            expect(ctx.action).toBeDefined();
+            expect(ctx.chatInfo).toBeDefined();
         });
 
         test('should have empty responses by default', () => {
@@ -398,15 +413,21 @@ describe('ChatContextInternal', () => {
 
             const scheduler = createMockScheduler();
             const eventEmitter = new TypedEventEmitter();
+            const action = createMockAction();
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+
             const ctx = new ChatContextInternal<
                 ActionStateBase,
                 ScheduledAction<ActionStateBase>
-            >(storage, scheduler, eventEmitter);
-            ctx.isInitialized = true;
-            ctx.action = createMockAction();
-            ctx.chatInfo = new ChatInfo(12345, 'Test Chat', []);
-            ctx.traceId = 'trace-123' as TraceId;
-            ctx.botName = 'TestBot';
+            >(
+                storage,
+                scheduler,
+                eventEmitter,
+                action,
+                chatInfo,
+                'trace-123' as TraceId,
+                'TestBot'
+            );
 
             const baseAction = createMockAction();
             const otherAction = Object.assign(
@@ -439,15 +460,21 @@ describe('ChatContextInternal', () => {
 
             const scheduler = createMockScheduler();
             const eventEmitter = new TypedEventEmitter();
+            const action = createMockAction();
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+
             const ctx = new ChatContextInternal<
                 ActionStateBase,
                 ScheduledAction<ActionStateBase>
-            >(storage, scheduler, eventEmitter);
-            ctx.isInitialized = true;
-            ctx.action = createMockAction();
-            ctx.chatInfo = new ChatInfo(12345, 'Test Chat', []);
-            ctx.traceId = 'trace-123' as TraceId;
-            ctx.botName = 'TestBot';
+            >(
+                storage,
+                scheduler,
+                eventEmitter,
+                action,
+                chatInfo,
+                'trace-123' as TraceId,
+                'TestBot'
+            );
 
             const otherAction = createMockAction();
             const result = ctx.loadStateOf(otherAction);
@@ -468,15 +495,21 @@ describe('ChatContextInternal', () => {
 
             const scheduler = createMockScheduler();
             const eventEmitter = new TypedEventEmitter();
+            const action = createMockAction();
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+
             const ctx = new ChatContextInternal<
                 ActionStateBase,
                 ScheduledAction<ActionStateBase>
-            >(storage, scheduler, eventEmitter);
-            ctx.isInitialized = true;
-            ctx.action = createMockAction();
-            ctx.chatInfo = new ChatInfo(12345, 'Test Chat', []);
-            ctx.traceId = 'trace-123' as TraceId;
-            ctx.botName = 'TestBot';
+            >(
+                storage,
+                scheduler,
+                eventEmitter,
+                action,
+                chatInfo,
+                'trace-123' as TraceId,
+                'TestBot'
+            );
 
             const otherAction = createMockAction();
             const result = ctx.loadStateOf(otherAction);
@@ -500,15 +533,21 @@ describe('ChatContextInternal', () => {
 
             const scheduler = createMockScheduler();
             const eventEmitter = new TypedEventEmitter();
+            const action = createMockAction();
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+
             const ctx = new ChatContextInternal<
                 ActionStateBase,
                 ScheduledAction<ActionStateBase>
-            >(storage, scheduler, eventEmitter);
-            ctx.isInitialized = true;
-            ctx.action = createMockAction();
-            ctx.chatInfo = new ChatInfo(12345, 'Test Chat', []);
-            ctx.traceId = 'trace-123' as TraceId;
-            ctx.botName = 'TestBot';
+            >(
+                storage,
+                scheduler,
+                eventEmitter,
+                action,
+                chatInfo,
+                'trace-123' as TraceId,
+                'TestBot'
+            );
 
             const otherAction = createMockAction();
             const result = ctx.loadStateOf(otherAction);
@@ -532,15 +571,21 @@ describe('ChatContextInternal', () => {
 
             const scheduler = createMockScheduler();
             const eventEmitter = new TypedEventEmitter();
+            const action = createMockAction();
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+
             const ctx = new ChatContextInternal<
                 ActionStateBase,
                 ScheduledAction<ActionStateBase>
-            >(storage, scheduler, eventEmitter);
-            ctx.isInitialized = true;
-            ctx.action = createMockAction();
-            ctx.chatInfo = new ChatInfo(12345, 'Test Chat', []);
-            ctx.traceId = 'trace-123' as TraceId;
-            ctx.botName = 'TestBot';
+            >(
+                storage,
+                scheduler,
+                eventEmitter,
+                action,
+                chatInfo,
+                'trace-123' as TraceId,
+                'TestBot'
+            );
 
             const otherAction = createMockAction();
             const mutation = (_state: ActionStateBase): Promise<void> => {

@@ -8,7 +8,6 @@ import { IActionState } from '../../types/actionState';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { Seconds, Milliseconds } from '../../types/timeValues';
-import { TraceId } from '../../types/trace';
 import { TelegramApiService } from '../telegramApi';
 import { BaseActionProcessor } from './baseProcessor';
 import { TypedEventEmitter } from '../../types/events';
@@ -43,8 +42,8 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
             if (now.minute() == 0 && now.second() == 0) {
                 this.scheduler.createTask(
                     'ScheduledProcessing',
-                    async () => {
-                        await this.runScheduled();
+                    () => {
+                        this.runScheduled();
                     },
                     secondsToMilliseconds(period),
                     true,
@@ -67,7 +66,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                     this.scheduler.createTask(
                         'ScheduledProcessing',
                         () => {
-                            void this.runScheduled();
+                            this.runScheduled();
                         },
                         secondsToMilliseconds(period),
                         true,
@@ -78,50 +77,45 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                 this.botName
             );
 
-            void this.runScheduled();
+            this.runScheduled();
         }
     }
 
-    private async runScheduled() {
-        const ctx = new ChatContextInternal<IActionState>(
-            this.storage,
-            this.scheduler,
-            this.eventEmitter
+    private runScheduled() {
+        const promises = Object.entries(this.chats).flatMap(
+            ([chatName, chatId]) => {
+                const chatInfo = new ChatInfo(chatId, chatName, []);
+
+                return this.scheduled.map((scheduledAction) => {
+                    const ctx = new ChatContextInternal<IActionState>(
+                        this.storage,
+                        this.scheduler,
+                        this.eventEmitter,
+                        scheduledAction,
+                        chatInfo,
+                        createTrace(
+                            scheduledAction,
+                            this.botName,
+                            `${scheduledAction.key}-${chatId}`
+                        ),
+                        this.botName
+                    );
+
+                    const { proxy, revoke } = Proxy.revocable(ctx, {});
+
+                    const executePromise = this.executeAction(
+                        scheduledAction,
+                        proxy
+                    );
+
+                    return executePromise.finally(() => {
+                        revoke();
+                        this.api.flushResponses();
+                    });
+                });
+            }
         );
 
-        for (const [chatName, chatId] of Object.entries(this.chats)) {
-            for (const scheduledAction of this.scheduled) {
-                this.initializeChatContext(
-                    ctx,
-                    scheduledAction,
-                    new ChatInfo(chatId, chatName, []),
-                    createTrace(
-                        scheduledAction,
-                        this.botName,
-                        `${scheduledAction.key}-${chatId}`
-                    )
-                );
-
-                const { proxy, revoke } = Proxy.revocable(ctx, {});
-                await this.executeAction(scheduledAction, proxy);
-                revoke();
-            }
-        }
-
-        this.api.flushResponses();
-    }
-
-    private initializeChatContext(
-        ctx: ChatContextInternal<IActionState>,
-        action: ScheduledAction<IActionState>,
-        chatInfo: ChatInfo,
-        traceId: TraceId
-    ) {
-        ctx.responses = [];
-        ctx.isInitialized = true;
-        ctx.botName = this.botName;
-        ctx.action = action;
-        ctx.chatInfo = chatInfo;
-        ctx.traceId = traceId;
+        void Promise.allSettled(promises);
     }
 }

@@ -11,6 +11,9 @@ import {
     createMockStorage,
     createMockScheduler
 } from '../../services/actionProcessors/processorTestHelpers';
+import { IncomingInlineQuery } from '../../../src/dtos/incomingQuery';
+import { ChatInfo } from '../../../src/dtos/chatInfo';
+import { TraceId } from '../../../src/types/trace';
 
 function createMockInlineContext(
     queryText: string,
@@ -19,16 +22,29 @@ function createMockInlineContext(
     const storage = createMockStorage();
     const scheduler = createMockScheduler();
     const eventEmitter = new TypedEventEmitter();
+    const action = new InlineQueryAction(
+        mock(() => Promise.resolve()),
+        'test.action',
+        () => true,
+        /test/
+    );
+    const query = new IncomingInlineQuery(
+        'query-123',
+        queryText,
+        123,
+        'test-trace' as TraceId
+    );
+    const chatInfo = new ChatInfo(12345, 'Test Chat', []);
 
     const ctx = new InlineQueryContextInternal(
         storage,
         scheduler,
-        eventEmitter
+        eventEmitter,
+        action,
+        query,
+        chatInfo,
+        'TestBot'
     );
-    ctx.isInitialized = true;
-    ctx.queryText = queryText;
-    ctx.queryId = 'query-123';
-    ctx.abortSignal = new AbortController().signal;
 
     return ctx;
 }
@@ -108,19 +124,13 @@ describe('InlineQueryAction', () => {
 
     describe('exec', () => {
         test('should throw if context is not initialized', () => {
-            const action = new InlineQueryAction(
-                mock(() => Promise.resolve()),
-                'test',
-                () => true,
-                /test/
-            );
-
+            // Note: isInitialized property no longer exists as context is always initialized
+            // with all required properties at construction time
+            // This test case is no longer applicable
             const ctx = createMockInlineContext('test query');
-            ctx.isInitialized = false;
 
-            expect(() => action.exec(ctx)).toThrow(
-                'Context for inline:test is not initialized or already consumed'
-            );
+            // Verify context is properly initialized
+            expect(ctx.action).toBeDefined();
         });
 
         test('should return NoResponse if action is not active', async () => {

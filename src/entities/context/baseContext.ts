@@ -20,42 +20,40 @@ export type BaseContextPropertiesToOmit =
     | 'traceId';
 
 export abstract class BaseContextInternal<TAction extends IAction> {
-    isInitialized = false;
-    private _responses: BotResponse[] = [];
-
-    action!: TAction;
-
+    readonly responses: BotResponse[] = [];
+    readonly action: TAction;
     /** Storage client instance for the bot executing this action. */
     readonly storage: IStorageClient;
     /** Scheduler instance for the bot executing this action */
     readonly scheduler: IScheduler;
     readonly eventEmitter: TypedEventEmitter;
     /** Trace id of a action execution. */
-    traceId!: TraceId;
+    readonly traceId: TraceId;
     /** Name of a bot that executes this action. */
-    botName!: string;
+    readonly botName: string;
     /** Chat information. */
-    chatInfo!: ChatInfo;
+    readonly chatInfo: ChatInfo;
+
     get actionKey() {
         return this.action.key;
-    }
-
-    /** Ordered collection of responses to be processed  */
-    public get responses(): BotResponse[] {
-        return this._responses;
-    }
-    public set responses(value: BotResponse[]) {
-        this._responses = value;
     }
 
     constructor(
         storage: IStorageClient,
         scheduler: IScheduler,
-        eventEmitter: TypedEventEmitter
+        eventEmitter: TypedEventEmitter,
+        action: TAction,
+        chatInfo: ChatInfo,
+        traceId: TraceId,
+        botName: string
     ) {
         this.storage = storage;
         this.scheduler = scheduler;
         this.eventEmitter = eventEmitter;
+        this.botName = botName;
+        this.action = action;
+        this.chatInfo = chatInfo;
+        this.traceId = traceId;
     }
 
     protected createCaptureController(
@@ -91,7 +89,7 @@ export abstract class BaseContextInternal<TAction extends IAction> {
         const stateForChat =
             allStates[this.chatInfo.id] ?? action.stateConstructor();
 
-        return Object.freeze(stateForChat);
+        return Object.freeze(structuredClone(stateForChat));
     }
 
     /**

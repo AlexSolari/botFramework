@@ -52,11 +52,6 @@ export class ScheduledAction<
     }
 
     async exec(ctx: ChatContextInternal<TActionState>) {
-        if (!ctx.isInitialized)
-            throw new Error(
-                `Context for ${this.key} is not initialized or already consumed`
-            );
-
         if (
             !this.activeProvider(ctx) ||
             !this.chatsWhitelistProvider(ctx).includes(ctx.chatInfo.id)

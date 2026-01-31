@@ -31,13 +31,21 @@ class MockBaseContext extends BaseContextInternal<IAction> {
     constructor(
         storage: IStorageClient,
         scheduler: IScheduler,
-        eventEmitter: TypedEventEmitter
+        eventEmitter: TypedEventEmitter,
+        action: IAction = createMockAction('default-action'),
+        chatInfo: ChatInfo = new ChatInfo(12345, 'Test Chat', []),
+        traceId: TraceId = 'test-trace' as TraceId,
+        botName: string = 'TestBot'
     ) {
-        super(storage, scheduler, eventEmitter);
-        this.isInitialized = true;
-        this.chatInfo = new ChatInfo(12345, 'Test Chat', []);
-        this.traceId = 'test-trace' as TraceId;
-        this.botName = 'TestBot';
+        super(
+            storage,
+            scheduler,
+            eventEmitter,
+            action,
+            chatInfo,
+            traceId,
+            botName
+        );
     }
 }
 
@@ -124,8 +132,13 @@ describe('BaseActionProcessor', () => {
         beforeEach(() => {
             mockApi = createMockTelegramApi();
             processor.initializeDependencies(mockApi);
-            mockContext = new MockBaseContext(storage, scheduler, eventEmitter);
-            mockContext.action = createMockAction('ctx-action');
+            const action = createMockAction('ctx-action');
+            mockContext = new MockBaseContext(
+                storage,
+                scheduler,
+                eventEmitter,
+                action
+            );
         });
 
         test('should call action.exec with context', async () => {
@@ -150,12 +163,13 @@ describe('BaseActionProcessor', () => {
             expect(mockApi.getEnqueueLastArgs()).toEqual([response]);
         });
 
-        test('should set isInitialized to false after execution', async () => {
+        test('should handle action execution', async () => {
             const action = createMockAction('test-action');
 
             await processor.testExecuteAction(action, mockContext);
 
-            expect(mockContext.isInitialized).toBe(false);
+            // Verify execution completed successfully
+            expect(mockApi.getEnqueueCallCount()).toBe(1);
         });
 
         test('should call custom error handler on error', async () => {
@@ -265,9 +279,9 @@ describe('BaseActionProcessor', () => {
             const ctx = new MockBaseContext(
                 localStorage,
                 localScheduler,
-                localEventEmitter
+                localEventEmitter,
+                action
             );
-            ctx.action = action;
             await localProcessor.testExecuteAction(action, ctx);
 
             console.error = originalConsoleError;
@@ -296,9 +310,9 @@ describe('BaseActionProcessor', () => {
             const ctx = new MockBaseContext(
                 localStorage,
                 localScheduler,
-                localEventEmitter
+                localEventEmitter,
+                action
             );
-            ctx.action = action;
 
             await localProcessor.testExecuteAction(action, ctx);
 
@@ -333,9 +347,9 @@ describe('BaseActionProcessor', () => {
             const ctx = new MockBaseContext(
                 localStorage,
                 localScheduler,
-                localEventEmitter
+                localEventEmitter,
+                action
             );
-            ctx.action = action;
             await localProcessor.testExecuteAction(action, ctx);
 
             expect(localMockApi.getEnqueueCallCount()).toBe(1);

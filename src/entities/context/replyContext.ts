@@ -16,7 +16,15 @@ import {
 } from './baseContext';
 import { UserInfo } from '../../dtos/userInfo';
 import { MessageInfo } from '../../dtos/messageInfo';
-import { TelegramUser, TelegramEmoji } from '../../types/externalAliases';
+import {
+    TelegramUser,
+    TelegramEmoji,
+    BotInfo
+} from '../../types/externalAliases';
+import { TypedEventEmitter } from '../../types/events';
+import { IScheduler } from '../../types/scheduler';
+import { IStorageClient } from '../../types/storage';
+import { IncomingMessage } from '../../dtos/incomingMessage';
 
 export type ReplyContext<TActionState extends IActionState> = Omit<
     ReplyContextInternal<TActionState>,
@@ -30,17 +38,49 @@ export class ReplyContextInternal<
     TParentActionState extends IActionState
 > extends BaseContextInternal<ReplyCaptureAction<TParentActionState>> {
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
-    matchResults!: RegExpExecArray[];
+    matchResults: RegExpExecArray[] = [];
     /** Id of a message that triggered this action. */
-    replyMessageId!: number | undefined;
+    readonly replyMessageId: number | undefined;
     /** Information about the user that triggered this action */
-    userInfo!: UserInfo;
+    readonly userInfo: UserInfo;
     /** Information about the message that triggered this action */
-    messageInfo!: MessageInfo;
+    readonly messageInfo: MessageInfo;
     /** Bot info from Telegram */
-    botInfo!: TelegramUser;
+    readonly botInfo: TelegramUser;
 
-    isInitialized = false;
+    constructor(
+        storage: IStorageClient,
+        scheduler: IScheduler,
+        eventEmitter: TypedEventEmitter,
+        action: ReplyCaptureAction<TParentActionState>,
+        message: IncomingMessage,
+        botName: string,
+        botInfo: BotInfo
+    ) {
+        super(
+            storage,
+            scheduler,
+            eventEmitter,
+            action,
+            message.chatInfo,
+            message.traceId,
+            botName
+        );
+
+        this.replyMessageId = message.replyToMessageId;
+        this.messageInfo = new MessageInfo(
+            message.messageId,
+            message.text,
+            message.type,
+            message.updateObject
+        );
+        this.userInfo = new UserInfo(
+            message.from?.id ?? -1,
+            (message.from?.first_name ?? 'Unknown user') +
+                (message.from?.last_name ? ` ${message.from.last_name}` : '')
+        );
+        this.botInfo = botInfo;
+    }
 
     private getQuotePart(quote: boolean | string) {
         if (typeof quote != 'boolean') return quote;

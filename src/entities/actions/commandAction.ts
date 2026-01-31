@@ -83,11 +83,6 @@ export class CommandAction<
     async exec(
         ctx: MessageContextInternal<TActionState>
     ): Promise<BotResponse[]> {
-        if (!ctx.isInitialized)
-            throw new Error(
-                `Context for ${this.key} is not initialized or already consumed`
-            );
-
         let lock: Semaphore | undefined;
         if (this.maxAllowedSimultaniousExecutions != 0) {
             lock = getOrSetIfNotExists(

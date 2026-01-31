@@ -1,11 +1,14 @@
-import { BotResponse } from '../../types/response';
 import { InlineQueryAction } from '../actions/inlineQueryAction';
-import { InlineQueryResponse } from '../../dtos/responses/inlineQueryResponse';
 import {
     BaseContextInternal,
     BaseContextPropertiesToOmit
 } from './baseContext';
 import { TelegramInlineQueryResult } from '../../types/externalAliases';
+import { TypedEventEmitter } from '../../types/events';
+import { IScheduler } from '../../types/scheduler';
+import { IStorageClient } from '../../types/storage';
+import { ChatInfo } from '../../dtos/chatInfo';
+import { IncomingInlineQuery } from '../../dtos/incomingQuery';
 
 export type InlineQueryContext = Omit<
     InlineQueryContextInternal,
@@ -13,30 +16,42 @@ export type InlineQueryContext = Omit<
 >;
 
 export class InlineQueryContextInternal extends BaseContextInternal<InlineQueryAction> {
-    queryResults: TelegramInlineQueryResult[] = [];
+    readonly queryResults: TelegramInlineQueryResult[] = [];
     /**
      * Abort signal to be utilized in query handler.
      * Signal will be aborted if new query comes from the same user.
      */
-    abortSignal!: AbortSignal;
-
-    /** Ordered collection of responses to be processed  */
-    get responses(): BotResponse[] {
-        return [
-            new InlineQueryResponse(
-                this.queryResults,
-                this.queryId,
-                this.traceId,
-                this.action
-            )
-        ];
-    }
+    readonly abortSignal: AbortSignal;
     /** Inline query text */
-    queryText!: string;
+    readonly queryText: string;
     /** Internal query id */
-    queryId!: string;
+    readonly queryId: string;
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
     matchResults: RegExpMatchArray[] = [];
+
+    constructor(
+        storage: IStorageClient,
+        scheduler: IScheduler,
+        eventEmitter: TypedEventEmitter,
+        action: InlineQueryAction,
+        query: IncomingInlineQuery,
+        chatInfo: ChatInfo,
+        botName: string
+    ) {
+        super(
+            storage,
+            scheduler,
+            eventEmitter,
+            action,
+            chatInfo,
+            query.traceId,
+            botName
+        );
+
+        this.queryText = query.query;
+        this.queryId = query.queryId;
+        this.abortSignal = query.abortController.signal;
+    }
 
     /**
      * This result will be shown to user as a response to inline query.

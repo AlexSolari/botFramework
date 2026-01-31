@@ -49,8 +49,8 @@ export abstract class BaseActionProcessor {
     ) {
         try {
             const responses = await action.exec(ctx);
+
             this.api.enqueueBatchedResponses(responses);
-            ctx.isInitialized = false;
         } catch (e) {
             const error = e as Error;
 

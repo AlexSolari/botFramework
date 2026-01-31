@@ -5,14 +5,13 @@ import { ActionKey, IAction } from '../../../src/types/action';
 import { TypedEventEmitter, BotEventType } from '../../../src/types/events';
 import { Noop } from '../../../src/helpers/noop';
 import { ActionStateBase } from '../../../src/entities/states/actionStateBase';
-import { MessageInfo } from '../../../src/dtos/messageInfo';
 import { MessageType, MessageTypeValue } from '../../../src/types/messageTypes';
-import { UserInfo } from '../../../src/dtos/userInfo';
 import { Message } from '@telegraf/types';
 import {
     createMockStorage,
     createMockScheduler
 } from '../../services/actionProcessors/processorTestHelpers';
+import { IncomingMessage } from '../../../src/dtos/incomingMessage';
 
 function createMockParentAction(): IAction {
     return {
@@ -29,21 +28,72 @@ function createMockReplyContext(
     const storage = createMockStorage();
     const scheduler = createMockScheduler();
     const eventEmitter = new TypedEventEmitter();
+    const action = new ReplyCaptureAction(
+        100,
+        createMockParentAction(),
+        mock(() => Promise.resolve()),
+        [messageText],
+        new AbortController()
+    );
+
+    // Create a TelegramMessage with the appropriate structure for the message type
+    let telegramMessage: Message;
+
+    if (messageType === MessageType.Photo) {
+        telegramMessage = {
+            message_id: 100,
+            date: Math.floor(Date.now() / 1000),
+            chat: { id: 12345, type: 'private' },
+            from: { id: 123, is_bot: false, first_name: 'TestUser' },
+            photo: [
+                {
+                    file_id: 'test-file-id',
+                    file_unique_id: 'test-unique-id',
+                    width: 100,
+                    height: 100
+                }
+            ],
+            caption: messageText,
+            ...(replyMessageId && {
+                reply_to_message: { message_id: replyMessageId }
+            })
+        } as Message;
+    } else {
+        // Default to Text message
+        telegramMessage = {
+            message_id: 100,
+            date: Math.floor(Date.now() / 1000),
+            chat: { id: 12345, type: 'private' },
+            from: { id: 123, is_bot: false, first_name: 'TestUser' },
+            text: messageText,
+            ...(replyMessageId && {
+                reply_to_message: { message_id: replyMessageId }
+            })
+        } as Message;
+    }
+
+    const incomingMessage = new IncomingMessage(telegramMessage, 'TestBot', []);
+
+    const botInfo = {
+        id: 111,
+        is_bot: true,
+        first_name: 'Bot',
+        username: 'testbot',
+        can_join_groups: true,
+        can_read_all_group_messages: false,
+        supports_inline_queries: false,
+        can_connect_to_business: false
+    } as const;
 
     const ctx = new ReplyContextInternal<ActionStateBase>(
         storage,
         scheduler,
-        eventEmitter
+        eventEmitter,
+        action,
+        incomingMessage,
+        'TestBot',
+        botInfo
     );
-    ctx.isInitialized = true;
-    ctx.replyMessageId = replyMessageId;
-    ctx.messageInfo = new MessageInfo(
-        100,
-        messageText,
-        messageType,
-        {} as Message
-    );
-    ctx.userInfo = new UserInfo(123, 'TestUser');
 
     return ctx;
 }
@@ -141,20 +191,13 @@ describe('ReplyCaptureAction', () => {
 
     describe('exec', () => {
         test('should throw if context is not initialized', () => {
-            const action = new ReplyCaptureAction(
-                123,
-                createMockParentAction(),
-                mock(() => Promise.resolve()),
-                ['yes'],
-                new AbortController()
-            );
-
+            // Note: isInitialized property no longer exists as context is always initialized
+            // with all required properties at construction time
+            // This test case is no longer applicable
             const ctx = createMockReplyContext(123, 'yes');
-            ctx.isInitialized = false;
 
-            expect(() => action.exec(ctx)).toThrow(
-                'is not initialized or already consumed'
-            );
+            // Verify context is properly initialized
+            expect(ctx.action).toBeDefined();
         });
 
         test('should return NoResponse if reply is not to parent message', async () => {

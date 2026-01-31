@@ -6,9 +6,9 @@ import { ActionKey, IAction } from '../../types/action';
 import { ReplyContextInternal } from '../context/replyContext';
 import { BotEventType } from '../../types/events';
 
-export class ReplyCaptureAction<TParentActionState extends IActionState>
-    implements IAction
-{
+export class ReplyCaptureAction<
+    TParentActionState extends IActionState
+> implements IAction {
     readonly parentMessageId: number;
     readonly key: ActionKey;
     readonly handler: (
@@ -37,11 +37,6 @@ export class ReplyCaptureAction<TParentActionState extends IActionState>
     }
 
     async exec(ctx: ReplyContextInternal<TParentActionState>) {
-        if (!ctx.isInitialized)
-            throw new Error(
-                `Context for ${this.key} is not initialized or already consumed`
-            );
-
         const { shouldExecute, matchResults } = this.triggers
             .map((x) => this.checkIfShouldBeExecuted(ctx, x))
             .reduce(

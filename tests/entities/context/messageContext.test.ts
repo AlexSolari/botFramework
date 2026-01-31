@@ -7,11 +7,6 @@ import { ImageMessage } from '../../../src/dtos/responses/imageMessage';
 import { VideoMessage } from '../../../src/dtos/responses/videoMessage';
 import { Reaction } from '../../../src/dtos/responses/reaction';
 import { ActionKey } from '../../../src/types/action';
-import { ChatInfo } from '../../../src/dtos/chatInfo';
-import { TraceId } from '../../../src/types/trace';
-import { MessageInfo } from '../../../src/dtos/messageInfo';
-import { UserInfo } from '../../../src/dtos/userInfo';
-import { MessageType } from '../../../src/types/messageTypes';
 import { Seconds } from '../../../src/types/timeValues';
 import { CommandAction } from '../../../src/entities/actions/commandAction';
 import { Message, UserFromGetMe } from '@telegraf/types';
@@ -19,6 +14,7 @@ import {
     createMockStorage,
     createMockScheduler
 } from '../../services/actionProcessors/processorTestHelpers';
+import { IncomingMessage } from '../../../src/dtos/incomingMessage';
 
 function createMockCommandAction(): CommandAction<ActionStateBase> {
     return {
@@ -41,25 +37,20 @@ function createMessageContext(
     const storage = createMockStorage();
     const scheduler = createMockScheduler();
     const eventEmitter = new TypedEventEmitter();
+    const action = createMockCommandAction();
 
-    const ctx = new MessageContextInternal<ActionStateBase>(
-        storage,
-        scheduler,
-        eventEmitter
-    );
-    ctx.isInitialized = true;
-    ctx.action = createMockCommandAction();
-    ctx.chatInfo = new ChatInfo(12345, 'Test Chat', []);
-    ctx.traceId = 'trace-123' as TraceId;
-    ctx.botName = 'TestBot';
-    ctx.messageInfo = new MessageInfo(
-        100,
-        messageText,
-        MessageType.Text,
-        {} as Message
-    );
-    ctx.userInfo = new UserInfo(999, 'TestUser');
-    ctx.botInfo = {
+    // Create a minimal TelegramMessage-like object
+    const telegramMessage = {
+        message_id: 100,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: 12345, type: 'private' },
+        from: { id: 999, is_bot: false, first_name: 'TestUser' },
+        text: messageText
+    } as Message;
+
+    const incomingMessage = new IncomingMessage(telegramMessage, 'TestBot', []);
+
+    const botInfo = {
         id: 111,
         is_bot: true,
         first_name: 'Bot',
@@ -70,6 +61,16 @@ function createMessageContext(
         can_connect_to_business: false,
         has_main_web_app: false
     } as UserFromGetMe;
+
+    const ctx = new MessageContextInternal<ActionStateBase>(
+        storage,
+        scheduler,
+        eventEmitter,
+        action,
+        incomingMessage,
+        'TestBot',
+        botInfo
+    );
 
     return ctx;
 }

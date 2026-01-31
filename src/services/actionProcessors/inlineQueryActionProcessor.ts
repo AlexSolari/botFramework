@@ -1,3 +1,4 @@
+import { ChatInfo } from '../../dtos/chatInfo';
 import { IncomingInlineQuery } from '../../dtos/incomingQuery';
 import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
 import { InlineQueryContextInternal } from '../../entities/context/inlineQueryContext';
@@ -5,12 +6,17 @@ import { createTrace } from '../../helpers/traceFactory';
 import { BotEventType } from '../../types/events';
 import { TelegramBot } from '../../types/externalAliases';
 import { Milliseconds } from '../../types/timeValues';
-import { TraceId } from '../../types/trace';
 import { TelegramApiService } from '../telegramApi';
 import { BaseActionProcessor } from './baseProcessor';
 
 export class InlineQueryActionProcessor extends BaseActionProcessor {
     private inlineQueries!: InlineQueryAction[];
+    /** Fake chat info, since inline queries are chat-less */
+    private readonly fakeChatInfo = new ChatInfo(
+        Math.random(),
+        'Inline Query',
+        []
+    );
 
     initialize(
         api: TelegramApiService,
@@ -63,15 +69,10 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
 
             this.scheduler.createTask(
                 'InlineQueryProcessing',
-                async () => {
-                    const ctx = new InlineQueryContextInternal(
-                        this.storage,
-                        this.scheduler,
-                        this.eventEmitter
-                    );
-
+                () => {
                     const queriesToProcess = [...pendingInlineQueries];
                     pendingInlineQueries = [];
+                    const promises = [];
 
                     for (const inlineQuery of queriesToProcess) {
                         queriesInProcessing.set(
@@ -79,69 +80,68 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                             inlineQuery
                         );
 
-                        for (const inlineQueryAction of this.inlineQueries) {
-                            this.initializeInlineQueryContext(
-                                ctx,
-                                inlineQuery.query,
-                                inlineQuery.queryId,
-                                inlineQueryAction,
-                                inlineQuery.abortController.signal,
-                                inlineQuery.traceId
-                            );
+                        const actionPromises = this.inlineQueries.map(
+                            (inlineQueryAction) => {
+                                const ctx = new InlineQueryContextInternal(
+                                    this.storage,
+                                    this.scheduler,
+                                    this.eventEmitter,
+                                    inlineQueryAction,
+                                    inlineQuery,
+                                    this.fakeChatInfo,
+                                    this.botName
+                                );
 
-                            await this.executeAction(
-                                inlineQueryAction,
-                                ctx,
-                                (error, _) => {
-                                    if (error.name == 'AbortError') {
-                                        this.eventEmitter.emit(
-                                            BotEventType.inlineProcessingAborted,
-                                            {
-                                                abortedQuery: inlineQuery
-                                            }
-                                        );
-                                    } else {
-                                        this.eventEmitter.emit(
-                                            BotEventType.error,
-                                            {
-                                                message: error.message,
-                                                name: error.name
-                                            }
-                                        );
+                                const { proxy, revoke } = Proxy.revocable(
+                                    ctx,
+                                    {}
+                                );
+
+                                const executePromise = this.executeAction(
+                                    inlineQueryAction,
+                                    proxy,
+                                    (error, _) => {
+                                        if (error.name == 'AbortError') {
+                                            this.eventEmitter.emit(
+                                                BotEventType.inlineProcessingAborted,
+                                                {
+                                                    abortedQuery: inlineQuery
+                                                }
+                                            );
+                                        } else {
+                                            this.eventEmitter.emit(
+                                                BotEventType.error,
+                                                {
+                                                    message: error.message,
+                                                    name: error.name
+                                                }
+                                            );
+                                        }
                                     }
-                                }
-                            );
-                        }
+                                );
 
-                        queriesInProcessing.delete(inlineQuery.userId);
+                                return executePromise.finally(() => {
+                                    revoke();
+                                    this.api.flushResponses();
+                                });
+                            }
+                        );
+
+                        const queryPromise = Promise.allSettled(
+                            actionPromises
+                        ).then(() => {
+                            queriesInProcessing.delete(inlineQuery.userId);
+                        });
+
+                        promises.push(queryPromise);
                     }
 
-                    this.api.flushResponses();
+                    void Promise.allSettled(promises);
                 },
                 period,
                 false,
                 this.botName
             );
         }
-    }
-
-    private initializeInlineQueryContext(
-        ctx: InlineQueryContextInternal,
-        queryText: string,
-        queryId: string,
-        action: InlineQueryAction,
-        abortSignal: AbortSignal,
-        traceId: TraceId
-    ) {
-        ctx.queryText = queryText;
-        ctx.queryId = queryId;
-        ctx.botName = this.botName;
-        ctx.action = action;
-        ctx.traceId = traceId;
-        ctx.abortSignal = abortSignal;
-
-        ctx.isInitialized = true;
-        ctx.queryResults = [];
-        ctx.matchResults = [];
     }
 }

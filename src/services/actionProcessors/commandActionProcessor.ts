@@ -14,8 +14,6 @@ import {
 import { typeSafeObjectFromEntries } from '../../helpers/objectFromEntries';
 import { BaseActionProcessor } from './baseProcessor';
 import { getOrSetIfNotExists } from '../../helpers/mapUtils';
-import { MessageInfo } from '../../dtos/messageInfo';
-import { UserInfo } from '../../dtos/userInfo';
 import { ChatHistoryMessage } from '../../dtos/chatHistoryMessage';
 import { BotInfo, TelegramBot } from '../../types/externalAliases';
 import { BotEventType } from '../../types/events';
@@ -68,7 +66,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         }
 
         if (commands.length > 0) {
-            telegram.on('message', async ({ message }) => {
+            telegram.on('message', ({ message }) => {
                 const internalMessage = new IncomingMessage(
                     message,
                     this.botName,
@@ -80,12 +78,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
                     message: internalMessage
                 });
 
-                await this.processMessage(internalMessage);
-
-                this.eventEmitter.emit(BotEventType.messageProcessingFinished, {
-                    botInfo: this.botInfo,
-                    message: internalMessage
-                });
+                this.startMessageProcessing(internalMessage);
             });
         }
     }
@@ -121,7 +114,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         });
     }
 
-    private async processMessage(msg: IncomingMessage) {
+    private startMessageProcessing(msg: IncomingMessage) {
         this.eventEmitter.emit(BotEventType.messageProcessingStarted, {
             botInfo: this.botInfo,
             message: msg
@@ -148,12 +141,6 @@ export class CommandActionProcessor extends BaseActionProcessor {
             )
         );
 
-        const ctx = new MessageContextInternal<IActionState>(
-            this.storage,
-            this.scheduler,
-            this.eventEmitter
-        );
-
         const commandsToCheck = new Set(this.commands[msg.type]);
         if (msg.type != MessageType.Text && msg.text != '') {
             for (const command of this.commands[MessageType.Text]) {
@@ -166,88 +153,58 @@ export class CommandActionProcessor extends BaseActionProcessor {
             message: msg,
             commands: commandsToCheck
         });
-        for (const commandAction of commandsToCheck) {
-            this.initializeMessageContext(ctx, commandAction, msg);
+
+        const promises = [...commandsToCheck].map((command) => {
+            const ctx = new MessageContextInternal<IActionState>(
+                this.storage,
+                this.scheduler,
+                this.eventEmitter,
+                command,
+                msg,
+                this.botName,
+                this.botInfo
+            );
 
             const { proxy, revoke } = Proxy.revocable(ctx, {});
 
-            await this.executeAction(commandAction, proxy);
+            const executePromise = this.executeAction(command, proxy);
 
-            revoke();
-        }
+            return executePromise.finally(() => {
+                revoke();
+                this.api.flushResponses();
+            });
+        });
 
         if (this.replyCaptures.length != 0) {
-            const replyCtx = new ReplyContextInternal<IActionState>(
-                this.storage,
-                this.scheduler,
-                this.eventEmitter
-            );
+            const replyPromises = this.replyCaptures.map((capture) => {
+                const replyCtx = new ReplyContextInternal<IActionState>(
+                    this.storage,
+                    this.scheduler,
+                    this.eventEmitter,
+                    capture,
+                    msg,
+                    this.botName,
+                    this.botInfo
+                );
 
-            for (const replyAction of this.replyCaptures) {
-                this.initializeReplyCaptureContext(replyCtx, replyAction, msg);
                 const { proxy, revoke } = Proxy.revocable(replyCtx, {});
-                await this.executeAction(replyAction, proxy);
-                revoke();
-            }
+
+                const executePromise = this.executeAction(capture, proxy);
+
+                return executePromise.finally(() => {
+                    revoke();
+                    this.api.flushResponses();
+                });
+            });
+
+            promises.push(...replyPromises);
         }
 
-        this.api.flushResponses();
-    }
-
-    private initializeReplyCaptureContext(
-        ctx: ReplyContextInternal<IActionState>,
-        action: ReplyCaptureAction<IActionState>,
-        message: IncomingMessage
-    ) {
-        ctx.replyMessageId = message.replyToMessageId;
-        ctx.messageInfo = new MessageInfo(
-            message.messageId,
-            message.text,
-            message.type,
-            message.updateObject
-        );
-        ctx.userInfo = new UserInfo(
-            message.from?.id ?? -1,
-            (message.from?.first_name ?? 'Unknown user') +
-                (message.from?.last_name ? ` ${message.from.last_name}` : '')
-        );
-        ctx.botName = this.botName;
-        ctx.action = action;
-        ctx.chatInfo = message.chatInfo;
-        ctx.traceId = message.traceId;
-        ctx.botInfo = this.botInfo;
-
-        ctx.isInitialized = true;
-        ctx.matchResults = [];
-    }
-
-    private initializeMessageContext(
-        ctx: MessageContextInternal<IActionState>,
-        action: CommandAction<IActionState>,
-        message: IncomingMessage
-    ) {
-        ctx.messageInfo = new MessageInfo(
-            message.messageId,
-            message.text,
-            message.type,
-            message.updateObject
-        );
-        ctx.userInfo = new UserInfo(
-            message.from?.id ?? -1,
-            (message.from?.first_name ?? 'Unknown user') +
-                (message.from?.last_name ? ` ${message.from.last_name}` : '')
-        );
-
-        ctx.matchResults = [];
-        ctx.startCooldown = true;
-
-        ctx.responses = [];
-        ctx.isInitialized = true;
-        ctx.botName = this.botName;
-        ctx.action = action;
-        ctx.chatInfo = message.chatInfo;
-        ctx.traceId = message.traceId;
-        ctx.botInfo = this.botInfo;
-        ctx.customCooldown = undefined;
+        void Promise.allSettled(promises).then(() => {
+            this.eventEmitter.emit(BotEventType.messageProcessingFinished, {
+                botInfo: this.botInfo,
+                message: msg
+            });
+        });
     }
 }

@@ -16,6 +16,10 @@ import { BaseContextPropertiesToOmit } from './baseContext';
 import { MessageInfo } from '../../dtos/messageInfo';
 import { UserInfo } from '../../dtos/userInfo';
 import { BotInfo, TelegramEmoji } from '../../types/externalAliases';
+import { TypedEventEmitter } from '../../types/events';
+import { IScheduler } from '../../types/scheduler';
+import { IStorageClient } from '../../types/storage';
+import { IncomingMessage } from '../../dtos/incomingMessage';
 
 export type MessageContext<TActionState extends IActionState> = Omit<
     MessageContextInternal<TActionState>,
@@ -29,16 +33,51 @@ export class MessageContextInternal<
     TActionState extends IActionState
 > extends ChatContextInternal<TActionState, CommandAction<TActionState>> {
     /** Information about the user that triggered this action */
-    userInfo!: UserInfo;
+    readonly userInfo!: UserInfo;
     /** Information about the message that triggered this action */
-    messageInfo!: MessageInfo;
-    /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
-    matchResults: RegExpMatchArray[] = [];
+    readonly messageInfo!: MessageInfo;
+    /** Bot info from Telegram */
+    readonly botInfo!: BotInfo;
     /** Indicates if cooldown should be started after action is executed. Set to `true` by default. */
     startCooldown: boolean = true;
-    /** Bot info from Telegram */
-    botInfo!: BotInfo;
+    /** Custom cooldown duration in seconds, if specified. */
     customCooldown: Seconds | undefined;
+    /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
+    matchResults: RegExpMatchArray[] = [];
+
+    constructor(
+        storage: IStorageClient,
+        scheduler: IScheduler,
+        eventEmitter: TypedEventEmitter,
+        action: CommandAction<TActionState>,
+        message: IncomingMessage,
+        botName: string,
+        botInfo: BotInfo
+    ) {
+        super(
+            storage,
+            scheduler,
+            eventEmitter,
+            action,
+            message.chatInfo,
+            message.traceId,
+            botName
+        );
+
+        this.messageInfo = new MessageInfo(
+            message.messageId,
+            message.text,
+            message.type,
+            message.updateObject
+        );
+        this.userInfo = new UserInfo(
+            message.from?.id ?? -1,
+            (message.from?.first_name ?? 'Unknown user') +
+                (message.from?.last_name ? ` ${message.from.last_name}` : '')
+        );
+
+        this.botInfo = botInfo;
+    }
 
     private getQuotePart(quote: boolean | string) {
         if (typeof quote != 'boolean') return quote;

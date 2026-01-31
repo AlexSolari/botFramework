@@ -4,6 +4,7 @@ import { InlineQueryContextInternal } from '../context/inlineQueryContext';
 import { InlineQueryHandler } from '../../types/handlers';
 import { InlineActionPropertyProvider } from '../../types/propertyProvider';
 import { BotEventType } from '../../types/events';
+import { InlineQueryResponse } from '../../dtos/responses/inlineQueryResponse';
 
 export class InlineQueryAction implements IAction {
     readonly key: ActionKey;
@@ -27,11 +28,6 @@ export class InlineQueryAction implements IAction {
     }
 
     async exec(ctx: InlineQueryContextInternal) {
-        if (!ctx.isInitialized)
-            throw new Error(
-                `Context for ${this.key} is not initialized or already consumed`
-            );
-
         if (!this.isActiveProvider(ctx)) return Noop.NoResponse;
 
         const matchResults: RegExpExecArray[] = [];
@@ -70,6 +66,13 @@ export class InlineQueryAction implements IAction {
             action: this,
             ctx
         });
-        return ctx.responses;
+        return [
+            new InlineQueryResponse(
+                ctx.queryResults,
+                ctx.queryId,
+                ctx.traceId,
+                ctx.action
+            )
+        ];
     }
 }
