@@ -17,6 +17,7 @@ import { getOrSetIfNotExists } from '../../helpers/mapUtils';
 import { ChatHistoryMessage } from '../../dtos/chatHistoryMessage';
 import { BotInfo, TelegramBot } from '../../types/externalAliases';
 import { BotEventType } from '../../types/events';
+import { TraceId } from '../../types/trace';
 
 const MESSAGE_HISTORY_LENGTH_LIMIT = 100;
 
@@ -75,7 +76,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
                 this.eventEmitter.emit(BotEventType.messageRecieved, {
                     botInfo: this.botInfo,
-                    message: internalMessage
+                    message: internalMessage,
+                    traceId: internalMessage.traceId
                 });
 
                 this.startMessageProcessing(internalMessage);
@@ -86,7 +88,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
     captureRegistrationCallback(
         capture: IReplyCapture,
         parentMessageId: number,
-        chatInfo: ChatInfo
+        chatInfo: ChatInfo,
+        traceId: TraceId
     ) {
         const replyAction = new ReplyCaptureAction(
             parentMessageId,
@@ -98,7 +101,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         this.eventEmitter.emit(BotEventType.commandActionCaptureStarted, {
             parentMessageId,
-            chatInfo
+            chatInfo,
+            traceId
         });
 
         this.replyCaptures.push(replyAction);
@@ -109,7 +113,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
             this.eventEmitter.emit(BotEventType.commandActionCaptureAborted, {
                 parentMessageId,
-                chatInfo
+                chatInfo,
+                traceId
             });
         });
     }
@@ -117,7 +122,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
     private startMessageProcessing(msg: IncomingMessage) {
         this.eventEmitter.emit(BotEventType.messageProcessingStarted, {
             botInfo: this.botInfo,
-            message: msg
+            message: msg,
+            traceId: msg.traceId
         });
 
         const chatHistoryArray = getOrSetIfNotExists(
@@ -151,7 +157,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
         this.eventEmitter.emit(BotEventType.beforeActionsExecuting, {
             botInfo: this.botInfo,
             message: msg,
-            commands: commandsToCheck
+            commands: commandsToCheck,
+            traceId: msg.traceId
         });
 
         const promises = [...commandsToCheck].map((command) => {
@@ -203,7 +210,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
         void Promise.allSettled(promises).then(() => {
             this.eventEmitter.emit(BotEventType.messageProcessingFinished, {
                 botInfo: this.botInfo,
-                message: msg
+                message: msg,
+                traceId: msg.traceId
             });
         });
     }

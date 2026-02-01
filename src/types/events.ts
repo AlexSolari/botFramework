@@ -6,11 +6,12 @@ import { ChatContext } from '../entities/context/chatContext';
 import { InlineQueryContext } from '../entities/context/inlineQueryContext';
 import { MessageContext } from '../entities/context/messageContext';
 import { ReplyContext } from '../entities/context/replyContext';
-import { ActionKey, IAction, IActionWithState } from './action';
+import { IAction, IActionWithState } from './action';
 import { IActionState } from './actionState';
 import { BotInfo } from './externalAliases';
 import { BotResponse } from './response';
 import { Milliseconds } from './timeValues';
+import { TraceId } from './trace';
 
 export const BotEventType = {
     error: 'error.generic',
@@ -46,15 +47,6 @@ export const BotEventType = {
     apiRequestSending: 'api.requestSending',
     apiRequestSent: 'api.requestSent',
 
-    storageLockAcquiring: 'storage.lockAcquiring',
-    storageLockAcquired: 'storage.lockAcquired',
-    storageLockReleased: 'storage.lockReleased',
-    storageStateSaving: 'storage.stateSaving',
-    storageStateSaved: 'storage.stateSaved',
-    storageStateLoading: 'storage.stateLoading',
-    storageStateLoaded: 'storage.stateLoaded',
-    storageCacheMiss: 'storage.cacheMiss',
-
     taskCreated: 'task.created',
     taskRun: 'task.run',
 
@@ -69,8 +61,7 @@ const _checkBotEventMapExhaustive: Record<BotEventTypeKeys, unknown> =
 
 export type BotEventMap = {
     [BotEventType.error]: {
-        message: string;
-        name: string;
+        error: Error;
     };
 
     [BotEventType.messageRecieved]: {
@@ -119,8 +110,12 @@ export type BotEventMap = {
         ctx: ReplyContext<IActionState>;
     };
 
-    [BotEventType.inlineProcessingStarted]: string;
-    [BotEventType.inlineProcessingFinished]: string;
+    [BotEventType.inlineProcessingStarted]: {
+        botName: string;
+    };
+    [BotEventType.inlineProcessingFinished]: {
+        botName: string;
+    };
     [BotEventType.inlineActionExecuting]: {
         action: IAction;
         ctx: InlineQueryContext;
@@ -140,8 +135,10 @@ export type BotEventMap = {
         query: IncomingInlineQuery;
     };
 
-    [BotEventType.scheduledProcessingStarted]: string;
-    [BotEventType.scheduledProcessingFinished]: string;
+    [BotEventType.scheduledProcessingStarted]: {
+        botName: string;
+    };
+    [BotEventType.scheduledProcessingFinished]: { botName: string };
     [BotEventType.scheduledActionExecuting]: {
         action: IAction;
         ctx: ChatContext<IActionState>;
@@ -172,28 +169,6 @@ export type BotEventMap = {
         telegramMethod: string | null;
     };
 
-    [BotEventType.storageLockAcquiring]: ActionKey;
-    [BotEventType.storageLockAcquired]: ActionKey;
-    [BotEventType.storageLockReleased]: ActionKey;
-    [BotEventType.storageStateSaved]: {
-        key: ActionKey;
-        data: Record<number, unknown>;
-    };
-    [BotEventType.storageStateSaving]: {
-        key: ActionKey;
-        data: Record<number, unknown>;
-    };
-    [BotEventType.storageStateLoading]: {
-        action: IActionWithState<IActionState>;
-        chatId: number;
-    };
-    [BotEventType.storageStateLoaded]: {
-        action: IActionWithState<IActionState>;
-        chatId: number;
-        state: IActionState;
-    };
-    [BotEventType.storageCacheMiss]: ActionKey;
-
     [BotEventType.taskCreated]: {
         name: string;
         ownerName: string;
@@ -216,7 +191,13 @@ export type BotEventMap = {
 };
 
 type ListenerArgs<K extends keyof BotEventMap> =
-    BotEventMap[K] extends undefined ? [] : [BotEventMap[K]];
+    BotEventMap[K] extends undefined
+        ? []
+        : [
+              {
+                  traceId: TraceId;
+              } & BotEventMap[K]
+          ];
 
 export type Listener<K extends keyof BotEventMap> = (
     timestamp: number,

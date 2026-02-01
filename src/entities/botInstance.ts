@@ -9,6 +9,7 @@ import { NodeTimeoutScheduler } from '../services/nodeTimeoutScheduler';
 import { InlineQueryAction } from './actions/inlineQueryAction';
 import { ActionProcessingService } from '../services/actionProcessingService';
 import { BotEventType, TypedEventEmitter } from '../types/events';
+import { createTrace } from '../helpers/traceFactory';
 
 export class BotInstance {
     private readonly storage: IStorageClient;
@@ -41,15 +42,10 @@ export class BotInstance {
 
         this.scheduler =
             options.services?.scheduler ??
-            new NodeTimeoutScheduler(this.eventEmitter);
+            new NodeTimeoutScheduler(this.eventEmitter, this.name);
         this.storage =
             options.services?.storageClient ??
-            new JsonFileStorage(
-                options.name,
-                actions,
-                this.eventEmitter,
-                options.storagePath
-            );
+            new JsonFileStorage(options.name, actions, options.storagePath);
         this.actionProcessingService = new ActionProcessingService(
             this.name,
             options.chats,
@@ -69,7 +65,8 @@ export class BotInstance {
         scheduledPeriod?: Seconds
     ) {
         this.eventEmitter.emit(BotEventType.botStarting, {
-            botName: this.name
+            botName: this.name,
+            traceId: createTrace(this, this.name, 'startup')
         });
 
         await this.actionProcessingService.initialize(
@@ -81,7 +78,8 @@ export class BotInstance {
 
     async stop() {
         this.eventEmitter.emit(BotEventType.botStopping, {
-            botName: this.name
+            botName: this.name,
+            traceId: createTrace(this, this.name, 'stop')
         });
 
         this.scheduler.stopAll();

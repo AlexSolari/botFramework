@@ -69,7 +69,8 @@ export class ScheduledAction<
         ctx.eventEmitter.emit(BotEventType.scheduledActionExecuting, {
             action: this,
             ctx,
-            state
+            state,
+            traceId: ctx.traceId
         });
 
         await this.handler(
@@ -89,7 +90,8 @@ export class ScheduledAction<
         ctx.eventEmitter.emit(BotEventType.scheduledActionExecuted, {
             action: this,
             ctx,
-            state
+            state,
+            traceId: ctx.traceId
         });
         return ctx.responses;
     }
@@ -123,7 +125,8 @@ export class ScheduledAction<
                 {
                     action: this,
                     ctx,
-                    key
+                    key,
+                    traceId: ctx.traceId
                 }
             );
             const value = await cachedItemFactory.getValue();
@@ -146,7 +149,8 @@ export class ScheduledAction<
                 {
                     action: this,
                     ctx,
-                    key
+                    key,
+                    traceId: ctx.traceId
                 }
             );
             semaphore.release();

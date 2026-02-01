@@ -41,7 +41,8 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                 );
 
                 this.eventEmitter.emit(BotEventType.inlineQueryRecieved, {
-                    query
+                    query,
+                    traceId: query.traceId
                 });
 
                 const queryBeingProcessed = queriesInProcessing.get(
@@ -52,7 +53,8 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                         BotEventType.inlineProcessingAborting,
                         {
                             newQuery: query,
-                            abortedQuery: queryBeingProcessed
+                            abortedQuery: queryBeingProcessed,
+                            traceId: query.traceId
                         }
                     );
 
@@ -70,16 +72,19 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
             this.scheduler.createTask(
                 'InlineQueryProcessing',
                 () => {
-                    this.eventEmitter.emit(
-                        BotEventType.inlineProcessingStarted,
-                        this.botName
-                    );
-
                     const queriesToProcess = [...pendingInlineQueries];
                     pendingInlineQueries = [];
                     const promises = [];
 
                     for (const inlineQuery of queriesToProcess) {
+                        this.eventEmitter.emit(
+                            BotEventType.inlineProcessingStarted,
+                            {
+                                botName: this.botName,
+                                traceId: inlineQuery.traceId
+                            }
+                        );
+
                         queriesInProcessing.set(
                             inlineQuery.userId,
                             inlineQuery
@@ -110,15 +115,16 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                                             this.eventEmitter.emit(
                                                 BotEventType.inlineProcessingAborted,
                                                 {
-                                                    abortedQuery: inlineQuery
+                                                    abortedQuery: inlineQuery,
+                                                    traceId: inlineQuery.traceId
                                                 }
                                             );
                                         } else {
                                             this.eventEmitter.emit(
                                                 BotEventType.error,
                                                 {
-                                                    message: error.message,
-                                                    name: error.name
+                                                    error,
+                                                    traceId: inlineQuery.traceId
                                                 }
                                             );
                                         }
@@ -136,17 +142,19 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                             actionPromises
                         ).then(() => {
                             queriesInProcessing.delete(inlineQuery.userId);
+                            this.eventEmitter.emit(
+                                BotEventType.inlineProcessingFinished,
+                                {
+                                    botName: this.botName,
+                                    traceId: inlineQuery.traceId
+                                }
+                            );
                         });
 
                         promises.push(queryPromise);
                     }
 
-                    void Promise.allSettled(promises).then(() => {
-                        this.eventEmitter.emit(
-                            BotEventType.inlineProcessingFinished,
-                            this.botName
-                        );
-                    });
+                    void Promise.allSettled(promises);
                 },
                 period,
                 false,

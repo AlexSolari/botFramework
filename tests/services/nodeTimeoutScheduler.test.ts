@@ -7,9 +7,11 @@ describe('NodeTimeoutScheduler', () => {
     let scheduler: NodeTimeoutScheduler;
     let eventEmitter: TypedEventEmitter;
 
+    const TEST_BOT_NAME = 'test-bot';
+
     beforeEach(() => {
         eventEmitter = new TypedEventEmitter();
-        scheduler = new NodeTimeoutScheduler(eventEmitter);
+        scheduler = new NodeTimeoutScheduler(eventEmitter, TEST_BOT_NAME);
     });
 
     afterEach(() => {
@@ -23,6 +25,10 @@ describe('NodeTimeoutScheduler', () => {
 
         test('should store eventEmitter reference', () => {
             expect(scheduler.eventEmitter).toBe(eventEmitter);
+        });
+
+        test('should store botName', () => {
+            expect(scheduler.botName).toBe(TEST_BOT_NAME);
         });
     });
 
@@ -58,7 +64,7 @@ describe('NodeTimeoutScheduler', () => {
             );
 
             expect(createdEvents.length).toBe(1);
-            expect(createdEvents[0]).toEqual({
+            expect(createdEvents[0]).toMatchObject({
                 name: 'my-task',
                 ownerName: 'owner-bot',
                 interval: 500
@@ -139,7 +145,7 @@ describe('NodeTimeoutScheduler', () => {
             await new Promise((resolve) => setTimeout(resolve, 130));
 
             expect(runEvents.length).toBeGreaterThanOrEqual(2);
-            expect(runEvents[0]).toEqual({
+            expect(runEvents[0]).toMatchObject({
                 name: 'run-event-task',
                 ownerName: 'test-bot',
                 interval: 50
@@ -193,7 +199,7 @@ describe('NodeTimeoutScheduler', () => {
             );
 
             expect(createdEvents.length).toBe(1);
-            expect(createdEvents[0]).toEqual({
+            expect(createdEvents[0]).toMatchObject({
                 name: 'onetime-task',
                 ownerName: 'test-bot',
                 delay: 100
@@ -235,7 +241,7 @@ describe('NodeTimeoutScheduler', () => {
             await new Promise((resolve) => setTimeout(resolve, 80));
 
             expect(runEvents.length).toBe(1);
-            expect(runEvents[0]).toEqual({
+            expect(runEvents[0]).toMatchObject({
                 name: 'run-once',
                 ownerName: 'test-bot',
                 delay: 50

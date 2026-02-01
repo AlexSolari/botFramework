@@ -213,9 +213,9 @@ describe('BaseActionProcessor', () => {
             console.error = originalConsoleError;
 
             expect(errorEvents.length).toBe(1);
-            expect(errorEvents[0]).toEqual({
-                message: 'Test error message',
-                name: 'TestError'
+            expect(errorEvents[0]).toMatchObject({
+                error: testError,
+                traceId: 'test-trace'
             });
         });
 
@@ -287,9 +287,9 @@ describe('BaseActionProcessor', () => {
             console.error = originalConsoleError;
 
             expect(errorEvents.length).toBe(1);
-            expect(errorEvents[0]).toEqual({
-                message: 'Async failure',
-                name: 'AsyncError'
+            expect(errorEvents[0]).toMatchObject({
+                error: asyncError,
+                traceId: 'test-trace'
             });
         });
 

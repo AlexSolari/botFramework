@@ -2,7 +2,6 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { JsonFileStorage } from '../../src/services/jsonFileStorage';
 import { IActionState } from '../../src/types/actionState';
 import { ActionKey, IActionWithState } from '../../src/types/action';
-import { BotEventType, TypedEventEmitter } from '../../src/types/events';
 import { rmSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -30,10 +29,6 @@ function createTestAction(
     };
 }
 
-function createEventEmitter(): TypedEventEmitter {
-    return new TypedEventEmitter();
-}
-
 function ensureActionFileExists(
     storagePath: string,
     botName: string,
@@ -53,7 +48,6 @@ const TEST_BOT_NAME = 'test-bot';
 
 describe('JsonFileStorage', () => {
     let storage: JsonFileStorage | null;
-    let eventEmitter: TypedEventEmitter;
     let testAction: IActionWithState<TestActionState>;
 
     beforeEach(() => {
@@ -62,7 +56,6 @@ describe('JsonFileStorage', () => {
             rmSync(TEST_STORAGE_PATH, { recursive: true, force: true });
         }
 
-        eventEmitter = createEventEmitter();
         testAction = createTestAction('test:action');
         storage = null;
 
@@ -86,7 +79,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -114,7 +106,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [action1, action2],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -134,7 +125,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -163,7 +153,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -172,29 +161,50 @@ describe('JsonFileStorage', () => {
             expect(result).toEqual(existingData);
         });
 
-        test('should cache loaded data', () => {
+        test('should cache loaded data and not re-read from file', () => {
+            // Pre-create the file with initial data
+            const dirPath = `${TEST_STORAGE_PATH}/${TEST_BOT_NAME}/test`;
+            mkdirSync(dirPath, { recursive: true });
+
+            const initialData: Record<number, TestActionState> = {
+                123: {
+                    lastExecutedDate: 1000,
+                    pinnedMessages: [1],
+                    customField: 'initial'
+                }
+            };
+            writeFileSync(
+                `${dirPath}/action.json`,
+                JSON.stringify(initialData)
+            );
+
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
-            const cacheMissEvents: ActionKey[] = [];
-            eventEmitter.on(
-                BotEventType.storageCacheMiss,
-                (_timestamp, key) => {
-                    cacheMissEvents.push(key);
+            // First load - reads from file
+            const result1 = storage.load(testAction);
+            expect(result1).toEqual(initialData);
+
+            // Modify the file directly (simulating external change)
+            const modifiedData: Record<number, TestActionState> = {
+                123: {
+                    lastExecutedDate: 9999,
+                    pinnedMessages: [9, 9, 9],
+                    customField: 'modified-externally'
                 }
+            };
+            writeFileSync(
+                `${dirPath}/action.json`,
+                JSON.stringify(modifiedData)
             );
 
-            // First load - cache miss
-            storage.load(testAction);
-            // Second load - should use cache (no cache miss event)
-            storage.load(testAction);
-
-            // Only one cache miss should occur
-            expect(cacheMissEvents.length).toBe(1);
+            // Second load - should return cached data, not the modified file
+            const result2 = storage.load(testAction);
+            expect(result2).toEqual(initialData);
+            expect(result2).not.toEqual(modifiedData);
         });
     });
 
@@ -203,7 +213,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -236,43 +245,12 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
             const result = storage.getActionState(testAction, 456);
 
             expect(result).toEqual(existingData[456]);
-        });
-
-        test('should emit loading and loaded events', () => {
-            storage = new JsonFileStorage(
-                TEST_BOT_NAME,
-                [testAction],
-                eventEmitter,
-                TEST_STORAGE_PATH
-            );
-
-            const loadingEvents: unknown[] = [];
-            const loadedEvents: unknown[] = [];
-
-            eventEmitter.on(
-                BotEventType.storageStateLoading,
-                (_timestamp, data) => {
-                    loadingEvents.push(data);
-                }
-            );
-            eventEmitter.on(
-                BotEventType.storageStateLoaded,
-                (_timestamp, data) => {
-                    loadedEvents.push(data);
-                }
-            );
-
-            storage.getActionState(testAction, 789);
-
-            expect(loadingEvents.length).toBe(1);
-            expect(loadedEvents.length).toBe(1);
         });
     });
 
@@ -281,7 +259,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -298,45 +275,10 @@ describe('JsonFileStorage', () => {
             expect(result).toEqual(newState);
         });
 
-        test('should emit saving and saved events', async () => {
-            storage = new JsonFileStorage(
-                TEST_BOT_NAME,
-                [testAction],
-                eventEmitter,
-                TEST_STORAGE_PATH
-            );
-
-            const savingEvents: unknown[] = [];
-            const savedEvents: unknown[] = [];
-
-            eventEmitter.on(
-                BotEventType.storageStateSaving,
-                (_timestamp, data) => {
-                    savingEvents.push(data);
-                }
-            );
-            eventEmitter.on(
-                BotEventType.storageStateSaved,
-                (_timestamp, data) => {
-                    savedEvents.push(data);
-                }
-            );
-
-            await storage.saveActionExecutionResult(testAction, 123, {
-                lastExecutedDate: 1000,
-                pinnedMessages: [],
-                customField: 'test'
-            });
-
-            expect(savingEvents.length).toBe(1);
-            expect(savedEvents.length).toBe(1);
-        });
-
         test('should preserve existing chat states when saving new one', async () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -367,7 +309,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -394,7 +335,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -421,7 +361,6 @@ describe('JsonFileStorage', () => {
             const localStorage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -431,36 +370,43 @@ describe('JsonFileStorage', () => {
     });
 
     describe('locking behavior', () => {
-        test('should not lock on read', () => {
-            storage = new JsonFileStorage(
+        test('should not block on concurrent read operations', async () => {
+            const localStorage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
-            const events: string[] = [];
-
-            eventEmitter.on(BotEventType.storageLockAcquiring, () => {
-                events.push('acquiring');
-            });
-            eventEmitter.on(BotEventType.storageLockAcquired, () => {
-                events.push('acquired');
-            });
-            eventEmitter.on(BotEventType.storageLockReleased, () => {
-                events.push('released');
+            // Pre-populate with data
+            await localStorage.saveActionExecutionResult(testAction, 123, {
+                lastExecutedDate: 1000,
+                pinnedMessages: [1, 2, 3],
+                customField: 'test-data'
             });
 
-            storage.load(testAction);
+            // Perform many concurrent reads - should complete quickly without blocking
+            const startTime = Date.now();
+            const readPromises = Array.from({ length: 100 }, () =>
+                Promise.resolve(localStorage.load(testAction))
+            );
 
-            expect(events).toEqual([]);
+            const results = await Promise.all(readPromises);
+            const elapsed = Date.now() - startTime;
+
+            // All reads should return the same cached data
+            for (const result of results) {
+                expect(result[123].customField).toBe('test-data');
+            }
+
+            // Reads should complete quickly (no lock contention)
+            // If reads were blocking, 100 sequential operations would take much longer
+            expect(elapsed).toBeLessThan(100);
         });
 
         test('should serialize concurrent operations on same action', async () => {
             const localStorage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -498,7 +444,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [nestedAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -519,8 +464,7 @@ describe('JsonFileStorage', () => {
         test('should use default storage path when not provided', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
-                [testAction],
-                eventEmitter
+                [testAction]
                 // No path provided - should use 'storage' default
             );
 
@@ -548,7 +492,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [], // No actions registered initially
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -576,7 +519,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -612,7 +554,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -660,7 +601,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [commandAction, scheduledAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -695,7 +635,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -730,7 +669,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction, otherAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -762,7 +700,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -781,7 +718,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -804,7 +740,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -824,7 +759,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -851,7 +785,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [actionWithDefaults],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -882,7 +815,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [actionWithDefaults],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -899,7 +831,6 @@ describe('JsonFileStorage', () => {
             const localStorage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -931,7 +862,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 
@@ -957,7 +887,6 @@ describe('JsonFileStorage', () => {
             storage = new JsonFileStorage(
                 TEST_BOT_NAME,
                 [testAction],
-                eventEmitter,
                 TEST_STORAGE_PATH
             );
 

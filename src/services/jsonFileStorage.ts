@@ -5,14 +5,12 @@ import { IStorageClient } from '../types/storage';
 import { IActionState } from '../types/actionState';
 import { IActionWithState, ActionKey } from '../types/action';
 import { getOrSetIfNotExists } from '../helpers/mapUtils';
-import { BotEventType, TypedEventEmitter } from '../types/events';
 
 function buildPath(storagePath: string, botName: string, actionKey: string) {
     return `${storagePath}/${botName}/${actionKey.replaceAll(':', '/')}.json`;
 }
 
 class CachedDataSource {
-    private readonly eventEmitter: TypedEventEmitter;
     private readonly cache: Map<string, Record<number, IActionState>>;
     private readonly filePaths = new Map<ActionKey, string>();
     private readonly botName: string;
@@ -21,10 +19,8 @@ class CachedDataSource {
     constructor(
         botName: string,
         actions: IActionWithState<IActionState>[],
-        eventEmitter: TypedEventEmitter,
         path?: string
     ) {
-        this.eventEmitter = eventEmitter;
         this.cache = new Map<string, Record<number, IActionState>>();
         this.botName = botName;
         this.storagePath = path ?? 'storage';
@@ -47,10 +43,6 @@ class CachedDataSource {
         const cachedValue = this.cache.get(key) as
             | Record<number, TActionState>
             | undefined;
-
-        if (cachedValue == undefined) {
-            this.eventEmitter.emit(BotEventType.storageCacheMiss, key);
-        }
 
         return cachedValue;
     }
@@ -94,10 +86,6 @@ class CachedDataSource {
         data: Record<number, TActionState>,
         action: IActionWithState<TActionState>
     ) {
-        this.eventEmitter.emit(BotEventType.storageStateSaving, {
-            data,
-            key: action.key
-        });
         this.cache.set(action.key, data);
 
         const targetPath = getOrSetIfNotExists(
@@ -107,15 +95,10 @@ class CachedDataSource {
         );
 
         await writeFile(targetPath, JSON.stringify(data), { flag: 'w+' });
-        this.eventEmitter.emit(BotEventType.storageStateSaved, {
-            data,
-            key: action.key
-        });
     }
 }
 
 export class JsonFileStorage implements IStorageClient {
-    private readonly eventEmitter: TypedEventEmitter;
     private readonly locks = new Map<ActionKey, Semaphore>();
 
     private readonly data: CachedDataSource;
@@ -123,17 +106,9 @@ export class JsonFileStorage implements IStorageClient {
     constructor(
         botName: string,
         actions: IActionWithState<IActionState>[],
-        eventEmitter: TypedEventEmitter,
         path?: string
     ) {
-        this.eventEmitter = eventEmitter;
-
-        this.data = new CachedDataSource(
-            botName,
-            actions,
-            eventEmitter,
-            path ?? 'storage'
-        );
+        this.data = new CachedDataSource(botName, actions, path ?? 'storage');
 
         for (const action of actions) {
             this.locks.set(action.key, new Semaphore(1));
@@ -143,15 +118,12 @@ export class JsonFileStorage implements IStorageClient {
     private async lock<TType>(key: ActionKey, action: () => Promise<TType>) {
         const lock = getOrSetIfNotExists(this.locks, key, new Semaphore(1));
 
-        this.eventEmitter.emit(BotEventType.storageLockAcquiring, key);
         await lock.acquire();
-        this.eventEmitter.emit(BotEventType.storageLockAcquired, key);
 
         try {
             return await action();
         } finally {
             lock.release();
-            this.eventEmitter.emit(BotEventType.storageLockReleased, key);
         }
     }
 
@@ -165,20 +137,9 @@ export class JsonFileStorage implements IStorageClient {
         action: IActionWithState<TActionState>,
         chatId: number
     ) {
-        this.eventEmitter.emit(BotEventType.storageStateLoading, {
-            action,
-            chatId
-        });
         const value = this.data.load<TActionState>(action);
-        const result = value[chatId] ?? action.stateConstructor();
 
-        this.eventEmitter.emit(BotEventType.storageStateLoaded, {
-            action,
-            chatId,
-            state: result
-        });
-
-        return result;
+        return value[chatId] ?? action.stateConstructor();
     }
 
     async saveActionExecutionResult<TActionState extends IActionState>(

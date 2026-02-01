@@ -1,4 +1,5 @@
 import { TaskRecord } from '../entities/taskRecord';
+import { createTrace } from '../helpers/traceFactory';
 import { BotEventType, TypedEventEmitter } from '../types/events';
 import { IScheduler } from '../types/scheduler';
 import { Milliseconds } from '../types/timeValues';
@@ -6,7 +7,10 @@ import { Milliseconds } from '../types/timeValues';
 export class NodeTimeoutScheduler implements IScheduler {
     readonly activeTasks: TaskRecord[] = [];
 
-    constructor(readonly eventEmitter: TypedEventEmitter) {}
+    constructor(
+        readonly eventEmitter: TypedEventEmitter,
+        readonly botName: string
+    ) {}
 
     stopAll() {
         for (const task of this.activeTasks) {
@@ -21,15 +25,17 @@ export class NodeTimeoutScheduler implements IScheduler {
         executeRightAway: boolean,
         ownerName: string
     ) {
+        const traceId = createTrace(this, this.botName, name);
         const taskId = setInterval(() => {
             action();
             this.eventEmitter.emit(BotEventType.taskRun, {
                 name,
                 ownerName,
-                interval
+                interval,
+                traceId
             });
         }, interval);
-        const task = new TaskRecord(name, taskId, interval);
+        const task = new TaskRecord(name, taskId, interval, traceId);
 
         if (executeRightAway) {
             setImmediate(action);
@@ -38,7 +44,8 @@ export class NodeTimeoutScheduler implements IScheduler {
         this.eventEmitter.emit(BotEventType.taskCreated, {
             name,
             ownerName,
-            interval
+            interval,
+            traceId
         });
 
         this.activeTasks.push(task);
@@ -50,11 +57,13 @@ export class NodeTimeoutScheduler implements IScheduler {
         delay: Milliseconds,
         ownerName: string
     ) {
+        const traceId = createTrace(this, this.botName, name);
         const actionWrapper = () => {
             this.eventEmitter.emit(BotEventType.taskRun, {
                 name,
                 ownerName,
-                delay
+                delay,
+                traceId
             });
             action();
         };
@@ -63,7 +72,8 @@ export class NodeTimeoutScheduler implements IScheduler {
         this.eventEmitter.emit(BotEventType.taskCreated, {
             name,
             ownerName,
-            delay
+            delay,
+            traceId
         });
     }
 }

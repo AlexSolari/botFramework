@@ -57,14 +57,16 @@ export class InlineQueryAction implements IAction {
 
         ctx.eventEmitter.emit(BotEventType.inlineActionExecuting, {
             action: this,
-            ctx
+            ctx,
+            traceId: ctx.traceId
         });
 
         await this.handler(ctx);
 
         ctx.eventEmitter.emit(BotEventType.inlineActionExecuted, {
             action: this,
-            ctx
+            ctx,
+            traceId: ctx.traceId
         });
         return [
             new InlineQueryResponse(

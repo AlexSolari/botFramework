@@ -12,6 +12,7 @@ import {
     createMockTelegramApi,
     type MockScheduler
 } from './processorTestHelpers';
+import { IncomingInlineQuery } from '../../../src/dtos/incomingQuery';
 
 // =============================================================================
 // Mock Types for InlineQueryActionProcessor Tests
@@ -558,7 +559,6 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram.getEventHandler('inline_query');
             expect(inlineQueryHandler).toBeDefined();
 
-            const abortSignals: AbortSignal[] = [];
             if (inlineQueryHandler) {
                 inlineQueryHandler({
                     inlineQuery: {

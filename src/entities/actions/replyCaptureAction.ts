@@ -48,7 +48,8 @@ export class ReplyCaptureAction<
 
         ctx.eventEmitter.emit(BotEventType.replyActionExecuting, {
             action: this,
-            ctx
+            ctx,
+            traceId: ctx.traceId
         });
         ctx.matchResults = matchResults;
 
@@ -56,7 +57,8 @@ export class ReplyCaptureAction<
 
         ctx.eventEmitter.emit(BotEventType.replyActionExecuted, {
             action: this,
-            ctx
+            ctx,
+            traceId: ctx.traceId
         });
         return ctx.responses;
     }

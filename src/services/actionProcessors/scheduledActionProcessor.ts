@@ -14,6 +14,11 @@ import { BotEventType, TypedEventEmitter } from '../../types/events';
 
 export class ScheduledActionProcessor extends BaseActionProcessor {
     private readonly chats: Record<string, number>;
+    private readonly taskTrace = createTrace(
+        this,
+        this.botName,
+        'ScheduledActionsTaskRun'
+    );
 
     private scheduled!: ScheduledAction<IActionState>[];
 
@@ -82,10 +87,10 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
     }
 
     private runScheduled() {
-        this.eventEmitter.emit(
-            BotEventType.scheduledProcessingStarted,
-            this.botName
-        );
+        this.eventEmitter.emit(BotEventType.scheduledProcessingStarted, {
+            botName: this.botName,
+            traceId: this.taskTrace
+        });
 
         const promises = Object.entries(this.chats).flatMap(
             ([chatName, chatId]) => {
@@ -122,10 +127,10 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
         );
 
         void Promise.allSettled(promises).then(() => {
-            this.eventEmitter.emit(
-                BotEventType.scheduledProcessingStarted,
-                this.botName
-            );
+            this.eventEmitter.emit(BotEventType.scheduledProcessingStarted, {
+                botName: this.botName,
+                traceId: this.taskTrace
+            });
         });
     }
 }

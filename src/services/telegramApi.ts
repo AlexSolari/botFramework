@@ -51,7 +51,8 @@ export class TelegramApiService {
         captureRegistrationCallback: (
             capture: IReplyCapture,
             parentMessageId: number,
-            chatInfo: ChatInfo
+            chatInfo: ChatInfo,
+            traceId: TraceId
         ) => void
     ) {
         this.telegram = telegram;
@@ -86,9 +87,10 @@ export class TelegramApiService {
                                 )
                             ) {
                                 this.eventEmitter.emit(BotEventType.error, {
-                                    message:
-                                        'Quote error recieved, retrying without quote',
-                                    name: 'Quote error'
+                                    error: new Error(
+                                        'Quote error recieved, retrying without quote'
+                                    ),
+                                    traceId: response.traceId
                                 });
 
                                 try {
@@ -96,8 +98,8 @@ export class TelegramApiService {
                                 } catch (e) {
                                     const error = e as Error;
                                     this.eventEmitter.emit(BotEventType.error, {
-                                        message: error.message,
-                                        name: error.name
+                                        error,
+                                        traceId: response.traceId
                                     });
                                 }
 
@@ -106,8 +108,8 @@ export class TelegramApiService {
                         }
 
                         this.eventEmitter.emit(BotEventType.error, {
-                            message: error.message,
-                            name: error.name
+                            error,
+                            traceId: response.traceId
                         });
                     }
                 },
@@ -128,7 +130,8 @@ export class TelegramApiService {
         if (response.shouldPin) {
             this.eventEmitter.emit(BotEventType.apiRequestSending, {
                 response: null,
-                telegramMethod: this.methodMap['pin']
+                telegramMethod: this.methodMap['pin'],
+                traceId: response.traceId
             });
             await this.telegram.pinChatMessage(
                 response.chatInfo.id,
@@ -137,7 +140,8 @@ export class TelegramApiService {
             );
             this.eventEmitter.emit(BotEventType.apiRequestSent, {
                 response: null,
-                telegramMethod: this.methodMap['pin']
+                telegramMethod: this.methodMap['pin'],
+                traceId: response.traceId
             });
 
             await this.storage.updateStateFor(
@@ -154,7 +158,8 @@ export class TelegramApiService {
         const sentMessage = await this.sendApiRequest(response, ignoreQuote);
         this.eventEmitter.emit(BotEventType.apiRequestSent, {
             response,
-            telegramMethod: this.methodMap[response.kind]
+            telegramMethod: this.methodMap[response.kind],
+            traceId: response.traceId
         });
 
         if (sentMessage && 'content' in response) {
@@ -177,7 +182,8 @@ export class TelegramApiService {
     ): Promise<TelegramMessage | null> {
         this.eventEmitter.emit(BotEventType.apiRequestSending, {
             response,
-            telegramMethod: this.methodMap[response.kind]
+            telegramMethod: this.methodMap[response.kind],
+            traceId: response.traceId
         });
 
         switch (response.kind) {

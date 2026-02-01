@@ -74,11 +74,12 @@ export class ActionProcessingService {
             this.telegramBot.telegram,
             this.storage,
             this.eventEmitter,
-            (capture, id, chatInfo) => {
+            (capture, id, chatInfo, traceId) => {
                 this.commandProcessor.captureRegistrationCallback(
                     capture,
                     id,
-                    chatInfo
+                    chatInfo,
+                    traceId
                 );
             }
         );

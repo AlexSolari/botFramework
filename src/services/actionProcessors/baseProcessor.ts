@@ -27,11 +27,14 @@ export abstract class BaseActionProcessor {
         this.botName = botName;
     }
 
-    private defaultErrorHandler(error: Error) {
+    private defaultErrorHandler(
+        error: Error,
+        ctx: BaseContextInternal<IAction>
+    ) {
         console.error(error);
         this.eventEmitter.emit(BotEventType.error, {
-            message: error.message,
-            name: error.name
+            error,
+            traceId: ctx.traceId
         });
     }
 
@@ -57,7 +60,7 @@ export abstract class BaseActionProcessor {
             if (errorHandler) {
                 errorHandler(error, ctx);
             } else {
-                this.defaultErrorHandler(error);
+                this.defaultErrorHandler(error, ctx);
             }
         }
     }

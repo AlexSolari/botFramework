@@ -132,7 +132,8 @@ export class CommandAction<
             ctx.eventEmitter.emit(BotEventType.commandActionExecuting, {
                 action: this,
                 ctx,
-                state
+                state,
+                traceId: ctx.traceId
             });
             ctx.matchResults = matchResults;
 
@@ -157,7 +158,8 @@ export class CommandAction<
             ctx.eventEmitter.emit(BotEventType.commandActionExecuted, {
                 action: this,
                 ctx,
-                state
+                state,
+                traceId: ctx.traceId
             });
             return ctx.responses;
         } finally {

@@ -2,6 +2,7 @@ import { describe, test, expect, beforeEach } from 'bun:test';
 import { BotEventType, TypedEventEmitter } from '../../../src/types/events';
 import { IScheduler } from '../../../src/types/scheduler';
 import { IStorageClient } from '../../../src/types/storage';
+import { TraceId } from '../../../src/types/trace';
 import { CommandActionProcessor } from '../../../src/services/actionProcessors/commandActionProcessor';
 import {
     createMockStorage,
@@ -10,6 +11,10 @@ import {
     createMockTelegramApi,
     createMockChatInfo
 } from './processorTestHelpers';
+
+function createMockTraceId(): TraceId {
+    return 'test:trace-id' as TraceId;
+}
 
 // =============================================================================
 // CommandActionProcessor Tests
@@ -53,6 +58,7 @@ describe('CommandActionProcessor', () => {
             );
 
             const chatInfo = createMockChatInfo();
+            const traceId = createMockTraceId();
             const abortController = new AbortController();
             const mockCapture = {
                 action: createMockAction('parent-action'),
@@ -61,12 +67,18 @@ describe('CommandActionProcessor', () => {
                 abortController
             };
 
-            processor.captureRegistrationCallback(mockCapture, 123, chatInfo);
+            processor.captureRegistrationCallback(
+                mockCapture,
+                123,
+                chatInfo,
+                traceId
+            );
 
             expect(captureEvents.length).toBe(1);
             expect(captureEvents[0]).toEqual({
                 parentMessageId: 123,
-                chatInfo
+                chatInfo,
+                traceId
             });
         });
 
@@ -83,6 +95,7 @@ describe('CommandActionProcessor', () => {
             );
 
             const chatInfo = createMockChatInfo();
+            const traceId = createMockTraceId();
             const abortController = new AbortController();
             const mockCapture = {
                 action: createMockAction('parent-action'),
@@ -91,7 +104,12 @@ describe('CommandActionProcessor', () => {
                 abortController
             };
 
-            processor.captureRegistrationCallback(mockCapture, 456, chatInfo);
+            processor.captureRegistrationCallback(
+                mockCapture,
+                456,
+                chatInfo,
+                traceId
+            );
 
             // Abort the controller
             abortController.abort();
@@ -102,7 +120,8 @@ describe('CommandActionProcessor', () => {
             expect(abortEvents.length).toBe(1);
             expect(abortEvents[0]).toEqual({
                 parentMessageId: 456,
-                chatInfo
+                chatInfo,
+                traceId
             });
         });
 
@@ -119,6 +138,7 @@ describe('CommandActionProcessor', () => {
             );
 
             const chatInfo = createMockChatInfo();
+            const traceId = createMockTraceId();
 
             for (let i = 0; i < 3; i++) {
                 const mockCapture = {
@@ -130,7 +150,8 @@ describe('CommandActionProcessor', () => {
                 processor.captureRegistrationCallback(
                     mockCapture,
                     100 + i,
-                    chatInfo
+                    chatInfo,
+                    traceId
                 );
             }
 
@@ -168,6 +189,7 @@ describe('CommandActionProcessor', () => {
             );
 
             const chatInfo = createMockChatInfo();
+            const traceId = createMockTraceId();
             const abortController = new AbortController();
             const mockCapture = {
                 action: createMockAction('lifecycle-action'),
@@ -180,7 +202,8 @@ describe('CommandActionProcessor', () => {
             localProcessor.captureRegistrationCallback(
                 mockCapture,
                 789,
-                chatInfo
+                chatInfo,
+                traceId
             );
             expect(startEvents.length).toBe(1);
             expect(abortEvents.length).toBe(0);
@@ -192,7 +215,8 @@ describe('CommandActionProcessor', () => {
             expect(abortEvents.length).toBe(1);
             expect(abortEvents[0]).toEqual({
                 parentMessageId: 789,
-                chatInfo
+                chatInfo,
+                traceId
             });
         });
 
@@ -217,6 +241,7 @@ describe('CommandActionProcessor', () => {
             );
 
             const chatInfo = createMockChatInfo();
+            const traceId = createMockTraceId();
             const abortController = new AbortController();
             const mockCapture = {
                 action: createMockAction('double-abort-action'),
@@ -228,7 +253,8 @@ describe('CommandActionProcessor', () => {
             localProcessor.captureRegistrationCallback(
                 mockCapture,
                 111,
-                chatInfo
+                chatInfo,
+                traceId
             );
 
             // Abort twice - should only emit once
