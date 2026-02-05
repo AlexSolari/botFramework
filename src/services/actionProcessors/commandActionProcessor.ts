@@ -107,16 +107,29 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         this.replyCaptures.push(replyAction);
 
-        capture.abortController.signal.addEventListener('abort', () => {
-            const index = this.replyCaptures.indexOf(replyAction);
-            this.replyCaptures.splice(index, 1);
+        capture.abortController.signal.addEventListener(
+            'abort',
+            () => {
+                const capturesWithController = this.replyCaptures.filter(
+                    (x) => x.abortController == capture.abortController
+                );
 
-            this.eventEmitter.emit(BotEventType.commandActionCaptureAborted, {
-                parentMessageId,
-                chatInfo,
-                traceId
-            });
-        });
+                for (const captureToCancel of capturesWithController) {
+                    const index = this.replyCaptures.indexOf(captureToCancel);
+                    this.replyCaptures.splice(index, 1);
+
+                    this.eventEmitter.emit(
+                        BotEventType.commandActionCaptureAborted,
+                        {
+                            parentMessageId,
+                            chatInfo,
+                            traceId
+                        }
+                    );
+                }
+            },
+            { once: true }
+        );
     }
 
     private startMessageProcessing(msg: IncomingMessage) {
