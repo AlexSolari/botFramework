@@ -17,7 +17,7 @@ export class BotInstance {
     private readonly actionProcessingService: ActionProcessingService;
 
     readonly name: string;
-    readonly eventEmitter = new TypedEventEmitter();
+    readonly eventEmitter: TypedEventEmitter<Record<string, unknown>>;
 
     constructor(options: {
         name: string;
@@ -31,6 +31,7 @@ export class BotInstance {
         services?: {
             storageClient?: IStorageClient;
             scheduler?: IScheduler;
+            eventEmitter?: TypedEventEmitter<Record<string, unknown>>;
         };
     }) {
         const actions = [
@@ -39,6 +40,8 @@ export class BotInstance {
         ];
 
         this.name = options.name;
+        this.eventEmitter =
+            options.services?.eventEmitter ?? new TypedEventEmitter();
 
         this.scheduler =
             options.services?.scheduler ??

@@ -190,54 +190,79 @@ export type BotEventMap = {
     };
 };
 
-type ListenerArgs<K extends keyof BotEventMap> =
-    BotEventMap[K] extends undefined
-        ? []
-        : [
-              {
-                  traceId: TraceId;
-              } & BotEventMap[K]
-          ];
+type FullEventMap<TCustom extends Record<string, unknown>> = BotEventMap &
+    TCustom;
 
-export type Listener<K extends keyof BotEventMap> = (
-    timestamp: number,
-    ...args: ListenerArgs<K>
-) => void;
+type ListenerArgs<
+    TMap extends Record<string, unknown>,
+    K extends keyof TMap
+> = TMap[K] extends undefined
+    ? []
+    : [
+          {
+              traceId: TraceId;
+          } & TMap[K]
+      ];
 
-export type EachListener = (
-    event: BotEventTypeKeys,
+export type Listener<
+    TMap extends Record<string, unknown>,
+    K extends keyof TMap
+> = (timestamp: number, ...args: ListenerArgs<TMap, K>) => void;
+
+export type EachListener<TMap extends Record<string, unknown> = BotEventMap> = (
+    event: keyof TMap & string,
     timestamp: number,
     data: unknown
 ) => void;
 
-export class TypedEventEmitter {
+export class TypedEventEmitter<
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    TCustomEvents extends Record<string, unknown> = {}
+> {
     private readonly listeners = new Map<
-        keyof BotEventMap | '*',
-        Set<Listener<keyof BotEventMap> | EachListener>
+        keyof FullEventMap<TCustomEvents> | '*',
+        Set<
+            | Listener<
+                  FullEventMap<TCustomEvents>,
+                  keyof FullEventMap<TCustomEvents>
+              >
+            | EachListener<FullEventMap<TCustomEvents>>
+        >
     >();
 
-    on<K extends keyof BotEventMap>(event: K, fn: Listener<K>) {
+    on<K extends keyof FullEventMap<TCustomEvents>>(
+        event: K,
+        fn: Listener<FullEventMap<TCustomEvents>, K>
+    ) {
         const set = this.listeners.get(event) ?? new Set();
-        set.add(fn as Listener<keyof BotEventMap>);
+        set.add(
+            fn as Listener<
+                FullEventMap<TCustomEvents>,
+                keyof FullEventMap<TCustomEvents>
+            >
+        );
         this.listeners.set(event, set);
     }
 
-    onEach(fn: EachListener) {
+    onEach(fn: EachListener<FullEventMap<TCustomEvents>>) {
         const event = '*';
         const set = this.listeners.get(event) ?? new Set();
         set.add(fn);
         this.listeners.set(event, set);
     }
 
-    emit<K extends keyof BotEventMap>(
+    emit<K extends keyof FullEventMap<TCustomEvents>>(
         event: K,
-        ...args: ListenerArgs<K>
+        ...args: ListenerArgs<FullEventMap<TCustomEvents>, K>
     ): void {
         const timestamp = Date.now();
         const specific = this.listeners.get(event);
         if (specific) {
             for (const fn of specific) {
-                (fn as Listener<K>)(timestamp, ...args);
+                (fn as Listener<FullEventMap<TCustomEvents>, K>)(
+                    timestamp,
+                    ...args
+                );
             }
         }
 
@@ -248,14 +273,14 @@ export class TypedEventEmitter {
                     fn as unknown as (
                         e: K,
                         t: number,
-                        ...a: ListenerArgs<K>
+                        ...a: ListenerArgs<FullEventMap<TCustomEvents>, K>
                     ) => void
                 )(event, timestamp, ...args);
             }
         }
     }
 
-    events(): (keyof BotEventMap | '*')[] {
+    events(): (keyof FullEventMap<TCustomEvents> | '*')[] {
         return [...this.listeners.keys()];
     }
 }

@@ -7,6 +7,7 @@ import { Seconds } from './types/timeValues';
 import { IScheduler } from './types/scheduler';
 import { InlineQueryAction } from './entities/actions/inlineQueryAction';
 import { IActionState } from './types/actionState';
+import { TypedEventEmitter } from './types/events';
 
 class BotOrchestrator {
     bots: BotInstance[] = [];
@@ -38,6 +39,8 @@ class BotOrchestrator {
             storageClient?: IStorageClient;
             /** Scheduler client for bot scheduling. If not provided, default `NodeTimeoutScheduler` will be used. */
             scheduler?: IScheduler;
+            /** Event emitter instance. If not provided, a default `TypedEventEmitter` will be created. Pass a `TypedEventEmitter<YourCustomEvents>` to support custom events. */
+            eventEmitter?: TypedEventEmitter<Record<string, unknown>>;
         };
     }) {
         const token = await readFile(options.tokenFilePath, 'utf8');
@@ -48,7 +51,8 @@ class BotOrchestrator {
             chats: options.chats,
             services: {
                 storageClient: options.services?.storageClient,
-                scheduler: options.services?.scheduler
+                scheduler: options.services?.scheduler,
+                eventEmitter: options.services?.eventEmitter
             },
             storagePath: options.storagePath
         });

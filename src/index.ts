@@ -25,5 +25,8 @@ export { MessageInfo } from './dtos/messageInfo';
 export { UserInfo } from './dtos/userInfo';
 export {
     BotEventType,
-    BotEventMap as BotEventArgumentsMap
+    BotEventMap as BotEventArgumentsMap,
+    TypedEventEmitter,
+    Listener,
+    EachListener
 } from './types/events';
