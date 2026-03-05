@@ -30,3 +30,4 @@ export {
     Listener,
     EachListener
 } from './types/events';
+export { TraceId } from './types/trace';
