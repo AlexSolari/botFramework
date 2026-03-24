@@ -1,4 +1,3 @@
-import { readFile } from 'fs/promises';
 import { IStorageClient } from './types/storage';
 import { CommandAction } from './entities/actions/commandAction';
 import { ScheduledAction } from './entities/actions/scheduledAction';
@@ -18,8 +17,8 @@ class BotOrchestrator {
     async startBot(options: {
         /** Bot name, used in logging */
         name: string;
-        /** Path to file containing Telegram Bot token. */
-        tokenFilePath: string;
+        /** Function that provides the bot token. */
+        tokenProvider: () => Promise<string>;
         actions: {
             /** Collection of actions that will be executed as a response to message from used. Created using `CommandActionBuilder`.*/
             commands: CommandAction<IActionState>[];
@@ -43,7 +42,7 @@ class BotOrchestrator {
             eventEmitter?: TypedEventEmitter<Record<string, unknown>>;
         };
     }) {
-        const token = await readFile(options.tokenFilePath, 'utf8');
+        const token = await options.tokenProvider();
 
         const bot = new BotInstance({
             name: options.name,
@@ -58,6 +57,7 @@ class BotOrchestrator {
         });
 
         await bot.start(token, options.actions, options.scheduledPeriod);
+
         this.bots.push(bot);
 
         return bot;
