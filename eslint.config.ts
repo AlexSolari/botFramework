@@ -1,8 +1,14 @@
+/// <reference types="node" />
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import parser from '@typescript-eslint/parser';
+import { defineConfig } from 'eslint/config';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
 
-export default tseslint.config(
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+export default defineConfig(
     {
         ignores: ['dist/**', 'eslint.config.ts']
     },
