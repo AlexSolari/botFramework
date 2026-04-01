@@ -118,7 +118,7 @@ export class CommandAction<
                               new TextMessage(
                                   cooldownMessage,
                                   ctx.chatInfo,
-                                  ctx.traceId,
+                                  ctx.observability.traceId,
                                   this,
                                   new ReplyInfo(ctx.messageInfo.id)
                               )
@@ -129,12 +129,15 @@ export class CommandAction<
                 return Noop.NoResponse;
             }
 
-            ctx.eventEmitter.emit(BotEventType.commandActionExecuting, {
-                action: this,
-                ctx,
-                state,
-                traceId: ctx.traceId
-            });
+            ctx.observability.eventEmitter.emit(
+                BotEventType.commandActionExecuting,
+                {
+                    action: this,
+                    ctx,
+                    state,
+                    traceId: ctx.observability.traceId
+                }
+            );
             ctx.matchResults = matchResults;
 
             await this.handler(ctx, state);
@@ -155,12 +158,15 @@ export class CommandAction<
                 state
             );
 
-            ctx.eventEmitter.emit(BotEventType.commandActionExecuted, {
-                action: this,
-                ctx,
-                state,
-                traceId: ctx.traceId
-            });
+            ctx.observability.eventEmitter.emit(
+                BotEventType.commandActionExecuted,
+                {
+                    action: this,
+                    ctx,
+                    state,
+                    traceId: ctx.observability.traceId
+                }
+            );
             return ctx.responses;
         } finally {
             lock?.release();

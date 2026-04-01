@@ -90,7 +90,9 @@ describe('ChatContextInternal', () => {
         test('should set eventEmitter', () => {
             const ctx = createChatContext();
 
-            expect(ctx.eventEmitter).toBeInstanceOf(TypedEventEmitter);
+            expect(ctx.observability.eventEmitter).toBeInstanceOf(
+                TypedEventEmitter
+            );
         });
 
         test('should have isInitialized as false by default', () => {
@@ -158,7 +160,7 @@ describe('ChatContextInternal', () => {
             ctx.send.text('Test');
 
             const response = ctx.responses[0] as TextMessage;
-            expect(response.traceId).toBe(ctx.traceId);
+            expect(response.traceId).toBe(ctx.observability.traceId);
         });
 
         test('should set action on response', () => {

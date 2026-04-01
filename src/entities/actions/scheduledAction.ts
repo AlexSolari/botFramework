@@ -66,12 +66,15 @@ export class ScheduledAction<
         const isAllowedToTrigger = this.checkIfShouldBeExecuted(state, ctx);
         if (!isAllowedToTrigger) return Noop.NoResponse;
 
-        ctx.eventEmitter.emit(BotEventType.scheduledActionExecuting, {
-            action: this,
-            ctx,
-            state,
-            traceId: ctx.traceId
-        });
+        ctx.observability.eventEmitter.emit(
+            BotEventType.scheduledActionExecuting,
+            {
+                action: this,
+                ctx,
+                state,
+                traceId: ctx.observability.traceId
+            }
+        );
 
         await this.handler(
             ctx,
@@ -87,12 +90,15 @@ export class ScheduledAction<
             state
         );
 
-        ctx.eventEmitter.emit(BotEventType.scheduledActionExecuted, {
-            action: this,
-            ctx,
-            state,
-            traceId: ctx.traceId
-        });
+        ctx.observability.eventEmitter.emit(
+            BotEventType.scheduledActionExecuted,
+            {
+                action: this,
+                ctx,
+                state,
+                traceId: ctx.observability.traceId
+            }
+        );
         return ctx.responses;
     }
 
@@ -120,13 +126,13 @@ export class ScheduledAction<
                 return this.cachedState.get(key) as TResult;
             }
 
-            ctx.eventEmitter.emit(
+            ctx.observability.eventEmitter.emit(
                 BotEventType.scheduledActionCacheValueCreating,
                 {
                     action: this,
                     ctx,
                     key,
-                    traceId: ctx.traceId
+                    traceId: ctx.observability.traceId
                 }
             );
             const value = await cachedItemFactory.getValue();
@@ -144,13 +150,13 @@ export class ScheduledAction<
 
             return value as TResult;
         } finally {
-            ctx.eventEmitter.emit(
+            ctx.observability.eventEmitter.emit(
                 BotEventType.scheduledActionCacheValueReturned,
                 {
                     action: this,
                     ctx,
                     key,
-                    traceId: ctx.traceId
+                    traceId: ctx.observability.traceId
                 }
             );
             semaphore.release();

@@ -97,7 +97,7 @@ export class MessageContextInternal<
         const response = new TextMessage(
             text,
             this.chatInfo,
-            this.traceId,
+            this.observability.traceId,
             this.action,
             new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
             options
@@ -118,7 +118,7 @@ export class MessageContextInternal<
         const response = new ImageMessage(
             { source: resolve(`./content/${name}.png`) },
             this.chatInfo,
-            this.traceId,
+            this.observability.traceId,
             this.action,
             new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
             options
@@ -139,7 +139,7 @@ export class MessageContextInternal<
         const response = new VideoMessage(
             { source: resolve(`./content/${name}.mp4`) },
             this.chatInfo,
-            this.traceId,
+            this.observability.traceId,
             this.action,
             new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
             options
@@ -238,7 +238,7 @@ export class MessageContextInternal<
         withReaction: (emoji: TelegramEmoji) => {
             this.responses.push(
                 new Reaction(
-                    this.traceId,
+                    this.observability.traceId,
                     this.chatInfo,
                     this.messageInfo.id,
                     emoji,

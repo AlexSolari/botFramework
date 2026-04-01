@@ -34,7 +34,7 @@ export abstract class BaseActionProcessor {
         console.error(error);
         this.eventEmitter.emit(BotEventType.error, {
             error,
-            traceId: ctx.traceId
+            traceId: ctx.observability.traceId
         });
     }
 

@@ -243,9 +243,12 @@ describe('InlineQueryAction', () => {
             );
 
             const ctx = createMockInlineContext('test query');
-            ctx.eventEmitter.on(BotEventType.inlineActionExecuting, () => {
-                events.push('executing');
-            });
+            ctx.observability.eventEmitter.on(
+                BotEventType.inlineActionExecuting,
+                () => {
+                    events.push('executing');
+                }
+            );
 
             await action.exec(ctx);
 
@@ -266,9 +269,12 @@ describe('InlineQueryAction', () => {
             );
 
             const ctx = createMockInlineContext('test query');
-            ctx.eventEmitter.on(BotEventType.inlineActionExecuted, () => {
-                events.push('executed');
-            });
+            ctx.observability.eventEmitter.on(
+                BotEventType.inlineActionExecuted,
+                () => {
+                    events.push('executed');
+                }
+            );
 
             await action.exec(ctx);
 

@@ -55,24 +55,27 @@ export class InlineQueryAction implements IAction {
 
         ctx.matchResults = matchResults;
 
-        ctx.eventEmitter.emit(BotEventType.inlineActionExecuting, {
-            action: this,
-            ctx,
-            traceId: ctx.traceId
-        });
+        ctx.observability.eventEmitter.emit(
+            BotEventType.inlineActionExecuting,
+            {
+                action: this,
+                ctx,
+                traceId: ctx.observability.traceId
+            }
+        );
 
         await this.handler(ctx);
 
-        ctx.eventEmitter.emit(BotEventType.inlineActionExecuted, {
+        ctx.observability.eventEmitter.emit(BotEventType.inlineActionExecuted, {
             action: this,
             ctx,
-            traceId: ctx.traceId
+            traceId: ctx.observability.traceId
         });
         return [
             new InlineQueryResponse(
                 ctx.queryResults,
                 ctx.queryId,
-                ctx.traceId,
+                ctx.observability.traceId,
                 ctx.action
             )
         ];

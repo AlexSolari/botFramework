@@ -342,9 +342,12 @@ describe('ReplyCaptureAction', () => {
             );
 
             const ctx = createMockReplyContext(123, 'yes');
-            ctx.eventEmitter.on(BotEventType.replyActionExecuting, () => {
-                events.push('executing');
-            });
+            ctx.observability.eventEmitter.on(
+                BotEventType.replyActionExecuting,
+                () => {
+                    events.push('executing');
+                }
+            );
 
             await action.exec(ctx);
 
@@ -366,9 +369,12 @@ describe('ReplyCaptureAction', () => {
             );
 
             const ctx = createMockReplyContext(123, 'yes');
-            ctx.eventEmitter.on(BotEventType.replyActionExecuted, () => {
-                events.push('executed');
-            });
+            ctx.observability.eventEmitter.on(
+                BotEventType.replyActionExecuted,
+                () => {
+                    events.push('executed');
+                }
+            );
 
             await action.exec(ctx);
 

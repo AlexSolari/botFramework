@@ -46,19 +46,19 @@ export class ReplyCaptureAction<
 
         if (!shouldExecute) return Noop.NoResponse;
 
-        ctx.eventEmitter.emit(BotEventType.replyActionExecuting, {
+        ctx.observability.eventEmitter.emit(BotEventType.replyActionExecuting, {
             action: this,
             ctx,
-            traceId: ctx.traceId
+            traceId: ctx.observability.traceId
         });
         ctx.matchResults = matchResults;
 
         await this.handler(ctx);
 
-        ctx.eventEmitter.emit(BotEventType.replyActionExecuted, {
+        ctx.observability.eventEmitter.emit(BotEventType.replyActionExecuted, {
             action: this,
             ctx,
-            traceId: ctx.traceId
+            traceId: ctx.observability.traceId
         });
         return ctx.responses;
     }

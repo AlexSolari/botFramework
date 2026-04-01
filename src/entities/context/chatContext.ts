@@ -19,7 +19,8 @@ import { ScheduledAction } from '../actions/scheduledAction';
 
 export type ChatContext<
     TActionState extends IActionState,
-    TAction extends IActionWithState<TActionState> = ScheduledAction<TActionState>
+    TAction extends IActionWithState<TActionState> =
+        ScheduledAction<TActionState>
 > = Omit<
     ChatContextInternal<TActionState, TAction>,
     BaseContextPropertiesToOmit
@@ -30,7 +31,8 @@ export type ChatContext<
  */
 export class ChatContextInternal<
     TActionState extends IActionState,
-    TAction extends IActionWithState<TActionState> = ScheduledAction<TActionState>
+    TAction extends IActionWithState<TActionState> =
+        ScheduledAction<TActionState>
 > extends BaseContextInternal<TAction> {
     /**
      * Collection of actions that send something to chat as a standalone message.
@@ -46,7 +48,7 @@ export class ChatContextInternal<
             const response = new TextMessage(
                 text,
                 this.chatInfo,
-                this.traceId,
+                this.observability.traceId,
                 this.action,
                 undefined,
                 options
@@ -67,7 +69,7 @@ export class ChatContextInternal<
             const response = new ImageMessage(
                 { source: resolve(`./content/${name}.png`) },
                 this.chatInfo,
-                this.traceId,
+                this.observability.traceId,
                 this.action,
                 undefined,
                 options
@@ -88,7 +90,7 @@ export class ChatContextInternal<
             const response = new VideoMessage(
                 { source: resolve(`./content/${name}.mp4`) },
                 this.chatInfo,
-                this.traceId,
+                this.observability.traceId,
                 this.action,
                 undefined,
                 options
@@ -110,7 +112,7 @@ export class ChatContextInternal<
             new UnpinResponse(
                 messageId,
                 this.chatInfo,
-                this.traceId,
+                this.observability.traceId,
                 this.action
             )
         );
@@ -122,7 +124,12 @@ export class ChatContextInternal<
      */
     wait(delay: Milliseconds) {
         this.responses.push(
-            new DelayResponse(delay, this.chatInfo, this.traceId, this.action)
+            new DelayResponse(
+                delay,
+                this.chatInfo,
+                this.observability.traceId,
+                this.action
+            )
         );
     }
 }

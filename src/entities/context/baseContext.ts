@@ -15,9 +15,7 @@ export type BaseContextPropertiesToOmit =
     | 'isInitialized'
     | 'storage'
     | 'scheduler'
-    | 'eventEmitter'
-    | 'responses'
-    | 'traceId';
+    | 'responses';
 
 export abstract class BaseContextInternal<TAction extends IAction> {
     readonly responses: BotResponse[] = [];
@@ -26,13 +24,17 @@ export abstract class BaseContextInternal<TAction extends IAction> {
     readonly storage: IStorageClient;
     /** Scheduler instance for the bot executing this action */
     readonly scheduler: IScheduler;
-    readonly eventEmitter: TypedEventEmitter;
-    /** Trace id of a action execution. */
-    readonly traceId: TraceId;
     /** Name of a bot that executes this action. */
     readonly botName: string;
     /** Chat information. */
     readonly chatInfo: ChatInfo;
+
+    readonly observability: {
+        /** Event emitter for emitting events related to action execution. */
+        eventEmitter: TypedEventEmitter;
+        /** Trace id of a action execution. */
+        traceId: TraceId;
+    };
 
     get actionKey() {
         return this.action.key;
@@ -49,11 +51,13 @@ export abstract class BaseContextInternal<TAction extends IAction> {
     ) {
         this.storage = storage;
         this.scheduler = scheduler;
-        this.eventEmitter = eventEmitter;
         this.botName = botName;
         this.action = action;
         this.chatInfo = chatInfo;
-        this.traceId = traceId;
+        this.observability = {
+            eventEmitter,
+            traceId
+        };
     }
 
     protected createCaptureController(
