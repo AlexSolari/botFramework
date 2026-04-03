@@ -169,7 +169,7 @@ export class JsonFileStorage implements IStorageClient {
     ) {
         await this.lock(action.key, async () => {
             const data = this.data.load(action);
-            const state = data[chatId];
+            const state = data[chatId] ?? action.stateConstructor();
 
             await update(state);
 
