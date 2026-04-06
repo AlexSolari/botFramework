@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync } from 'fs';
 import { writeFile } from 'fs/promises';
+import { dirname } from 'path';
 import { Sema as Semaphore } from 'async-sema';
 import { IStorageClient } from '../types/storage';
 import { IActionState } from '../types/actionState';
@@ -32,10 +33,17 @@ class CachedDataSource {
         }
 
         for (const action of actions) {
-            this.filePaths.set(
-                action.key,
-                buildPath(this.storagePath, this.botName, action.key)
+            const filePath = buildPath(
+                this.storagePath,
+                this.botName,
+                action.key
             );
+            this.filePaths.set(action.key, filePath);
+
+            const dir = dirname(filePath);
+            if (!existsSync(dir)) {
+                mkdirSync(dir, { recursive: true });
+            }
         }
     }
 
