@@ -16,6 +16,8 @@ export class NodeTimeoutScheduler implements IScheduler {
         for (const task of this.activeTasks) {
             clearInterval(task.taskId);
         }
+
+        this.activeTasks.length = 0;
     }
 
     createTask(

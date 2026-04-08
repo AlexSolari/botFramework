@@ -167,13 +167,6 @@ export class CommandActionProcessor extends BaseActionProcessor {
             }
         }
 
-        this.eventEmitter.emit(BotEventType.beforeActionsExecuting, {
-            botInfo: this.botInfo,
-            message: msg,
-            commands: commandsToCheck,
-            traceId: msg.traceId
-        });
-
         const promises = [...commandsToCheck].map((command) => {
             const ctx = new MessageContextInternal<IActionState>(
                 this.storage,
@@ -220,12 +213,22 @@ export class CommandActionProcessor extends BaseActionProcessor {
             promises.push(...replyPromises);
         }
 
-        void Promise.allSettled(promises).then(() => {
-            this.eventEmitter.emit(BotEventType.messageProcessingFinished, {
-                botInfo: this.botInfo,
-                message: msg,
-                traceId: msg.traceId
+        void Promise.allSettled(promises)
+            .then(() => {
+                this.eventEmitter.emit(BotEventType.messageProcessingFinished, {
+                    botInfo: this.botInfo,
+                    message: msg,
+                    traceId: msg.traceId
+                });
+            })
+            .catch((reason: unknown) => {
+                this.eventEmitter.emit(BotEventType.error, {
+                    error:
+                        reason instanceof Error
+                            ? reason
+                            : new Error('Unknown error'),
+                    traceId: msg.traceId
+                });
             });
-        });
     }
 }

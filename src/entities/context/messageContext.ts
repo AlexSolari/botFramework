@@ -33,11 +33,11 @@ export class MessageContextInternal<
     TActionState extends IActionState
 > extends ChatContextInternal<TActionState, CommandAction<TActionState>> {
     /** Information about the user that triggered this action */
-    readonly userInfo!: UserInfo;
+    readonly userInfo: UserInfo;
     /** Information about the message that triggered this action */
-    readonly messageInfo!: MessageInfo;
+    readonly messageInfo: MessageInfo;
     /** Bot info from Telegram */
-    readonly botInfo!: BotInfo;
+    readonly botInfo: BotInfo;
     /** Indicates if cooldown should be started after action is executed. Set to `true` by default. */
     startCooldown: boolean = true;
     /** Custom cooldown duration in seconds, if specified. */
@@ -71,7 +71,7 @@ export class MessageContextInternal<
             message.updateObject
         );
         this.userInfo = new UserInfo(
-            message.from?.id ?? -1,
+            message.from?.id ?? null,
             (message.from?.first_name ?? 'Unknown user') +
                 (message.from?.last_name ? ` ${message.from.last_name}` : '')
         );

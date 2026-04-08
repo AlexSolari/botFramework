@@ -1,7 +1,6 @@
 import { ChatInfo } from '../dtos/chatInfo';
 import { IncomingMessage } from '../dtos/incomingMessage';
 import { IncomingInlineQuery } from '../dtos/incomingQuery';
-import { CommandAction } from '../entities/actions/commandAction';
 import { ChatContext } from '../entities/context/chatContext';
 import { InlineQueryContext } from '../entities/context/inlineQueryContext';
 import { MessageContext } from '../entities/context/messageContext';
@@ -19,7 +18,6 @@ export const BotEventType = {
     messageRecieved: 'message.recieved',
     messageProcessingStarted: 'message.processingStarted',
     messageProcessingFinished: 'message.processingFinished',
-    beforeActionsExecuting: 'message.beforeActionsExecuting',
 
     commandActionExecuting: 'command.actionExecuting',
     commandActionExecuted: 'command.actionExecuted',
@@ -77,11 +75,6 @@ export type BotEventMap = {
         message: IncomingMessage;
     };
 
-    [BotEventType.beforeActionsExecuting]: {
-        botInfo: BotInfo;
-        message: IncomingMessage;
-        commands: Set<CommandAction<IActionState>>;
-    };
     [BotEventType.commandActionExecuting]: {
         action: IActionWithState<IActionState>;
         ctx: MessageContext<IActionState>;

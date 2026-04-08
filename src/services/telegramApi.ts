@@ -12,6 +12,7 @@ import { TraceId } from '../types/trace';
 import { ChatInfo } from '../dtos/chatInfo';
 import { TelegramApiClient, TelegramMessage } from '../types/externalAliases';
 import { BotEventType, TypedEventEmitter } from '../types/events';
+import { createTrace } from '../helpers/traceFactory';
 
 export const TELEGRAM_ERROR_QUOTE_INVALID = 'QUOTE_TEXT_INVALID';
 
@@ -27,7 +28,7 @@ export class TelegramApiService {
         traceId: TraceId
     ) => void;
 
-    private readonly botName: string;
+    private readonly TELEGRAM_API_SERVICE_ERROR_TRACEID!: TraceId;
 
     private readonly methodMap: Record<
         'pin' | keyof typeof BotResponseTypes,
@@ -56,10 +57,15 @@ export class TelegramApiService {
         ) => void
     ) {
         this.telegram = telegram;
-        this.botName = botName;
         this.storage = storage;
         this.eventEmitter = eventEmitter;
         this.captureRegistrationCallback = captureRegistrationCallback;
+
+        this.TELEGRAM_API_SERVICE_ERROR_TRACEID = createTrace(
+            this,
+            botName,
+            'Error'
+        );
     }
 
     enqueueBatchedResponses(responses: BotResponse[]) {
@@ -120,7 +126,15 @@ export class TelegramApiService {
     }
 
     flushResponses() {
-        void this.queue.flushReadyItems();
+        void this.queue.flushReadyItems().catch((reason: unknown) => {
+            this.eventEmitter.emit(BotEventType.error, {
+                error:
+                    reason instanceof Error
+                        ? reason
+                        : new Error('Unknown error'),
+                traceId: this.TELEGRAM_API_SERVICE_ERROR_TRACEID
+            });
+        });
     }
 
     private async pinIfShould(

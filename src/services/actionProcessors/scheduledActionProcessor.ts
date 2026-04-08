@@ -126,11 +126,24 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
             }
         );
 
-        void Promise.allSettled(promises).then(() => {
-            this.eventEmitter.emit(BotEventType.scheduledProcessingStarted, {
-                botName: this.botName,
-                traceId: this.taskTrace
+        void Promise.allSettled(promises)
+            .then(() => {
+                this.eventEmitter.emit(
+                    BotEventType.scheduledProcessingStarted,
+                    {
+                        botName: this.botName,
+                        traceId: this.taskTrace
+                    }
+                );
+            })
+            .catch((reason: unknown) => {
+                this.eventEmitter.emit(BotEventType.error, {
+                    error:
+                        reason instanceof Error
+                            ? reason
+                            : new Error('Unknown error'),
+                    traceId: this.taskTrace
+                });
             });
-        });
     }
 }

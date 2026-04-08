@@ -138,23 +138,46 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                             }
                         );
 
-                        const queryPromise = Promise.allSettled(
-                            actionPromises
-                        ).then(() => {
-                            queriesInProcessing.delete(inlineQuery.userId);
-                            this.eventEmitter.emit(
-                                BotEventType.inlineProcessingFinished,
-                                {
-                                    botName: this.botName,
+                        const queryPromise = Promise.allSettled(actionPromises)
+                            .then(() => {
+                                queriesInProcessing.delete(inlineQuery.userId);
+                                this.eventEmitter.emit(
+                                    BotEventType.inlineProcessingFinished,
+                                    {
+                                        botName: this.botName,
+                                        traceId: inlineQuery.traceId
+                                    }
+                                );
+                            })
+                            .catch((reason: unknown) => {
+                                queriesInProcessing.delete(inlineQuery.userId);
+                                this.eventEmitter.emit(BotEventType.error, {
+                                    error:
+                                        reason instanceof Error
+                                            ? reason
+                                            : new Error('Unknown error'),
                                     traceId: inlineQuery.traceId
-                                }
-                            );
-                        });
+                                });
+                            });
 
                         promises.push(queryPromise);
                     }
 
-                    void Promise.allSettled(promises);
+                    void Promise.allSettled(promises).catch(
+                        (reason: unknown) => {
+                            this.eventEmitter.emit(BotEventType.error, {
+                                error:
+                                    reason instanceof Error
+                                        ? reason
+                                        : new Error('Unknown error'),
+                                traceId: createTrace(
+                                    this,
+                                    this.botName,
+                                    'Error'
+                                )
+                            });
+                        }
+                    );
                 },
                 period,
                 false,
