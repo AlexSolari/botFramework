@@ -20,6 +20,7 @@ import { TypedEventEmitter } from '../../types/events';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { IncomingMessage } from '../../dtos/incomingMessage';
+import { getQuotedText } from '../../helpers/getQuotedText';
 
 export type MessageContext<TActionState extends IActionState> = Omit<
     MessageContextInternal<TActionState>,
@@ -79,20 +80,12 @@ export class MessageContextInternal<
         this.botInfo = botInfo;
     }
 
-    private getQuotePart(quote: boolean | string) {
-        if (typeof quote != 'boolean') return quote;
-
-        return this.matchResults.length == 0
-            ? this.messageInfo.text
-            : this.matchResults[0][1];
-    }
-
     private replyWithText(
         text: string,
         quote: boolean | string,
         options?: TextMessageSendingOptions
     ) {
-        const quotedPart = this.getQuotePart(quote);
+        const quotedPart = getQuotedText(this, quote);
 
         const response = new TextMessage(
             text,
@@ -113,7 +106,7 @@ export class MessageContextInternal<
         quote: boolean | string,
         options?: MessageSendingOptions
     ) {
-        const quotedPart = this.getQuotePart(quote);
+        const quotedPart = getQuotedText(this, quote);
 
         const response = new ImageMessage(
             { source: resolve(`./content/${name}.png`) },
@@ -134,7 +127,7 @@ export class MessageContextInternal<
         quote: boolean | string,
         options?: MessageSendingOptions
     ) {
-        const quotedPart = this.getQuotePart(quote);
+        const quotedPart = getQuotedText(this, quote);
 
         const response = new VideoMessage(
             { source: resolve(`./content/${name}.mp4`) },

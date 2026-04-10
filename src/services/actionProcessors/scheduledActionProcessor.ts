@@ -129,7 +129,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
         void Promise.allSettled(promises)
             .then(() => {
                 this.eventEmitter.emit(
-                    BotEventType.scheduledProcessingStarted,
+                    BotEventType.scheduledProcessingFinished,
                     {
                         botName: this.botName,
                         traceId: this.taskTrace

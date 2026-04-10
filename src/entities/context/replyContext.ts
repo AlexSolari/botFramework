@@ -25,6 +25,7 @@ import { TypedEventEmitter } from '../../types/events';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { IncomingMessage } from '../../dtos/incomingMessage';
+import { getQuotedText } from '../../helpers/getQuotedText';
 
 export type ReplyContext<TActionState extends IActionState> = Omit<
     ReplyContextInternal<TActionState>,
@@ -75,19 +76,11 @@ export class ReplyContextInternal<
             message.updateObject
         );
         this.userInfo = new UserInfo(
-            message.from?.id ?? -1,
+            message.from?.id ?? null,
             (message.from?.first_name ?? 'Unknown user') +
                 (message.from?.last_name ? ` ${message.from.last_name}` : '')
         );
         this.botInfo = botInfo;
-    }
-
-    private getQuotePart(quote: boolean | string) {
-        if (typeof quote != 'boolean') return quote;
-
-        return this.matchResults.length == 0
-            ? this.messageInfo.text
-            : this.matchResults[0][1];
     }
 
     private replyWithText(
@@ -95,7 +88,7 @@ export class ReplyContextInternal<
         quote: boolean | string,
         options?: TextMessageSendingOptions
     ) {
-        const quotedPart = this.getQuotePart(quote);
+        const quotedPart = getQuotedText(this, quote);
 
         const response = new TextMessage(
             text,
@@ -116,7 +109,7 @@ export class ReplyContextInternal<
         quote: boolean | string,
         options?: MessageSendingOptions
     ) {
-        const quotedPart = this.getQuotePart(quote);
+        const quotedPart = getQuotedText(this, quote);
 
         const response = new ImageMessage(
             { source: resolve(`./content/${name}.png`) },
@@ -137,7 +130,7 @@ export class ReplyContextInternal<
         quote: boolean | string,
         options?: MessageSendingOptions
     ) {
-        const quotedPart = this.getQuotePart(quote);
+        const quotedPart = getQuotedText(this, quote);
 
         const response = new VideoMessage(
             { source: resolve(`./content/${name}.mp4`) },

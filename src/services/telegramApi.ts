@@ -28,7 +28,7 @@ export class TelegramApiService {
         traceId: TraceId
     ) => void;
 
-    private readonly TELEGRAM_API_SERVICE_ERROR_TRACEID!: TraceId;
+    private readonly TELEGRAM_API_SERVICE_ERROR_TRACEID: TraceId;
 
     private readonly methodMap: Record<
         'pin' | keyof typeof BotResponseTypes,

@@ -21,6 +21,8 @@ import { CommandActionProviders } from '../../dtos/propertyProviderSets';
 import { BotResponse } from '../../types/response';
 import { BotEventType } from '../../types/events';
 
+const REGEX_MATCH_LIMIT = 100;
+
 export class CommandAction<
     TActionState extends IActionState
 > implements IActionWithState<TActionState> {
@@ -252,10 +254,11 @@ export class CommandAction<
 
         const execResult = trigger.exec(ctx.messageInfo.text);
         if (execResult != null) {
-            let regexMatchLimit = 100;
             matchResults.push(execResult);
 
             if (trigger.global) {
+                let regexMatchLimit = REGEX_MATCH_LIMIT;
+
                 while (regexMatchLimit > 0) {
                     const nextResult = trigger.exec(ctx.messageInfo.text);
 

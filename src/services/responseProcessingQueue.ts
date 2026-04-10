@@ -13,9 +13,11 @@ function notEmpty<T>(arr: T[]): arr is [T, ...T[]] {
 const TELEGRAM_RATELIMIT_DELAY = 35 as Milliseconds;
 
 export class ResponseProcessingQueue {
-    rateLimiter = RateLimit(1, { timeUnit: TELEGRAM_RATELIMIT_DELAY });
-    items: QueueItem[] = [];
-    isFlushing = false;
+    private readonly rateLimiter = RateLimit(1, {
+        timeUnit: TELEGRAM_RATELIMIT_DELAY
+    });
+    private readonly items: QueueItem[] = [];
+    private isFlushing = false;
 
     enqueue(item: QueueItem) {
         if (
@@ -42,9 +44,9 @@ export class ResponseProcessingQueue {
         this.isFlushing = true;
 
         while (notEmpty(this.items)) {
-            if (Date.now() >= this.items[0].priority) {
-                await this.rateLimiter();
+            await this.rateLimiter();
 
+            if (Date.now() >= this.items[0].priority) {
                 const [item] = this.items;
                 this.items.shift();
 
