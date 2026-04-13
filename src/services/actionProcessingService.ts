@@ -1,5 +1,5 @@
 import { hoursToSeconds } from '../helpers/timeConvertions';
-import { Seconds, Milliseconds, Hours } from '../types/timeValues';
+import { Seconds, Hours } from '../types/timeValues';
 import { IScheduler } from '../types/scheduler';
 import { IStorageClient } from '../types/storage';
 import { TelegramApiService } from './telegramApi';
@@ -107,8 +107,7 @@ export class ActionProcessingService {
         this.inlineQueryProcessor.initialize(
             api,
             this.telegramBot,
-            actions.inlineQueries,
-            300 as Milliseconds
+            actions.inlineQueries
         );
         this.scheduledProcessor.initialize(
             api,

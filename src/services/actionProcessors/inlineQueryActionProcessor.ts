@@ -5,7 +5,6 @@ import { InlineQueryContextInternal } from '../../entities/context/inlineQueryCo
 import { createTrace } from '../../helpers/traceFactory';
 import { BotEventType } from '../../types/events';
 import { TelegramBot } from '../../types/externalAliases';
-import { Milliseconds } from '../../types/timeValues';
 import { TelegramApiService } from '../telegramApi';
 import { BaseActionProcessor } from './baseProcessor';
 
@@ -21,18 +20,15 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
     initialize(
         api: TelegramApiService,
         telegram: TelegramBot,
-        inlineQueries: InlineQueryAction[],
-        period: Milliseconds
+        inlineQueries: InlineQueryAction[]
     ) {
         this.initializeDependencies(api);
         this.inlineQueries = inlineQueries;
 
-        let pendingInlineQueries: IncomingInlineQuery[] = [];
-
         const queriesInProcessing = new Map<number, IncomingInlineQuery>();
 
         if (this.inlineQueries.length > 0) {
-            telegram.on('inline_query', ({ inlineQuery }) => {
+            telegram.on('inline_query', async ({ inlineQuery }) => {
                 const query = new IncomingInlineQuery(
                     inlineQuery.id,
                     inlineQuery.query,
@@ -62,127 +58,74 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                     queriesInProcessing.delete(query.userId);
                 }
 
-                pendingInlineQueries = pendingInlineQueries.filter(
-                    (q) => q.userId != query.userId
+                this.eventEmitter.emit(BotEventType.inlineProcessingStarted, {
+                    botName: this.botName,
+                    traceId: query.traceId
+                });
+
+                queriesInProcessing.set(query.userId, query);
+
+                const actionPromises = this.inlineQueries.map(
+                    (inlineQueryAction) => {
+                        const ctx = new InlineQueryContextInternal(
+                            this.storage,
+                            this.scheduler,
+                            this.eventEmitter,
+                            inlineQueryAction,
+                            query,
+                            this.fakeChatInfo,
+                            this.botName
+                        );
+
+                        const { proxy, revoke } = Proxy.revocable(ctx, {});
+
+                        return this.executeAction(
+                            inlineQueryAction,
+                            proxy,
+                            (error, _) => {
+                                if (error.name == 'AbortError') {
+                                    this.eventEmitter.emit(
+                                        BotEventType.inlineProcessingAborted,
+                                        {
+                                            abortedQuery: query,
+                                            traceId: query.traceId
+                                        }
+                                    );
+                                } else {
+                                    this.eventEmitter.emit(BotEventType.error, {
+                                        error,
+                                        traceId: query.traceId
+                                    });
+                                }
+                            }
+                        ).finally(() => {
+                            revoke();
+                            this.api.flushResponses();
+                        });
+                    }
                 );
 
-                pendingInlineQueries.push(query);
-            });
-
-            this.scheduler.createTask(
-                'InlineQueryProcessing',
-                () => {
-                    const queriesToProcess = [...pendingInlineQueries];
-                    pendingInlineQueries = [];
-                    const promises = [];
-
-                    for (const inlineQuery of queriesToProcess) {
-                        this.eventEmitter.emit(
-                            BotEventType.inlineProcessingStarted,
-                            {
-                                botName: this.botName,
-                                traceId: inlineQuery.traceId
-                            }
-                        );
-
-                        queriesInProcessing.set(
-                            inlineQuery.userId,
-                            inlineQuery
-                        );
-
-                        const actionPromises = this.inlineQueries.map(
-                            (inlineQueryAction) => {
-                                const ctx = new InlineQueryContextInternal(
-                                    this.storage,
-                                    this.scheduler,
-                                    this.eventEmitter,
-                                    inlineQueryAction,
-                                    inlineQuery,
-                                    this.fakeChatInfo,
-                                    this.botName
-                                );
-
-                                const { proxy, revoke } = Proxy.revocable(
-                                    ctx,
-                                    {}
-                                );
-
-                                const executePromise = this.executeAction(
-                                    inlineQueryAction,
-                                    proxy,
-                                    (error, _) => {
-                                        if (error.name == 'AbortError') {
-                                            this.eventEmitter.emit(
-                                                BotEventType.inlineProcessingAborted,
-                                                {
-                                                    abortedQuery: inlineQuery,
-                                                    traceId: inlineQuery.traceId
-                                                }
-                                            );
-                                        } else {
-                                            this.eventEmitter.emit(
-                                                BotEventType.error,
-                                                {
-                                                    error,
-                                                    traceId: inlineQuery.traceId
-                                                }
-                                            );
-                                        }
-                                    }
-                                );
-
-                                return executePromise.finally(() => {
-                                    revoke();
-                                    this.api.flushResponses();
-                                });
-                            }
-                        );
-
-                        const queryPromise = Promise.allSettled(actionPromises)
-                            .then(() => {
-                                queriesInProcessing.delete(inlineQuery.userId);
-                                this.eventEmitter.emit(
-                                    BotEventType.inlineProcessingFinished,
-                                    {
-                                        botName: this.botName,
-                                        traceId: inlineQuery.traceId
-                                    }
-                                );
-                            })
-                            .catch((reason: unknown) => {
-                                queriesInProcessing.delete(inlineQuery.userId);
-                                this.eventEmitter.emit(BotEventType.error, {
-                                    error:
-                                        reason instanceof Error
-                                            ? reason
-                                            : new Error('Unknown error'),
-                                    traceId: inlineQuery.traceId
-                                });
-                            });
-
-                        promises.push(queryPromise);
-                    }
-
-                    void Promise.allSettled(promises).catch(
-                        (reason: unknown) => {
-                            this.eventEmitter.emit(BotEventType.error, {
-                                error:
-                                    reason instanceof Error
-                                        ? reason
-                                        : new Error('Unknown error'),
-                                traceId: createTrace(
-                                    this,
-                                    this.botName,
-                                    'Error'
-                                )
-                            });
+                try {
+                    await Promise.allSettled(actionPromises);
+                } catch (error) {
+                    this.eventEmitter.emit(BotEventType.error, {
+                        error:
+                            error instanceof Error
+                                ? error
+                                : new Error('Unknown error'),
+                        traceId: query.traceId
+                    });
+                } finally {
+                    queriesInProcessing.delete(query.userId);
+                    this.eventEmitter.emit(
+                        BotEventType.inlineProcessingFinished,
+                        {
+                            botName: this.botName,
+                            traceId: query.traceId
                         }
                     );
-                },
-                period,
-                false,
-                this.botName
-            );
+                }
+            });
         }
     }
 }

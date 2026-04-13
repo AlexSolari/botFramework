@@ -124,8 +124,7 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram as unknown as Parameters<
                     typeof processor.initialize
                 >[1],
-                [],
-                100 as Milliseconds
+                []
             );
 
             expect(scheduler.createTaskCallCount()).toBe(0);
@@ -144,8 +143,7 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram as unknown as Parameters<
                     typeof processor.initialize
                 >[1],
-                [mockInlineAction as unknown as InlineQueryAction],
-                100 as Milliseconds
+                [mockInlineAction as unknown as InlineQueryAction]
             );
 
             // Should register inline_query handler
@@ -153,7 +151,7 @@ describe('InlineQueryActionProcessor', () => {
             expect(mockTelegram.hasRegisteredEvent('inline_query')).toBe(true);
         });
 
-        test('should create periodic task for processing queries', () => {
+        test('should not create periodic task (event-driven instead)', () => {
             const mockApi = createMockTelegramApi();
             const mockTelegram = createMockTelegramBot();
             const mockInlineAction = createMockInlineQueryAction(
@@ -166,11 +164,11 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram as unknown as Parameters<
                     typeof processor.initialize
                 >[1],
-                [mockInlineAction as unknown as InlineQueryAction],
-                200 as Milliseconds
+                [mockInlineAction as unknown as InlineQueryAction]
             );
 
-            expect(scheduler.createTaskCallCount()).toBe(1);
+            // Event-driven implementation does not create periodic tasks
+            expect(scheduler.createTaskCallCount()).toBe(0);
         });
 
         test('should store inline queries for processing', () => {
@@ -193,8 +191,7 @@ describe('InlineQueryActionProcessor', () => {
                 [
                     mockInlineAction1 as unknown as InlineQueryAction,
                     mockInlineAction2 as unknown as InlineQueryAction
-                ],
-                100 as Milliseconds
+                ]
             );
 
             // Handler registered via telegram.on
@@ -342,10 +339,9 @@ describe('InlineQueryActionProcessor', () => {
                 });
             }
 
-            // The abort event is only emitted for queries in processing (not pending)
-            // Since we haven't started the processing task, the first query is just removed from pending
-            // So no abort event should be emitted yet
-            expect(abortingEvents.length).toBe(0);
+            // With event-driven processing, the first query is immediately added to queriesInProcessing
+            // When the second query arrives, it detects the first one is processing and emits abort
+            expect(abortingEvents.length).toBe(1);
         });
 
         test('should filter pending queries when receiving duplicate user query', () => {

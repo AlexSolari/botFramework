@@ -6,10 +6,6 @@ export type QueueItem = {
     callback: () => Promise<void>;
 };
 
-function notEmpty<T>(arr: T[]): arr is [T, ...T[]] {
-    return arr.length > 0;
-}
-
 const TELEGRAM_RATELIMIT_DELAY = 35 as Milliseconds;
 
 export class ResponseProcessingQueue {
@@ -43,17 +39,17 @@ export class ResponseProcessingQueue {
 
         this.isFlushing = true;
 
-        while (notEmpty(this.items)) {
-            await this.rateLimiter();
+        try {
+            while (this.items.length > 0) {
+                await this.rateLimiter();
+                if (Date.now() >= this.items[0].priority) {
+                    const item = this.items.shift();
 
-            if (Date.now() >= this.items[0].priority) {
-                const [item] = this.items;
-                this.items.shift();
-
-                await item.callback();
+                    await item?.callback();
+                }
             }
+        } finally {
+            this.isFlushing = false;
         }
-
-        this.isFlushing = false;
     }
 }
