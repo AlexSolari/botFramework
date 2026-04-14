@@ -13,8 +13,7 @@ import { ChatInfo } from '../dtos/chatInfo';
 import { TelegramApiClient, TelegramMessage } from '../types/externalAliases';
 import { BotEventType, TypedEventEmitter } from '../types/events';
 import { createTrace } from '../helpers/traceFactory';
-
-export const TELEGRAM_ERROR_QUOTE_INVALID = 'QUOTE_TEXT_INVALID';
+import { TELEGRAM_ERROR_QUOTE_INVALID } from '../helpers/constants';
 
 export class TelegramApiService {
     private readonly queue = new ResponseProcessingQueue();
@@ -170,11 +169,6 @@ export class TelegramApiService {
 
     private async processResponse(response: BotResponse, ignoreQuote = false) {
         const sentMessage = await this.sendApiRequest(response, ignoreQuote);
-        this.eventEmitter.emit(BotEventType.apiRequestSent, {
-            response,
-            telegramMethod: this.methodMap[response.kind],
-            traceId: response.traceId
-        });
 
         if (sentMessage && 'content' in response) {
             await this.pinIfShould(response, sentMessage);
@@ -200,93 +194,101 @@ export class TelegramApiService {
             traceId: response.traceId
         });
 
-        switch (response.kind) {
-            case 'text':
-                return await this.telegram.sendMessage(
-                    response.chatInfo.id,
-                    response.content,
-                    {
-                        reply_parameters: response.replyInfo
-                            ? {
-                                  message_id: response.replyInfo.id,
-                                  quote: ignoreQuote
-                                      ? undefined
-                                      : response.replyInfo.quote
-                              }
-                            : undefined,
-                        parse_mode: 'MarkdownV2',
-                        link_preview_options: {
-                            is_disabled: response.disableWebPreview
-                        },
-                        reply_markup: response.keyboard
-                            ? {
-                                  inline_keyboard: response.keyboard
-                              }
-                            : undefined
-                    }
-                );
-            case 'image':
-                return await this.telegram.sendPhoto(
-                    response.chatInfo.id,
-                    response.content,
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                    response.replyInfo?.id
-                        ? ({
-                              reply_to_message_id: response.replyInfo.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          } as any)
-                        : undefined
-                );
-            case 'video':
-                return await this.telegram.sendVideo(
-                    response.chatInfo.id,
-                    response.content,
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                    response.replyInfo?.id
-                        ? ({
-                              reply_to_message_id: response.replyInfo.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          } as any)
-                        : undefined
-                );
-            case 'react':
-                await this.telegram.setMessageReaction(
-                    response.chatInfo.id,
-                    response.messageId,
-                    [
+        try {
+            switch (response.kind) {
+                case 'text':
+                    return await this.telegram.sendMessage(
+                        response.chatInfo.id,
+                        response.content,
                         {
-                            type: 'emoji',
-                            emoji: response.emoji
+                            reply_parameters: response.replyInfo
+                                ? {
+                                      message_id: response.replyInfo.id,
+                                      quote: ignoreQuote
+                                          ? undefined
+                                          : response.replyInfo.quote
+                                  }
+                                : undefined,
+                            parse_mode: 'MarkdownV2',
+                            link_preview_options: {
+                                is_disabled: response.disableWebPreview
+                            },
+                            reply_markup: response.keyboard
+                                ? {
+                                      inline_keyboard: response.keyboard
+                                  }
+                                : undefined
                         }
-                    ]
-                );
+                    );
+                case 'image':
+                    return await this.telegram.sendPhoto(
+                        response.chatInfo.id,
+                        response.content,
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                        response.replyInfo?.id
+                            ? ({
+                                  reply_to_message_id: response.replyInfo.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              } as any)
+                            : undefined
+                    );
+                case 'video':
+                    return await this.telegram.sendVideo(
+                        response.chatInfo.id,
+                        response.content,
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                        response.replyInfo?.id
+                            ? ({
+                                  reply_to_message_id: response.replyInfo.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              } as any)
+                            : undefined
+                    );
+                case 'react':
+                    await this.telegram.setMessageReaction(
+                        response.chatInfo.id,
+                        response.messageId,
+                        [
+                            {
+                                type: 'emoji',
+                                emoji: response.emoji
+                            }
+                        ]
+                    );
 
-                return null;
-            case 'unpin':
-                await this.telegram.unpinChatMessage(
-                    response.chatInfo.id,
-                    response.messageId
-                );
+                    return null;
+                case 'unpin':
+                    await this.telegram.unpinChatMessage(
+                        response.chatInfo.id,
+                        response.messageId
+                    );
 
-                await this.storage.updateStateFor(
-                    response.action,
-                    response.chatInfo.id,
-                    (state) => {
-                        state.pinnedMessages = state.pinnedMessages.filter(
-                            (x) => x != response.messageId
-                        );
-                    }
-                );
+                    await this.storage.updateStateFor(
+                        response.action,
+                        response.chatInfo.id,
+                        (state) => {
+                            state.pinnedMessages = state.pinnedMessages.filter(
+                                (x) => x != response.messageId
+                            );
+                        }
+                    );
 
-                return null;
-            case 'inlineQuery':
-                await this.telegram.answerInlineQuery(
-                    response.queryId,
-                    response.queryResults,
-                    { cache_time: 0 }
-                );
+                    return null;
+                case 'inlineQuery':
+                    await this.telegram.answerInlineQuery(
+                        response.queryId,
+                        response.queryResults,
+                        { cache_time: 0 }
+                    );
 
-                return null;
-            case 'delay':
-                return null;
+                    return null;
+                case 'delay':
+                    return null;
+            }
+        } finally {
+            this.eventEmitter.emit(BotEventType.apiRequestSent, {
+                response,
+                telegramMethod: this.methodMap[response.kind],
+                traceId: response.traceId
+            });
         }
     }
 }

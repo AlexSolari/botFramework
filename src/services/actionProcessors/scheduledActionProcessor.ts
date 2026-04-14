@@ -47,9 +47,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
             if (now.minute() == 0 && now.second() == 0) {
                 this.scheduler.createTask(
                     'ScheduledProcessing',
-                    () => {
-                        this.runScheduled();
-                    },
+                    () => void this.runScheduled(),
                     secondsToMilliseconds(period),
                     true,
                     this.botName
@@ -70,9 +68,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                 () => {
                     this.scheduler.createTask(
                         'ScheduledProcessing',
-                        () => {
-                            this.runScheduled();
-                        },
+                        () => void this.runScheduled(),
                         secondsToMilliseconds(period),
                         true,
                         this.botName
@@ -82,21 +78,21 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                 this.botName
             );
 
-            this.runScheduled();
+            void this.runScheduled();
         }
     }
 
-    private runScheduled() {
+    private async runScheduled() {
         this.eventEmitter.emit(BotEventType.scheduledProcessingStarted, {
             botName: this.botName,
             traceId: this.taskTrace
         });
 
-        const promises = Object.entries(this.chats).flatMap(
+        const actionPromises = Object.entries(this.chats).flatMap(
             ([chatName, chatId]) => {
                 const chatInfo = new ChatInfo(chatId, chatName, []);
 
-                return this.scheduled.map((scheduledAction) => {
+                return this.scheduled.map(async (scheduledAction) => {
                     const ctx = new ChatContextInternal<IActionState>(
                         this.storage,
                         this.scheduler,
@@ -113,37 +109,23 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
 
                     const { proxy, revoke } = Proxy.revocable(ctx, {});
 
-                    const executePromise = this.executeAction(
-                        scheduledAction,
-                        proxy
-                    );
-
-                    return executePromise.finally(() => {
+                    try {
+                        await this.executeAction(scheduledAction, proxy);
+                    } finally {
                         revoke();
                         this.api.flushResponses();
-                    });
+                    }
                 });
             }
         );
 
-        void Promise.allSettled(promises)
-            .then(() => {
-                this.eventEmitter.emit(
-                    BotEventType.scheduledProcessingFinished,
-                    {
-                        botName: this.botName,
-                        traceId: this.taskTrace
-                    }
-                );
-            })
-            .catch((reason: unknown) => {
-                this.eventEmitter.emit(BotEventType.error, {
-                    error:
-                        reason instanceof Error
-                            ? reason
-                            : new Error('Unknown error'),
-                    traceId: this.taskTrace
-                });
+        try {
+            await Promise.allSettled(actionPromises);
+        } finally {
+            this.eventEmitter.emit(BotEventType.scheduledProcessingFinished, {
+                botName: this.botName,
+                traceId: this.taskTrace
             });
+        }
     }
 }

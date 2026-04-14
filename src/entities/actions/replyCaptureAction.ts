@@ -5,6 +5,7 @@ import { CommandTrigger } from '../../types/commandTrigger';
 import { ActionKey, IAction } from '../../types/action';
 import { ReplyContextInternal } from '../context/replyContext';
 import { BotEventType } from '../../types/events';
+import { REGEX_MATCH_LIMIT } from '../../helpers/constants';
 
 export class ReplyCaptureAction<
     TParentActionState extends IActionState
@@ -86,7 +87,7 @@ export class ReplyCaptureAction<
 
         const execResult = trigger.exec(ctx.messageInfo.text);
         if (execResult != null) {
-            let regexMatchLimit = 100;
+            let regexMatchLimit = REGEX_MATCH_LIMIT;
             matchResults.push(execResult);
 
             if (trigger.global) {

@@ -18,8 +18,7 @@ import { ChatHistoryMessage } from '../../dtos/chatHistoryMessage';
 import { BotInfo, TelegramBot } from '../../types/externalAliases';
 import { BotEventType } from '../../types/events';
 import { TraceId } from '../../types/trace';
-
-const MESSAGE_HISTORY_LENGTH_LIMIT = 100;
+import { MESSAGE_HISTORY_LENGTH_LIMIT } from '../../helpers/constants';
 
 export class CommandActionProcessor extends BaseActionProcessor {
     private readonly replyCaptures: ReplyCaptureAction<IActionState>[] = [];
@@ -80,7 +79,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
                     traceId: internalMessage.traceId
                 });
 
-                this.startMessageProcessing(internalMessage);
+                void this.startMessageProcessing(internalMessage);
             });
         }
     }
@@ -132,7 +131,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         );
     }
 
-    private startMessageProcessing(msg: IncomingMessage) {
+    private async startMessageProcessing(msg: IncomingMessage) {
         this.eventEmitter.emit(BotEventType.messageProcessingStarted, {
             botInfo: this.botInfo,
             message: msg,
@@ -167,7 +166,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
             }
         }
 
-        const promises = [...commandsToCheck].map((command) => {
+        const actionPromises = [...commandsToCheck].map(async (command) => {
             const ctx = new MessageContextInternal<IActionState>(
                 this.storage,
                 this.scheduler,
@@ -180,16 +179,16 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
             const { proxy, revoke } = Proxy.revocable(ctx, {});
 
-            const executePromise = this.executeAction(command, proxy);
-
-            return executePromise.finally(() => {
+            try {
+                await this.executeAction(command, proxy);
+            } finally {
                 revoke();
                 this.api.flushResponses();
-            });
+            }
         });
 
         if (this.replyCaptures.length != 0) {
-            const replyPromises = this.replyCaptures.map((capture) => {
+            const replyPromises = this.replyCaptures.map(async (capture) => {
                 const replyCtx = new ReplyContextInternal<IActionState>(
                     this.storage,
                     this.scheduler,
@@ -202,33 +201,25 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
                 const { proxy, revoke } = Proxy.revocable(replyCtx, {});
 
-                const executePromise = this.executeAction(capture, proxy);
-
-                return executePromise.finally(() => {
+                try {
+                    await this.executeAction(capture, proxy);
+                } finally {
                     revoke();
                     this.api.flushResponses();
-                });
+                }
             });
 
-            promises.push(...replyPromises);
+            actionPromises.push(...replyPromises);
         }
 
-        void Promise.allSettled(promises)
-            .then(() => {
-                this.eventEmitter.emit(BotEventType.messageProcessingFinished, {
-                    botInfo: this.botInfo,
-                    message: msg,
-                    traceId: msg.traceId
-                });
-            })
-            .catch((reason: unknown) => {
-                this.eventEmitter.emit(BotEventType.error, {
-                    error:
-                        reason instanceof Error
-                            ? reason
-                            : new Error('Unknown error'),
-                    traceId: msg.traceId
-                });
+        try {
+            await Promise.allSettled(actionPromises);
+        } finally {
+            this.eventEmitter.emit(BotEventType.messageProcessingFinished, {
+                botInfo: this.botInfo,
+                message: msg,
+                traceId: msg.traceId
             });
+        }
     }
 }

@@ -5,7 +5,11 @@ import { Sema as Semaphore } from 'async-sema';
 import { IStorageClient } from '../types/storage';
 import { IActionState } from '../types/actionState';
 import { IActionWithState, ActionKey } from '../types/action';
-import { getOrSetIfNotExists } from '../helpers/mapUtils';
+import {
+    getOrCreateIfNotExists,
+    getOrSetIfNotExists
+} from '../helpers/mapUtils';
+import { DEFAULT_STORAGE_DIRECTORY } from '../helpers/constants';
 
 function buildPath(storagePath: string, botName: string, actionKey: string) {
     return `${storagePath}/${botName}/${actionKey.replaceAll(':', '/')}.json`;
@@ -24,7 +28,7 @@ class CachedDataSource {
     ) {
         this.cache = new Map<string, Record<number, IActionState>>();
         this.botName = botName;
-        this.storagePath = path ?? 'storage';
+        this.storagePath = path ?? DEFAULT_STORAGE_DIRECTORY;
 
         if (!existsSync(`${this.storagePath}/${this.botName}/`)) {
             mkdirSync(`${this.storagePath}/${this.botName}/`, {
@@ -107,16 +111,21 @@ class CachedDataSource {
 }
 
 export class JsonFileStorage implements IStorageClient {
-    private readonly locks = new Map<ActionKey, Semaphore>();
-
     private readonly data: CachedDataSource;
+
+    private readonly locks = new Map<ActionKey, Semaphore>();
+    private readonly semaphoreFactory = () => new Semaphore(1);
 
     constructor(
         botName: string,
         actions: IActionWithState<IActionState>[],
         path?: string
     ) {
-        this.data = new CachedDataSource(botName, actions, path ?? 'storage');
+        this.data = new CachedDataSource(
+            botName,
+            actions,
+            path ?? DEFAULT_STORAGE_DIRECTORY
+        );
 
         for (const action of actions) {
             this.locks.set(action.key, new Semaphore(1));
@@ -124,7 +133,11 @@ export class JsonFileStorage implements IStorageClient {
     }
 
     private async lock<TType>(key: ActionKey, action: () => Promise<TType>) {
-        const lock = getOrSetIfNotExists(this.locks, key, new Semaphore(1));
+        const lock = getOrCreateIfNotExists(
+            this.locks,
+            key,
+            this.semaphoreFactory
+        );
 
         await lock.acquire();
 

@@ -1,5 +1,4 @@
-import { hoursToSeconds } from '../helpers/timeConvertions';
-import { Seconds, Hours } from '../types/timeValues';
+import { Seconds } from '../types/timeValues';
 import { IScheduler } from '../types/scheduler';
 import { IStorageClient } from '../types/storage';
 import { TelegramApiService } from './telegramApi';
@@ -14,6 +13,7 @@ import { ScheduledActionProcessor } from './actionProcessors/scheduledActionProc
 import { TelegramBot } from '../types/externalAliases';
 import { Telegraf } from 'telegraf';
 import { TypedEventEmitter } from '../types/events';
+import { DEFAULT_SCHEDULED_ACTION_PERIOD_SECONDS } from '../helpers/constants';
 
 export class ActionProcessingService {
     private readonly eventEmitter: TypedEventEmitter;
@@ -112,7 +112,7 @@ export class ActionProcessingService {
         this.scheduledProcessor.initialize(
             api,
             actions.scheduled,
-            scheduledPeriod ?? hoursToSeconds(1 as Hours)
+            scheduledPeriod ?? DEFAULT_SCHEDULED_ACTION_PERIOD_SECONDS
         );
 
         void this.telegramBot.launch();

@@ -1,12 +1,10 @@
-import { Milliseconds } from '../types/timeValues';
 import { RateLimit } from 'async-sema';
+import { TELEGRAM_RATELIMIT_DELAY } from '../helpers/constants';
 
 export type QueueItem = {
     priority: number;
     callback: () => Promise<void>;
 };
-
-const TELEGRAM_RATELIMIT_DELAY = 35 as Milliseconds;
 
 export class ResponseProcessingQueue {
     private readonly rateLimiter = RateLimit(1, {

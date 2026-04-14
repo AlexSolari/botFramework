@@ -5,6 +5,7 @@ import { InlineQueryHandler } from '../../types/handlers';
 import { InlineActionPropertyProvider } from '../../types/propertyProvider';
 import { BotEventType } from '../../types/events';
 import { InlineQueryResponse } from '../../dtos/responses/inlineQueryResponse';
+import { REGEX_MATCH_LIMIT } from '../../helpers/constants';
 
 export class InlineQueryAction implements IAction {
     readonly key: ActionKey;
@@ -36,7 +37,7 @@ export class InlineQueryAction implements IAction {
 
         const execResult = this.pattern.exec(ctx.queryText);
         if (execResult != null) {
-            let regexMatchLimit = 100;
+            let regexMatchLimit = REGEX_MATCH_LIMIT;
             matchResults.push(execResult);
 
             if (this.pattern.global) {

@@ -11,7 +11,7 @@ import { CommandTrigger } from '../../types/commandTrigger';
 import { Noop } from '../../helpers/noop';
 import { MessageType } from '../../types/messageTypes';
 import { Sema as Semaphore } from 'async-sema';
-import { getOrSetIfNotExists } from '../../helpers/mapUtils';
+import { getOrCreateIfNotExists } from '../../helpers/mapUtils';
 import { CooldownInfo } from '../../dtos/cooldownInfo';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { ReplyInfo } from '../../dtos/replyInfo';
@@ -20,8 +20,7 @@ import { CommandActionPropertyProvider } from '../../types/propertyProvider';
 import { CommandActionProviders } from '../../dtos/propertyProviderSets';
 import { BotResponse } from '../../types/response';
 import { BotEventType } from '../../types/events';
-
-const REGEX_MATCH_LIMIT = 100;
+import { REGEX_MATCH_LIMIT } from '../../helpers/constants';
 
 export class CommandAction<
     TActionState extends IActionState
@@ -49,6 +48,7 @@ export class CommandAction<
     readonly condition: CommandCondition<TActionState>;
     readonly stateConstructor: () => TActionState;
     readonly readmeFactory: (botName: string) => string;
+    readonly semaphoreFactory: () => Semaphore;
 
     private lastCustomCooldown: Seconds | undefined;
 
@@ -79,6 +79,9 @@ export class CommandAction<
         this.maxAllowedSimultaniousExecutions =
             maxAllowedSimultaniousExecutions;
 
+        this.semaphoreFactory = () =>
+            new Semaphore(this.maxAllowedSimultaniousExecutions);
+
         this.key = `command:${this.name.replace('.', '-')}` as ActionKey;
     }
 
@@ -87,10 +90,10 @@ export class CommandAction<
     ): Promise<BotResponse[]> {
         let lock: Semaphore | undefined;
         if (this.maxAllowedSimultaniousExecutions != 0) {
-            lock = getOrSetIfNotExists(
+            lock = getOrCreateIfNotExists(
                 this.ratelimitSemaphores,
                 ctx.chatInfo.id,
-                new Semaphore(this.maxAllowedSimultaniousExecutions)
+                this.semaphoreFactory
             );
 
             await lock.acquire();

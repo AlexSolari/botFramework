@@ -3,6 +3,20 @@ type KeyedWriteableCollection<K, V> = KeyedReadonlyCollection<K, V> & {
     set: (key: K, value: V) => KeyedWriteableCollection<K, V>;
 };
 
+export function getOrCreateIfNotExists<K, V>(
+    map: KeyedWriteableCollection<K, V>,
+    key: K,
+    fallbackFactory: () => V
+) {
+    const existingValue = map.get(key);
+    if (existingValue) return existingValue;
+
+    const fallback = fallbackFactory();
+    map.set(key, fallback);
+
+    return fallback;
+}
+
 export function getOrSetIfNotExists<K, V>(
     map: KeyedWriteableCollection<K, V>,
     key: K,

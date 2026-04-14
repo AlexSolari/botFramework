@@ -66,7 +66,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                 queriesInProcessing.set(query.userId, query);
 
                 const actionPromises = this.inlineQueries.map(
-                    (inlineQueryAction) => {
+                    async (inlineQueryAction) => {
                         const ctx = new InlineQueryContextInternal(
                             this.storage,
                             this.scheduler,
@@ -79,42 +79,39 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
 
                         const { proxy, revoke } = Proxy.revocable(ctx, {});
 
-                        return this.executeAction(
-                            inlineQueryAction,
-                            proxy,
-                            (error, _) => {
-                                if (error.name == 'AbortError') {
-                                    this.eventEmitter.emit(
-                                        BotEventType.inlineProcessingAborted,
-                                        {
-                                            abortedQuery: query,
-                                            traceId: query.traceId
-                                        }
-                                    );
-                                } else {
-                                    this.eventEmitter.emit(BotEventType.error, {
-                                        error,
-                                        traceId: query.traceId
-                                    });
+                        try {
+                            await this.executeAction(
+                                inlineQueryAction,
+                                proxy,
+                                (error, _) => {
+                                    if (error.name == 'AbortError') {
+                                        this.eventEmitter.emit(
+                                            BotEventType.inlineProcessingAborted,
+                                            {
+                                                abortedQuery: query,
+                                                traceId: query.traceId
+                                            }
+                                        );
+                                    } else {
+                                        this.eventEmitter.emit(
+                                            BotEventType.error,
+                                            {
+                                                error,
+                                                traceId: query.traceId
+                                            }
+                                        );
+                                    }
                                 }
-                            }
-                        ).finally(() => {
+                            );
+                        } finally {
                             revoke();
                             this.api.flushResponses();
-                        });
+                        }
                     }
                 );
 
                 try {
                     await Promise.allSettled(actionPromises);
-                } catch (error) {
-                    this.eventEmitter.emit(BotEventType.error, {
-                        error:
-                            error instanceof Error
-                                ? error
-                                : new Error('Unknown error'),
-                        traceId: query.traceId
-                    });
                 } finally {
                     queriesInProcessing.delete(query.userId);
                     this.eventEmitter.emit(

@@ -8,7 +8,7 @@ import { IActionWithState, ActionKey } from '../../types/action';
 import { CachedStateFactory } from '../cachedStateFactory';
 import { ChatContextInternal } from '../context/chatContext';
 import { Noop } from '../../helpers/noop';
-import { getOrSetIfNotExists, getOrThrow } from '../../helpers/mapUtils';
+import { getOrCreateIfNotExists, getOrThrow } from '../../helpers/mapUtils';
 import { ScheduledActionPropertyProvider } from '../../types/propertyProvider';
 import { ScheduledActionProviders } from '../../dtos/propertyProviderSets';
 import { BotEventType } from '../../types/events';
@@ -17,6 +17,7 @@ export class ScheduledAction<
     TActionState extends IActionState
 > implements IActionWithState<TActionState> {
     static readonly locks = new Map<string, Semaphore>();
+    static readonly semaphoreFactory: () => Semaphore = () => new Semaphore(1);
 
     readonly name: string;
     readonly key: ActionKey;
@@ -113,10 +114,10 @@ export class ScheduledAction<
         );
 
         const semaphoreKey = `${this.key}_cached:${key}`;
-        const semaphore = getOrSetIfNotExists(
+        const semaphore = getOrCreateIfNotExists(
             ScheduledAction.locks,
             semaphoreKey,
-            new Semaphore(1)
+            ScheduledAction.semaphoreFactory
         );
 
         await semaphore.acquire();
