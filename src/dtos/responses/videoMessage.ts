@@ -2,7 +2,6 @@ import {
     BotResponseTypes,
     IReplyResponseWithContent
 } from '../../types/response';
-import { MessageSendingOptions } from '../../types/messageSendingOptions';
 import { IAction } from '../../types/action';
 import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';
@@ -20,7 +19,6 @@ export class VideoMessage implements IReplyResponseWithContent<InputFile> {
     readonly replyInfo: ReplyInfo | undefined;
     readonly traceId: TraceId;
     readonly disableWebPreview = false;
-    readonly shouldPin: boolean;
     readonly action: IAction;
 
     constructor(
@@ -28,14 +26,22 @@ export class VideoMessage implements IReplyResponseWithContent<InputFile> {
         chatInfo: ChatInfo,
         traceId: TraceId,
         action: IAction,
-        replyInfo: ReplyInfo | undefined,
-        options?: MessageSendingOptions
+        replyInfo?: ReplyInfo
     ) {
         this.content = video;
         this.chatInfo = chatInfo;
         this.replyInfo = replyInfo;
         this.traceId = traceId;
-        this.shouldPin = options?.pin ?? false;
         this.action = action;
+    }
+
+    get quotelessReply() {
+        return new VideoMessage(
+            this.content,
+            this.chatInfo,
+            this.traceId,
+            this.action,
+            undefined
+        );
     }
 }

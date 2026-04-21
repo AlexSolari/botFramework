@@ -72,6 +72,7 @@ export class InlineQueryAction implements IAction {
             ctx,
             traceId: ctx.observability.traceId
         });
+
         return [
             new InlineQueryResponse(
                 ctx.queryResults,

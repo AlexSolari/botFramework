@@ -4,10 +4,7 @@ import { Reaction } from '../../dtos/responses/reaction';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { VideoMessage } from '../../dtos/responses/videoMessage';
 import { IActionState } from '../../types/actionState';
-import {
-    TextMessageSendingOptions,
-    MessageSendingOptions
-} from '../../types/messageSendingOptions';
+import { TextMessageSendingOptions } from '../../types/messageSendingOptions';
 import { ReplyCaptureAction } from '../actions/replyCaptureAction';
 import { resolve } from 'path';
 import {
@@ -104,11 +101,7 @@ export class ReplyContextInternal<
         return this.createCaptureController(response);
     }
 
-    private replyWithImage(
-        name: string,
-        quote: boolean | string,
-        options?: MessageSendingOptions
-    ) {
+    private replyWithImage(name: string, quote: boolean | string) {
         const quotedPart = getQuotedText(this, quote);
 
         const response = new ImageMessage(
@@ -116,8 +109,7 @@ export class ReplyContextInternal<
             this.chatInfo,
             this.observability.traceId,
             this.action,
-            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
-            options
+            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined)
         );
 
         this.responses.push(response);
@@ -125,11 +117,7 @@ export class ReplyContextInternal<
         return this.createCaptureController(response);
     }
 
-    private replyWithVideo(
-        name: string,
-        quote: boolean | string,
-        options?: MessageSendingOptions
-    ) {
+    private replyWithVideo(name: string, quote: boolean | string) {
         const quotedPart = getQuotedText(this, quote);
 
         const response = new VideoMessage(
@@ -137,8 +125,7 @@ export class ReplyContextInternal<
             this.chatInfo,
             this.observability.traceId,
             this.action,
-            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
-            options
+            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined)
         );
 
         this.responses.push(response);
@@ -181,12 +168,8 @@ export class ReplyContextInternal<
              * @param text Message contents.
              * @param options Message sending option.
              */
-            withImage: (
-                name: string,
-                quote?: string,
-                options?: MessageSendingOptions
-            ) => {
-                return this.replyWithImage(name, quote ?? true, options);
+            withImage: (name: string, quote?: string) => {
+                return this.replyWithImage(name, quote ?? true);
             },
 
             /**
@@ -195,12 +178,8 @@ export class ReplyContextInternal<
              * @param text Message contents.
              * @param options Message sending option.
              */
-            withVideo: (
-                name: string,
-                quote?: string,
-                options?: MessageSendingOptions
-            ) => {
-                return this.replyWithVideo(name, quote ?? true, options);
+            withVideo: (name: string, quote?: string) => {
+                return this.replyWithVideo(name, quote ?? true);
             }
         },
 
@@ -219,8 +198,8 @@ export class ReplyContextInternal<
          * @param text Message contents.
          * @param options Message sending option.
          */
-        withImage: (name: string, options?: MessageSendingOptions) => {
-            return this.replyWithImage(name, false, options);
+        withImage: (name: string) => {
+            return this.replyWithImage(name, false);
         },
 
         /**
@@ -229,8 +208,8 @@ export class ReplyContextInternal<
          * @param text Message contents.
          * @param options Message sending option.
          */
-        withVideo: (name: string, options?: MessageSendingOptions) => {
-            return this.replyWithVideo(name, false, options);
+        withVideo: (name: string) => {
+            return this.replyWithVideo(name, false);
         },
 
         /**

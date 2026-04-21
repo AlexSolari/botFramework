@@ -1,13 +1,7 @@
 import { IStorageClient } from '../types/storage';
-import {
-    BotResponse,
-    BotResponseTypes,
-    IReplyResponse
-} from '../types/response';
+import { BotResponse, BotResponseTypes } from '../types/response';
 import { QueueItem, ResponseProcessingQueue } from './responseProcessingQueue';
 import { IReplyCapture } from '../types/capture';
-import { IActionWithState } from '../types/action';
-import { IActionState } from '../types/actionState';
 import { TraceId } from '../types/trace';
 import { ChatInfo } from '../dtos/chatInfo';
 import { TelegramApiClient, TelegramMessage } from '../types/externalAliases';
@@ -79,37 +73,40 @@ export class TelegramApiService {
                 callback: async () => {
                     try {
                         await this.processResponse(response);
-                    } catch (e) {
-                        const error = e as Error;
-                        if ('message' in (error as { message?: string })) {
-                            const telegramResponse = error as {
-                                message: string;
-                            };
+                    } catch (reason) {
+                        const error =
+                            reason instanceof Error
+                                ? reason
+                                : new Error('Unknown error');
 
-                            if (
-                                telegramResponse.message.includes(
-                                    TELEGRAM_ERROR_QUOTE_INVALID
-                                )
-                            ) {
+                        if (
+                            'quotelessReply' in response &&
+                            'message' in error &&
+                            error.message.includes(TELEGRAM_ERROR_QUOTE_INVALID)
+                        ) {
+                            this.eventEmitter.emit(BotEventType.error, {
+                                error: new Error(
+                                    'Quote error recieved, retrying without quote'
+                                ),
+                                traceId: response.traceId
+                            });
+
+                            try {
+                                await this.processResponse(
+                                    response.quotelessReply
+                                );
+                            } catch (reason) {
+                                const error =
+                                    reason instanceof Error
+                                        ? reason
+                                        : new Error('Unknown error');
                                 this.eventEmitter.emit(BotEventType.error, {
-                                    error: new Error(
-                                        'Quote error recieved, retrying without quote'
-                                    ),
+                                    error,
                                     traceId: response.traceId
                                 });
-
-                                try {
-                                    await this.processResponse(response, true);
-                                } catch (e) {
-                                    const error = e as Error;
-                                    this.eventEmitter.emit(BotEventType.error, {
-                                        error,
-                                        traceId: response.traceId
-                                    });
-                                }
-
-                                return;
                             }
+
+                            return;
                         }
 
                         this.eventEmitter.emit(BotEventType.error, {
@@ -136,43 +133,10 @@ export class TelegramApiService {
         });
     }
 
-    private async pinIfShould(
-        response: IReplyResponse,
-        message: TelegramMessage
-    ) {
-        if (response.shouldPin) {
-            this.eventEmitter.emit(BotEventType.apiRequestSending, {
-                response: null,
-                telegramMethod: this.methodMap['pin'],
-                traceId: response.traceId
-            });
-            await this.telegram.pinChatMessage(
-                response.chatInfo.id,
-                message.message_id,
-                { disable_notification: true }
-            );
-            this.eventEmitter.emit(BotEventType.apiRequestSent, {
-                response: null,
-                telegramMethod: this.methodMap['pin'],
-                traceId: response.traceId
-            });
-
-            await this.storage.updateStateFor(
-                response.action as IActionWithState<IActionState>,
-                response.chatInfo.id,
-                (state) => {
-                    state.pinnedMessages.push(message.message_id);
-                }
-            );
-        }
-    }
-
-    private async processResponse(response: BotResponse, ignoreQuote = false) {
-        const sentMessage = await this.sendApiRequest(response, ignoreQuote);
+    private async processResponse(response: BotResponse) {
+        const sentMessage = await this.sendApiRequest(response);
 
         if (sentMessage && 'content' in response) {
-            await this.pinIfShould(response, sentMessage);
-
             for (const capture of response.captures) {
                 this.captureRegistrationCallback(
                     capture,
@@ -185,8 +149,7 @@ export class TelegramApiService {
     }
 
     private async sendApiRequest(
-        response: BotResponse,
-        ignoreQuote: boolean
+        response: BotResponse
     ): Promise<TelegramMessage | null> {
         this.eventEmitter.emit(BotEventType.apiRequestSending, {
             response,
@@ -204,43 +167,37 @@ export class TelegramApiService {
                             reply_parameters: response.replyInfo
                                 ? {
                                       message_id: response.replyInfo.id,
-                                      quote: ignoreQuote
-                                          ? undefined
-                                          : response.replyInfo.quote
+                                      quote: response.replyInfo.quote
                                   }
                                 : undefined,
                             parse_mode: 'MarkdownV2',
                             link_preview_options: {
                                 is_disabled: response.disableWebPreview
                             },
-                            reply_markup: response.keyboard
-                                ? {
-                                      inline_keyboard: response.keyboard
-                                  }
-                                : undefined
+                            reply_markup: {
+                                inline_keyboard: response.keyboard ?? []
+                            }
                         }
                     );
                 case 'image':
                     return await this.telegram.sendPhoto(
                         response.chatInfo.id,
                         response.content,
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                        response.replyInfo?.id
-                            ? ({
-                                  reply_to_message_id: response.replyInfo.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              } as any)
-                            : undefined
+                        {
+                            // @ts-expect-error reply_parameters is bugged in sendPhoto,
+                            // fallback to reply_to_message_id which is deprecated but still functional
+                            reply_to_message_id: response.replyInfo?.id
+                        }
                     );
                 case 'video':
                     return await this.telegram.sendVideo(
                         response.chatInfo.id,
                         response.content,
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                        response.replyInfo?.id
-                            ? ({
-                                  reply_to_message_id: response.replyInfo.id // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              } as any)
-                            : undefined
+                        {
+                            // @ts-expect-error reply_parameters is bugged in sendPhoto,
+                            // fallback to reply_to_message_id which is deprecated but still functional
+                            reply_to_message_id: response.replyInfo?.id
+                        }
                     );
                 case 'react':
                     await this.telegram.setMessageReaction(
@@ -268,6 +225,22 @@ export class TelegramApiService {
                             state.pinnedMessages = state.pinnedMessages.filter(
                                 (x) => x != response.messageId
                             );
+                        }
+                    );
+
+                    return null;
+                case 'pin':
+                    await this.telegram.pinChatMessage(
+                        response.chatInfo.id,
+                        response.messageId,
+                        { disable_notification: true }
+                    );
+
+                    await this.storage.updateStateFor(
+                        response.action,
+                        response.chatInfo.id,
+                        (state) => {
+                            state.pinnedMessages.push(response.messageId);
                         }
                     );
 

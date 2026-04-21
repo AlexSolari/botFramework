@@ -5,10 +5,7 @@ import { Reaction } from '../../dtos/responses/reaction';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { VideoMessage } from '../../dtos/responses/videoMessage';
 import { ChatContextInternal } from './chatContext';
-import {
-    MessageSendingOptions,
-    TextMessageSendingOptions
-} from '../../types/messageSendingOptions';
+import { TextMessageSendingOptions } from '../../types/messageSendingOptions';
 import { ReplyInfo } from '../../dtos/replyInfo';
 import { CommandAction } from '../actions/commandAction';
 import { Seconds } from '../../types/timeValues';
@@ -101,11 +98,7 @@ export class MessageContextInternal<
         return this.createCaptureController(response);
     }
 
-    private replyWithImage(
-        name: string,
-        quote: boolean | string,
-        options?: MessageSendingOptions
-    ) {
+    private replyWithImage(name: string, quote: boolean | string) {
         const quotedPart = getQuotedText(this, quote);
 
         const response = new ImageMessage(
@@ -113,8 +106,7 @@ export class MessageContextInternal<
             this.chatInfo,
             this.observability.traceId,
             this.action,
-            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
-            options
+            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined)
         );
 
         this.responses.push(response);
@@ -122,11 +114,7 @@ export class MessageContextInternal<
         return this.createCaptureController(response);
     }
 
-    private replyWithVideo(
-        name: string,
-        quote: boolean | string,
-        options?: MessageSendingOptions
-    ) {
+    private replyWithVideo(name: string, quote: boolean | string) {
         const quotedPart = getQuotedText(this, quote);
 
         const response = new VideoMessage(
@@ -134,8 +122,7 @@ export class MessageContextInternal<
             this.chatInfo,
             this.observability.traceId,
             this.action,
-            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined),
-            options
+            new ReplyInfo(this.messageInfo.id, quote ? quotedPart : undefined)
         );
 
         this.responses.push(response);
@@ -178,11 +165,8 @@ export class MessageContextInternal<
              * @param text Message contents.
              * @param options Message sending option.
              */
-            withImage: (
-                name: string,
-                quote?: string,
-                options?: MessageSendingOptions
-            ) => this.replyWithImage(name, quote ?? true, options),
+            withImage: (name: string, quote?: string) =>
+                this.replyWithImage(name, quote ?? true),
 
             /**
              * Reply with video/gif message to message that triggered this action after action execution is finished.
@@ -190,11 +174,8 @@ export class MessageContextInternal<
              * @param text Message contents.
              * @param options Message sending option.
              */
-            withVideo: (
-                name: string,
-                quote?: string,
-                options?: MessageSendingOptions
-            ) => this.replyWithVideo(name, quote ?? true, options)
+            withVideo: (name: string, quote?: string) =>
+                this.replyWithVideo(name, quote ?? true)
         },
 
         /**
@@ -211,8 +192,7 @@ export class MessageContextInternal<
          * @param text Message contents.
          * @param options Message sending option.
          */
-        withImage: (name: string, options?: MessageSendingOptions) =>
-            this.replyWithImage(name, false, options),
+        withImage: (name: string) => this.replyWithImage(name, false),
 
         /**
          * Reply with video/gif message to message that triggered this action after action execution is finished.
@@ -220,8 +200,7 @@ export class MessageContextInternal<
          * @param text Message contents.
          * @param options Message sending option.
          */
-        withVideo: (name: string, options?: MessageSendingOptions) =>
-            this.replyWithVideo(name, false, options),
+        withVideo: (name: string) => this.replyWithVideo(name, false),
 
         /**
          * React to the message that triggered this action after action execution is finished.

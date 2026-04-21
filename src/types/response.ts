@@ -10,8 +10,10 @@ import { IReplyCapture } from './capture';
 import { ReplyInfo } from '../dtos/replyInfo';
 import { TraceId } from './trace';
 import { IAction } from './action';
+import { PinResponse } from '../dtos/responses/pin';
 
 export const BotResponseTypes = {
+    pin: 'pin',
     unpin: 'unpin',
     text: 'text',
     image: 'image',
@@ -28,7 +30,8 @@ export type BotResponse =
     | VideoMessage
     | DelayResponse
     | InlineQueryResponse
-    | ImageMessage;
+    | ImageMessage
+    | PinResponse;
 
 export interface IChatResponse {
     readonly kind: keyof typeof BotResponseTypes;
@@ -43,7 +46,8 @@ export interface IReplyResponse extends IChatResponse {
     readonly captures: IReplyCapture[];
     readonly replyInfo: ReplyInfo | undefined;
     readonly disableWebPreview: boolean;
-    readonly shouldPin: boolean;
+
+    get quotelessReply(): IReplyResponse;
 }
 
 export interface IReplyResponseWithContent<TType> extends IReplyResponse {

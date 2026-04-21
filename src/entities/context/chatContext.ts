@@ -3,10 +3,7 @@ import { ImageMessage } from '../../dtos/responses/imageMessage';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { VideoMessage } from '../../dtos/responses/videoMessage';
 import { UnpinResponse } from '../../dtos/responses/unpin';
-import {
-    MessageSendingOptions,
-    TextMessageSendingOptions
-} from '../../types/messageSendingOptions';
+import { TextMessageSendingOptions } from '../../types/messageSendingOptions';
 import { IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
 import { Milliseconds } from '../../types/timeValues';
@@ -16,6 +13,7 @@ import {
     BaseContextPropertiesToOmit
 } from './baseContext';
 import { ScheduledAction } from '../actions/scheduledAction';
+import { PinResponse } from '../../dtos/responses/pin';
 
 export type ChatContext<
     TActionState extends IActionState,
@@ -65,14 +63,12 @@ export class ChatContextInternal<
          * @param name Message contents.
          * @param options Message sending option.
          */
-        image: (name: string, options?: MessageSendingOptions) => {
+        image: (name: string) => {
             const response = new ImageMessage(
                 { source: resolve(`./content/${name}.png`) },
                 this.chatInfo,
                 this.observability.traceId,
-                this.action,
-                undefined,
-                options
+                this.action
             );
 
             this.responses.push(response);
@@ -86,14 +82,12 @@ export class ChatContextInternal<
          * @param name Message contents.
          * @param options Message sending option.
          */
-        video: (name: string, options?: MessageSendingOptions) => {
+        video: (name: string) => {
             const response = new VideoMessage(
                 { source: resolve(`./content/${name}.mp4`) },
                 this.chatInfo,
                 this.observability.traceId,
-                this.action,
-                undefined,
-                options
+                this.action
             );
 
             this.responses.push(response);
@@ -110,6 +104,22 @@ export class ChatContextInternal<
     unpinMessage(messageId: number) {
         this.responses.push(
             new UnpinResponse(
+                messageId,
+                this.chatInfo,
+                this.observability.traceId,
+                this.action
+            )
+        );
+    }
+
+    /**
+     * Pins message after action execution is finished.
+     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+     * @param messageId Message id.
+     */
+    pinMessage(messageId: number) {
+        this.responses.push(
+            new PinResponse(
                 messageId,
                 this.chatInfo,
                 this.observability.traceId,

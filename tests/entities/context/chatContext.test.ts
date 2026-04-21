@@ -226,15 +226,6 @@ describe('ChatContextInternal', () => {
 
             expect(controller.captureReplies).toBeDefined();
         });
-
-        test('should support sending options', () => {
-            const ctx = createChatContext();
-
-            ctx.send.image('test', { pin: true });
-
-            const response = ctx.responses[0] as ImageMessage;
-            expect(response.shouldPin).toBe(true);
-        });
     });
 
     describe('send.video', () => {

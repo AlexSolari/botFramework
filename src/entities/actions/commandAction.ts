@@ -183,10 +183,19 @@ export class CommandAction<
         trigger: CommandTrigger,
         state: TActionState
     ) {
+        if (!ctx.userInfo.id)
+            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
+                'UserIdMissing'
+            );
+
         if (!this.isActiveProvider(ctx))
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
                 'ActionDisabled'
             );
+
+        const triggerCheckResult = this.checkTrigger(ctx, trigger);
+
+        if (!triggerCheckResult.shouldExecute) return triggerCheckResult;
 
         const chatsBlacklist = this.chatsBlacklistProvider(ctx);
         const chatsWhitelist = this.chatsWhitelistProvider(ctx);
@@ -199,15 +208,6 @@ export class CommandAction<
         if (isChatInBlacklist || !isChatInWhitelist)
             return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
                 'ChatForbidden'
-            );
-
-        const triggerCheckResult = this.checkTrigger(ctx, trigger);
-
-        if (!triggerCheckResult.shouldExecute) return triggerCheckResult;
-
-        if (!ctx.userInfo.id)
-            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
-                'UserIdMissing'
             );
 
         const usersWhitelist = this.usersWhitelistProvider(ctx);

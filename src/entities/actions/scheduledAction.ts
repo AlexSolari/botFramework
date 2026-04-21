@@ -100,6 +100,7 @@ export class ScheduledAction<
                 traceId: ctx.observability.traceId
             }
         );
+
         return ctx.responses;
     }
 

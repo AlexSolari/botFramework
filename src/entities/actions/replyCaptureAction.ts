@@ -61,6 +61,7 @@ export class ReplyCaptureAction<
             ctx,
             traceId: ctx.observability.traceId
         });
+
         return ctx.responses;
     }
 
