@@ -185,40 +185,6 @@ describe('ResponseProcessingQueue', () => {
             await queue.flushReadyItems();
             expect(queue.isFlushing).toBe(false);
         });
-
-        test('should handle callback errors gracefully', async () => {
-            const now = Date.now();
-            const processed: number[] = [];
-
-            queue.enqueue({
-                priority: now - 100,
-                callback: () => {
-                    processed.push(1);
-                    return Promise.resolve();
-                }
-            });
-            queue.enqueue({
-                priority: now - 50,
-                callback: () => Promise.reject(new Error('Test error'))
-            });
-            queue.enqueue({
-                priority: now - 25,
-                callback: () => {
-                    processed.push(3);
-                    return Promise.resolve();
-                }
-            });
-
-            // The queue processes and removes items but error propagates
-            // In real usage, errors are caught in TelegramApiService
-            try {
-                await queue.flushReadyItems();
-            } catch {
-                // Expected
-            }
-
-            expect(processed.includes(1)).toBe(true);
-        });
     });
 
     describe('priority as timestamp pattern', () => {

@@ -43,7 +43,7 @@ export class ResponseProcessingQueue {
                 if (Date.now() >= this.items[0].priority) {
                     const item = this.items.shift();
 
-                    await item?.callback();
+                    void item?.callback();
                 }
             }
         } finally {
