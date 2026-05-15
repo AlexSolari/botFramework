@@ -13,7 +13,7 @@ import {
 } from '../../types/messageTypes';
 import { typeSafeObjectFromEntries } from '../../helpers/objectFromEntries';
 import { BaseActionProcessor } from './baseProcessor';
-import { getOrSetIfNotExists } from '../../helpers/mapUtils';
+import { getOrCreateIfNotExists } from '../../helpers/mapUtils';
 import { ChatHistoryMessage } from '../../dtos/chatHistoryMessage';
 import { BotInfo, TelegramBot } from '../../types/externalAliases';
 import { BotEventType } from '../../types/events';
@@ -21,6 +21,9 @@ import { TraceId } from '../../types/trace';
 import { MESSAGE_HISTORY_LENGTH_LIMIT } from '../../helpers/constants';
 
 export class CommandActionProcessor extends BaseActionProcessor {
+    private static readonly fallbackFactory: () => ChatHistoryMessage[] =
+        () => [];
+
     private readonly replyCaptures: ReplyCaptureAction<IActionState>[] = [];
     private readonly chatHistory = new Map<number, ChatHistoryMessage[]>();
     private botInfo!: BotInfo;
@@ -70,7 +73,11 @@ export class CommandActionProcessor extends BaseActionProcessor {
                 const internalMessage = new IncomingMessage(
                     message,
                     this.botName,
-                    getOrSetIfNotExists(this.chatHistory, message.chat.id, [])
+                    getOrCreateIfNotExists(
+                        this.chatHistory,
+                        message.chat.id,
+                        CommandActionProcessor.fallbackFactory
+                    )
                 );
 
                 this.eventEmitter.emit(BotEventType.messageRecieved, {
@@ -131,17 +138,11 @@ export class CommandActionProcessor extends BaseActionProcessor {
         );
     }
 
-    private async startMessageProcessing(msg: IncomingMessage) {
-        this.eventEmitter.emit(BotEventType.messageProcessingStarted, {
-            botInfo: this.botInfo,
-            message: msg,
-            traceId: msg.traceId
-        });
-
-        const chatHistoryArray = getOrSetIfNotExists(
+    private updateChatHistory(msg: IncomingMessage) {
+        const chatHistoryArray = getOrCreateIfNotExists(
             this.chatHistory,
             msg.chatInfo.id,
-            []
+            CommandActionProcessor.fallbackFactory
         );
 
         while (chatHistoryArray.length > MESSAGE_HISTORY_LENGTH_LIMIT)
@@ -158,63 +159,82 @@ export class CommandActionProcessor extends BaseActionProcessor {
                 msg.updateObject.date
             )
         );
+    }
 
-        const commandsToCheck = new Set(this.commands[msg.type]);
-        if (msg.type != MessageType.Text && msg.text != '') {
-            for (const command of this.commands[MessageType.Text]) {
-                commandsToCheck.add(command);
-            }
+    private async processCommand(
+        command: CommandAction<IActionState>,
+        msg: IncomingMessage
+    ) {
+        const ctx = new MessageContextInternal<IActionState>(
+            this.storage,
+            this.scheduler,
+            this.eventEmitter,
+            command,
+            msg,
+            this.botName,
+            this.botInfo
+        );
+
+        const { proxy, revoke } = Proxy.revocable(ctx, {});
+
+        try {
+            await this.executeAction(command, proxy);
+        } finally {
+            revoke();
         }
+    }
 
-        const actionPromises = [...commandsToCheck].map(async (command) => {
-            const ctx = new MessageContextInternal<IActionState>(
-                this.storage,
-                this.scheduler,
-                this.eventEmitter,
-                command,
-                msg,
-                this.botName,
-                this.botInfo
-            );
+    private async processReply(
+        capture: ReplyCaptureAction<IActionState>,
+        msg: IncomingMessage
+    ) {
+        const ctx = new ReplyContextInternal<IActionState>(
+            this.storage,
+            this.scheduler,
+            this.eventEmitter,
+            capture,
+            msg,
+            this.botName,
+            this.botInfo
+        );
 
-            const { proxy, revoke } = Proxy.revocable(ctx, {});
+        const { proxy, revoke } = Proxy.revocable(ctx, {});
 
-            try {
-                await this.executeAction(command, proxy);
-            } finally {
-                revoke();
-                this.api.flushResponses();
-            }
+        try {
+            await this.executeAction(capture, proxy);
+        } finally {
+            revoke();
+        }
+    }
+
+    private async startMessageProcessing(msg: IncomingMessage) {
+        this.eventEmitter.emit(BotEventType.messageProcessingStarted, {
+            botInfo: this.botInfo,
+            message: msg,
+            traceId: msg.traceId
         });
 
-        if (this.replyCaptures.length != 0) {
-            const replyPromises = this.replyCaptures.map(async (capture) => {
-                const replyCtx = new ReplyContextInternal<IActionState>(
-                    this.storage,
-                    this.scheduler,
-                    this.eventEmitter,
-                    capture,
-                    msg,
-                    this.botName,
-                    this.botInfo
-                );
+        this.updateChatHistory(msg);
 
-                const { proxy, revoke } = Proxy.revocable(replyCtx, {});
+        const baseCommands = this.commands[msg.type];
+        const commandsToCheck =
+            msg.type != MessageType.Text && msg.text != ''
+                ? new Set([...baseCommands, ...this.commands[MessageType.Text]])
+                : baseCommands;
 
-                try {
-                    await this.executeAction(capture, proxy);
-                } finally {
-                    revoke();
-                    this.api.flushResponses();
-                }
-            });
+        const actionPromises: Promise<void>[] = [];
+        for (const command of commandsToCheck) {
+            actionPromises.push(this.processCommand(command, msg));
+        }
 
-            actionPromises.push(...replyPromises);
+        for (const capture of this.replyCaptures) {
+            actionPromises.push(this.processReply(capture, msg));
         }
 
         try {
             await Promise.allSettled(actionPromises);
         } finally {
+            this.api.flushResponses();
             this.eventEmitter.emit(BotEventType.messageProcessingFinished, {
                 botInfo: this.botInfo,
                 message: msg,

@@ -1,4 +1,3 @@
-import { randomInt } from 'crypto';
 import { MessageType, MessageTypeValue } from '../types/messageTypes';
 import { ChatInfo } from './chatInfo';
 import { createTrace } from '../helpers/traceFactory';
@@ -43,7 +42,7 @@ export class IncomingMessage {
         this.traceId = createTrace(
             this,
             botName,
-            randomInt(10000, 99999).toString()
+            Math.floor(Math.random() * 90000 + 10000).toString()
         );
         this.messageId = ctxMessage.message_id;
         this.replyToMessageId =
@@ -66,6 +65,6 @@ export class IncomingMessage {
     private getMessageText(ctxMessage: TelegramMessage) {
         if ('text' in ctxMessage) return ctxMessage.text;
 
-        return 'caption' in ctxMessage ? ctxMessage.caption ?? '' : '';
+        return 'caption' in ctxMessage ? (ctxMessage.caption ?? '') : '';
     }
 }
