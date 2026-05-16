@@ -180,6 +180,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         try {
             await this.executeAction(command, proxy);
         } finally {
+            this.api.flushResponses();
             revoke();
         }
     }
@@ -203,6 +204,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         try {
             await this.executeAction(capture, proxy);
         } finally {
+            this.api.flushResponses();
             revoke();
         }
     }
@@ -234,7 +236,6 @@ export class CommandActionProcessor extends BaseActionProcessor {
         try {
             await Promise.allSettled(actionPromises);
         } finally {
-            this.api.flushResponses();
             this.eventEmitter.emit(BotEventType.messageProcessingFinished, {
                 botInfo: this.botInfo,
                 message: msg,
