@@ -54,6 +54,8 @@ export abstract class BaseActionProcessor {
             const responses = await action.exec(ctx);
 
             this.api.enqueueBatchedResponses(responses);
+
+            return responses;
         } catch (e) {
             const error = e as Error;
 
@@ -62,6 +64,8 @@ export abstract class BaseActionProcessor {
             } else {
                 this.defaultErrorHandler(error, ctx);
             }
+
+            return [];
         }
     }
 }

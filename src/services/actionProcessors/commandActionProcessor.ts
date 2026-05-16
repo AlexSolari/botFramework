@@ -19,6 +19,7 @@ import { BotInfo, TelegramBot } from '../../types/externalAliases';
 import { BotEventType } from '../../types/events';
 import { TraceId } from '../../types/trace';
 import { MESSAGE_HISTORY_LENGTH_LIMIT } from '../../helpers/constants';
+import { BotResponse } from '../../types/response';
 
 export class CommandActionProcessor extends BaseActionProcessor {
     private static readonly fallbackFactory: () => ChatHistoryMessage[] =
@@ -177,10 +178,13 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         const { proxy, revoke } = Proxy.revocable(ctx, {});
 
+        let responses: BotResponse[] | undefined = undefined;
         try {
-            await this.executeAction(command, proxy);
+            responses = await this.executeAction(command, proxy);
         } finally {
-            this.api.flushResponses();
+            if (responses && responses.length > 0) {
+                this.api.flushResponses();
+            }
             revoke();
         }
     }
@@ -201,10 +205,13 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         const { proxy, revoke } = Proxy.revocable(ctx, {});
 
+        let responses: BotResponse[] | undefined = undefined;
         try {
-            await this.executeAction(capture, proxy);
+            responses = await this.executeAction(capture, proxy);
         } finally {
-            this.api.flushResponses();
+            if (responses && responses.length > 0) {
+                this.api.flushResponses();
+            }
             revoke();
         }
     }
