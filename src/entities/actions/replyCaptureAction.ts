@@ -38,12 +38,14 @@ export class ReplyCaptureAction<
     }
 
     async exec(ctx: ReplyContextInternal<TParentActionState>) {
-        const { shouldExecute, matchResults } = this.triggers
-            .map((x) => this.checkIfShouldBeExecuted(ctx, x))
-            .reduce(
-                (acc, curr) => acc.mergeWith(curr),
-                CommandTriggerCheckResult.DoNotTrigger('Other')
+        let triggerCheckResult =
+            CommandTriggerCheckResult.DoNotTrigger('Other');
+        for (const trigger of this.triggers) {
+            triggerCheckResult = triggerCheckResult.mergeWith(
+                this.checkIfShouldBeExecuted(ctx, trigger)
             );
+        }
+        const { shouldExecute, matchResults } = triggerCheckResult;
 
         if (!shouldExecute) return Noop.NoResponse;
 

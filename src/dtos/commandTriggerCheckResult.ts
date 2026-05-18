@@ -23,18 +23,17 @@ export class CommandTriggerCheckResult {
     }
 
     constructor(
-        readonly shouldExecute: boolean,
-        readonly matchResults: RegExpExecArray[],
-        readonly skipCooldown: boolean,
-        readonly reason?: SkipTriggerReasons
+        public shouldExecute: boolean,
+        public matchResults: RegExpExecArray[],
+        public skipCooldown: boolean,
+        public reason?: SkipTriggerReasons
     ) {}
 
-    mergeWith(other: CommandTriggerCheckResult) {
-        return new CommandTriggerCheckResult(
-            this.shouldExecute || other.shouldExecute,
-            this.matchResults.concat(other.matchResults),
-            this.skipCooldown || other.skipCooldown,
-            other.reason
-        );
+    mergeWith(other: CommandTriggerCheckResult): this {
+        this.shouldExecute = this.shouldExecute || other.shouldExecute;
+        this.matchResults.push(...other.matchResults);
+        this.skipCooldown = this.skipCooldown || other.skipCooldown;
+        this.reason = other.reason;
+        return this;
     }
 }

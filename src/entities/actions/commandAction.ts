@@ -105,13 +105,15 @@ export class CommandAction<
                 ctx.chatInfo.id
             );
 
+            let triggerCheckResult =
+                CommandTriggerCheckResult.DoNotTrigger('Other');
+            for (const trigger of this.triggers) {
+                triggerCheckResult = triggerCheckResult.mergeWith(
+                    this.checkIfShouldBeExecuted(ctx, trigger, state)
+                );
+            }
             const { shouldExecute, matchResults, skipCooldown, reason } =
-                this.triggers
-                    .map((x) => this.checkIfShouldBeExecuted(ctx, x, state))
-                    .reduce(
-                        (acc, curr) => acc.mergeWith(curr),
-                        CommandTriggerCheckResult.DoNotTrigger('Other')
-                    );
+                triggerCheckResult;
 
             if (!shouldExecute) {
                 if (reason == 'OnCooldown') {
