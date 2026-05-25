@@ -90,8 +90,10 @@ export abstract class BaseContextInternal<TAction extends IAction> {
         action: IActionWithState<TAnotherActionState>
     ) {
         const allStates = this.storage.load(action);
-        const stateForChat =
-            allStates[this.chatInfo.id] ?? action.stateConstructor();
+        const stateForChat = {
+            ...action.stateConstructor(),
+            ...allStates[this.chatInfo.id]
+        };
 
         return Object.freeze(structuredClone(stateForChat));
     }

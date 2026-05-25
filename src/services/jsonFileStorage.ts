@@ -160,7 +160,7 @@ export class JsonFileStorage implements IStorageClient {
     ) {
         const value = this.data.load<TActionState>(action);
 
-        return value[chatId] ?? action.stateConstructor();
+        return { ...action.stateConstructor(), ...value[chatId] };
     }
 
     async saveActionExecutionResult<TActionState extends IActionState>(
@@ -190,7 +190,7 @@ export class JsonFileStorage implements IStorageClient {
     ) {
         await this.lock(action.key, async () => {
             const data = this.data.load(action);
-            const state = data[chatId] ?? action.stateConstructor();
+            const state = { ...action.stateConstructor(), ...data[chatId] };
 
             await update(state);
 
