@@ -75,7 +75,10 @@ export class ReplyContextInternal<
         this.userInfo = new UserInfo(
             message.from?.id ?? null,
             (message.from?.first_name ?? 'Unknown user') +
-                (message.from?.last_name ? ` ${message.from.last_name}` : '')
+                (message.from?.last_name ? ` ${message.from.last_name}` : ''),
+            message.from?.username
+                ? `@${message.from.username}`
+                : 'Unknown user'
         );
         this.botInfo = botInfo;
     }
