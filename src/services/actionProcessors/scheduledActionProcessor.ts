@@ -1,4 +1,3 @@
-import moment from 'moment';
 import { ChatInfo } from '../../dtos/chatInfo';
 import { ScheduledAction } from '../../entities/actions/scheduledAction';
 import { ChatContextInternal } from '../../entities/context/chatContext';
@@ -42,9 +41,9 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
         this.scheduled = scheduled;
 
         if (this.scheduled.length > 0) {
-            const now = moment();
+            const now = new Date();
 
-            if (now.minute() == 0 && now.second() == 0) {
+            if (now.getMinutes() == 0 && now.getSeconds() == 0) {
                 this.scheduler.createTask(
                     'ScheduledProcessing',
                     () => void this.runScheduled(),
@@ -56,12 +55,13 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                 return;
             }
 
-            let nextExecutionTime = now.clone().startOf('hour');
-            if (now.minute() > 0 || now.second() > 0) {
-                nextExecutionTime = nextExecutionTime.add(1, 'hour');
+            let nextExecutionTime = new Date(now);
+            nextExecutionTime.setMinutes(0, 0, 0);
+            if (now.getMinutes() > 0 || now.getSeconds() > 0) {
+                nextExecutionTime = new Date(nextExecutionTime.getTime() + 3600000);
             }
 
-            const delay = nextExecutionTime.diff(now);
+            const delay = nextExecutionTime.getTime() - now.getTime();
 
             this.scheduler.createOnetimeTask(
                 'ScheduledProcessing_OneTime',

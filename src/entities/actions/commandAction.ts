@@ -1,4 +1,3 @@
-import moment from 'moment';
 import { CommandHandler } from '../../types/handlers';
 import { CommandCondition } from '../../types/commandCondition';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
@@ -156,7 +155,7 @@ export class CommandAction<
             if (ctx.startCooldown) {
                 this.lastCustomCooldown = ctx.customCooldown;
 
-                state.lastExecutedDate = moment().valueOf();
+                state.lastExecutedDate = Date.now();
             }
 
             await ctx.storage.saveActionExecutionResult(
@@ -222,12 +221,12 @@ export class CommandAction<
                 'UserForbidden'
             );
 
-        const lastExecutedDate = moment(state.lastExecutedDate);
+        const lastExecutedDate = state.lastExecutedDate;
         const cooldownInMilliseconds = secondsToMilliseconds(
             this.lastCustomCooldown ?? this.cooldownInfoProvider(ctx).cooldown
         );
         const onCooldown =
-            moment().diff(lastExecutedDate) < cooldownInMilliseconds;
+            Date.now() - lastExecutedDate < cooldownInMilliseconds;
 
         if (onCooldown)
             return CommandTriggerCheckResult.DoNotTrigger('OnCooldown');

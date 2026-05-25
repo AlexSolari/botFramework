@@ -1,4 +1,3 @@
-import moment from 'moment';
 import { Sema as Semaphore } from 'async-sema';
 import { ScheduledHandler } from '../../types/handlers';
 import { hoursToMilliseconds } from '../../helpers/timeConvertions';
@@ -83,7 +82,7 @@ export class ScheduledAction<
             state
         );
 
-        state.lastExecutedDate = moment().valueOf();
+        state.lastExecutedDate = Date.now();
 
         await ctx.storage.saveActionExecutionResult(
             this,
@@ -169,15 +168,15 @@ export class ScheduledAction<
         state: IActionState,
         ctx: ChatContextInternal<TActionState>
     ): boolean {
-        const startOfToday = moment().startOf('day').valueOf();
-        const lastExecutedDate = moment(state.lastExecutedDate);
-        const currentTime = moment();
-        const scheduledTime = moment()
-            .startOf('day')
-            .add(this.timeinHoursProvider(ctx), 'hours');
+        const now = new Date();
+        const startOfToday = new Date(now).setHours(0, 0, 0, 0);
+        const lastExecutedDate = new Date(state.lastExecutedDate);
+        const currentTime = now;
+        const scheduledTime = new Date(new Date().setHours(0, 0, 0, 0));
+        scheduledTime.setTime(scheduledTime.getTime() + this.timeinHoursProvider(ctx) * 3600000);
 
-        const isAllowedToTrigger = currentTime.isSameOrAfter(scheduledTime);
-        const hasTriggeredToday = lastExecutedDate.isAfter(startOfToday);
+        const isAllowedToTrigger = currentTime >= scheduledTime;
+        const hasTriggeredToday = lastExecutedDate.getTime() > startOfToday;
 
         return isAllowedToTrigger && !hasTriggeredToday;
     }
