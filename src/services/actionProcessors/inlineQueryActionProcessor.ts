@@ -54,7 +54,17 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                         }
                     );
 
-                    queryBeingProcessed.abortController.abort();
+                    try {
+                        queryBeingProcessed.abortController.abort();
+                    } catch {
+                        this.eventEmitter.emit(
+                            BotEventType.inlineProcessingAborted,
+                            {
+                                abortedQuery: queryBeingProcessed,
+                                traceId: query.traceId
+                            }
+                        );
+                    }
                     queriesInProcessing.delete(query.userId);
                 }
 
