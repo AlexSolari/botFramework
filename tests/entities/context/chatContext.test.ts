@@ -14,6 +14,11 @@ import { TraceId } from '../../../src/types/trace';
 import { ScheduledAction } from '../../../src/entities/actions/scheduledAction';
 import { createMockScheduler } from '../../services/actionProcessors/processorTestHelpers';
 import { IStorageClient } from '../../../src/types/storage';
+import {
+    DeleteAfterTimeout,
+    ReplyCapture
+} from '../../../src/types/postSendOperations';
+import { DeleteMessageResponse } from '../../../src/dtos/responses/deleteMessage';
 
 // Create a mock storage with configurable load response
 function createMockStorage(
@@ -324,7 +329,7 @@ describe('ChatContextInternal', () => {
             controller.captureReplies(['yes', 'no'], async () => {});
 
             const response = ctx.responses[0] as TextMessage;
-            expect(response.captures.length).toBe(1);
+            expect(response.postSendOperations.length).toBe(1);
         });
 
         test('captureReplies should set triggers', () => {
@@ -335,7 +340,9 @@ describe('ChatContextInternal', () => {
             controller.captureReplies(triggers, async () => {});
 
             const response = ctx.responses[0] as TextMessage;
-            expect(response.captures[0].trigger).toBe(triggers);
+            expect(
+                (response.postSendOperations[0] as ReplyCapture).trigger
+            ).toBe(triggers);
         });
 
         test('captureReplies should set handler', () => {
@@ -346,7 +353,9 @@ describe('ChatContextInternal', () => {
             controller.captureReplies(['yes'], handler);
 
             const response = ctx.responses[0] as TextMessage;
-            expect(response.captures[0].handler).toBe(handler);
+            expect(
+                (response.postSendOperations[0] as ReplyCapture).handler
+            ).toBe(handler);
         });
 
         test('captureReplies should create default AbortController if not provided', () => {
@@ -356,9 +365,9 @@ describe('ChatContextInternal', () => {
             controller.captureReplies(['yes'], async () => {});
 
             const response = ctx.responses[0] as TextMessage;
-            expect(response.captures[0].abortController).toBeInstanceOf(
-                AbortController
-            );
+            expect(
+                (response.postSendOperations[0] as ReplyCapture).abortController
+            ).toBeInstanceOf(AbortController);
         });
 
         test('captureReplies should use provided AbortController', () => {
@@ -369,7 +378,9 @@ describe('ChatContextInternal', () => {
             controller.captureReplies(['yes'], async () => {}, abortController);
 
             const response = ctx.responses[0] as TextMessage;
-            expect(response.captures[0].abortController).toBe(abortController);
+            expect(
+                (response.postSendOperations[0] as ReplyCapture).abortController
+            ).toBe(abortController);
         });
 
         test('captureReplies should set action reference', () => {
@@ -379,7 +390,180 @@ describe('ChatContextInternal', () => {
             controller.captureReplies(['yes'], async () => {});
 
             const response = ctx.responses[0] as TextMessage;
-            expect(response.captures[0].action).toBe(ctx.action);
+            expect(
+                (response.postSendOperations[0] as ReplyCapture).action
+            ).toBe(ctx.action);
+        });
+
+        test('pin should add a pin operation to postSendOperations', () => {
+            const ctx = createChatContext();
+
+            const controller = ctx.send.text('Pinned message');
+            controller.pin();
+
+            const response = ctx.responses[0] as TextMessage;
+            expect(response.postSendOperations.length).toBe(1);
+            expect(response.postSendOperations[0].kind).toBe('pin');
+        });
+
+        test('pin should work on image response', () => {
+            const ctx = createChatContext();
+
+            const controller = ctx.send.image('photo.jpg');
+            controller.pin();
+
+            const response = ctx.responses[0] as ImageMessage;
+            expect(response.postSendOperations.length).toBe(1);
+            expect(response.postSendOperations[0].kind).toBe('pin');
+        });
+
+        test('pin should work on video response', () => {
+            const ctx = createChatContext();
+
+            const controller = ctx.send.video('clip.mp4');
+            controller.pin();
+
+            const response = ctx.responses[0] as VideoMessage;
+            expect(response.postSendOperations.length).toBe(1);
+            expect(response.postSendOperations[0].kind).toBe('pin');
+        });
+
+        test('deleteAfter should add a deleteAfterTimeout operation to postSendOperations', () => {
+            const ctx = createChatContext();
+
+            const controller = ctx.send.text('Temporary message');
+            controller.deleteAfter(5000);
+
+            const response = ctx.responses[0] as TextMessage;
+            expect(response.postSendOperations.length).toBe(1);
+            expect(response.postSendOperations[0].kind).toBe(
+                'deleteAfterTimeout'
+            );
+        });
+
+        test('deleteAfter should store the correct timeout value', () => {
+            const ctx = createChatContext();
+
+            const controller = ctx.send.text('Temporary message');
+            controller.deleteAfter(30000);
+
+            const response = ctx.responses[0] as TextMessage;
+            const op = response.postSendOperations[0] as DeleteAfterTimeout;
+            expect(op.timeout).toBe(30000);
+        });
+
+        test('deleteAfter should work on image response', () => {
+            const ctx = createChatContext();
+
+            const controller = ctx.send.image('photo.jpg');
+            controller.deleteAfter(1000);
+
+            const response = ctx.responses[0] as ImageMessage;
+            const op = response.postSendOperations[0] as DeleteAfterTimeout;
+            expect(op.kind).toBe('deleteAfterTimeout');
+            expect(op.timeout).toBe(1000);
+        });
+
+        test('multiple operations can be stacked on a single response', () => {
+            const ctx = createChatContext();
+            const abortController = new AbortController();
+
+            const controller = ctx.send.text('Multi-op message');
+            controller.captureReplies(['yes'], async () => {}, abortController);
+            controller.pin();
+            controller.deleteAfter(10000);
+
+            const response = ctx.responses[0] as TextMessage;
+            expect(response.postSendOperations.length).toBe(3);
+            expect(response.postSendOperations[0].kind).toBe('captureReplies');
+            expect(response.postSendOperations[1].kind).toBe('pin');
+            expect(response.postSendOperations[2].kind).toBe(
+                'deleteAfterTimeout'
+            );
+        });
+
+        test('operations on one response do not affect other responses', () => {
+            const ctx = createChatContext();
+
+            const c1 = ctx.send.text('First');
+            const c2 = ctx.send.text('Second');
+
+            c1.pin();
+            c2.deleteAfter(500);
+
+            const r1 = ctx.responses[0] as TextMessage;
+            const r2 = ctx.responses[1] as TextMessage;
+
+            expect(r1.postSendOperations.length).toBe(1);
+            expect(r1.postSendOperations[0].kind).toBe('pin');
+            expect(r2.postSendOperations.length).toBe(1);
+            expect(r2.postSendOperations[0].kind).toBe('deleteAfterTimeout');
+        });
+    });
+
+    describe('DeleteMessageResponse', () => {
+        test('should have kind deleteMessage', () => {
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+            const response = new DeleteMessageResponse(
+                42,
+                chatInfo,
+                'trace-1' as TraceId,
+                createMockAction()
+            );
+
+            expect(response.kind).toBe('deleteMessage');
+        });
+
+        test('should store messageId', () => {
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+            const response = new DeleteMessageResponse(
+                99,
+                chatInfo,
+                'trace-1' as TraceId,
+                createMockAction()
+            );
+
+            expect(response.messageId).toBe(99);
+        });
+
+        test('should store chatInfo', () => {
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+            const response = new DeleteMessageResponse(
+                1,
+                chatInfo,
+                'trace-1' as TraceId,
+                createMockAction()
+            );
+
+            expect(response.chatInfo).toBe(chatInfo);
+        });
+
+        test('should store traceId', () => {
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+            const traceId = 'trace-abc' as TraceId;
+            const response = new DeleteMessageResponse(
+                1,
+                chatInfo,
+                traceId,
+                createMockAction()
+            );
+
+            expect(response.traceId).toBe(traceId);
+        });
+
+        test('should record createdAt timestamp', () => {
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+            const before = Date.now();
+            const response = new DeleteMessageResponse(
+                1,
+                chatInfo,
+                'trace-1' as TraceId,
+                createMockAction()
+            );
+            const after = Date.now();
+
+            expect(response.createdAt).toBeGreaterThanOrEqual(before);
+            expect(response.createdAt).toBeLessThanOrEqual(after);
         });
     });
 

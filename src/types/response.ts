@@ -6,11 +6,12 @@ import { Reaction } from '../dtos/responses/reaction';
 import { TextMessage } from '../dtos/responses/textMessage';
 import { UnpinResponse } from '../dtos/responses/unpin';
 import { VideoMessage } from '../dtos/responses/videoMessage';
-import { IReplyCapture } from './capture';
 import { ReplyInfo } from '../dtos/replyInfo';
 import { TraceId } from './trace';
 import { IAction } from './action';
+import { PostSendOperation } from './postSendOperations';
 import { PinResponse } from '../dtos/responses/pin';
+import { DeleteMessageResponse } from '../dtos/responses/deleteMessage';
 
 export const BotResponseTypes = {
     pin: 'pin',
@@ -20,7 +21,8 @@ export const BotResponseTypes = {
     video: 'video',
     react: 'react',
     delay: 'delay',
-    inlineQuery: 'inlineQuery'
+    inlineQuery: 'inlineQuery',
+    deleteMessage: 'deleteMessage'
 } as const;
 
 export type BotResponse =
@@ -31,7 +33,8 @@ export type BotResponse =
     | DelayResponse
     | InlineQueryResponse
     | ImageMessage
-    | PinResponse;
+    | PinResponse
+    | DeleteMessageResponse;
 
 export interface IChatResponse {
     readonly kind: keyof typeof BotResponseTypes;
@@ -43,7 +46,7 @@ export interface IChatResponse {
 }
 
 export interface IReplyResponse extends IChatResponse {
-    readonly captures: IReplyCapture[];
+    readonly postSendOperations: PostSendOperation[];
     readonly replyInfo: ReplyInfo | undefined;
     readonly disableWebPreview: boolean;
 

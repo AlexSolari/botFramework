@@ -6,13 +6,13 @@ import { IAction } from '../../types/action';
 import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';
 import { ReplyInfo } from '../replyInfo';
-import { IReplyCapture } from '../../types/capture';
+import { PostSendOperation } from '../../types/postSendOperations';
 import { InputFile } from '../../types/inputFile';
 
 export class VideoMessage implements IReplyResponseWithContent<InputFile> {
     readonly kind = BotResponseTypes.video;
     readonly createdAt = Date.now();
-    readonly captures: IReplyCapture[] = [];
+    readonly postSendOperations: PostSendOperation[] = [];
 
     readonly content: InputFile;
     readonly chatInfo: ChatInfo;

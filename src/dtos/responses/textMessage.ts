@@ -7,13 +7,13 @@ import { IAction } from '../../types/action';
 import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';
 import { ReplyInfo } from '../replyInfo';
-import { IReplyCapture } from '../../types/capture';
+import { PostSendOperation } from '../../types/postSendOperations';
 import { TelegramInlineKeyboardButton } from '../../types/externalAliases';
 
 export class TextMessage implements IReplyResponseWithContent<string> {
     readonly kind = BotResponseTypes.text;
     readonly createdAt = Date.now();
-    readonly captures: IReplyCapture[] = [];
+    readonly postSendOperations: PostSendOperation[] = [];
 
     readonly content: string;
     readonly chatInfo: ChatInfo;

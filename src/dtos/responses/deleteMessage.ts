@@ -1,10 +1,10 @@
-import { BotResponseTypes, IChatResponse } from '../../types/response';
 import { IAction } from '../../types/action';
-import { ChatInfo } from '../chatInfo';
+import { BotResponseTypes, IChatResponse } from '../../types/response';
 import { TraceId } from '../../types/trace';
+import { ChatInfo } from '../chatInfo';
 
-export class PinResponse implements IChatResponse {
-    readonly kind = BotResponseTypes.pin;
+export class DeleteMessageResponse implements IChatResponse {
+    readonly kind = BotResponseTypes.deleteMessage;
     readonly createdAt = Date.now();
 
     readonly messageId: number;

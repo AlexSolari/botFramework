@@ -1,12 +1,13 @@
 import { ChatInfo } from '../../dtos/chatInfo';
 import { IAction, IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
-import { ICaptureController } from '../../types/capture';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { TypedEventEmitter } from '../../types/events';
+import { IPostSendOperationController } from '../../types/postSendOperations';
 import { BotResponse, IReplyResponse } from '../../types/response';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
+import { Milliseconds } from '../../types/timeValues';
 import { TraceId } from '../../types/trace';
 import { ReplyContext } from './replyContext';
 
@@ -60,9 +61,9 @@ export abstract class BaseContextInternal<TAction extends IAction> {
         };
     }
 
-    protected createCaptureController(
+    protected createPostSendOperationController(
         response: IReplyResponse
-    ): ICaptureController {
+    ): IPostSendOperationController {
         return {
             captureReplies: (
                 trigger: CommandTrigger[],
@@ -71,11 +72,23 @@ export abstract class BaseContextInternal<TAction extends IAction> {
                 ) => Promise<void>,
                 abortController?: AbortController
             ) => {
-                response.captures.push({
+                response.postSendOperations.push({
+                    kind: 'captureReplies',
                     trigger,
                     handler,
                     abortController: abortController ?? new AbortController(),
                     action: this.action
+                });
+            },
+            pin: () => {
+                response.postSendOperations.push({
+                    kind: 'pin'
+                });
+            },
+            deleteAfter: (timeout: number) => {
+                response.postSendOperations.push({
+                    kind: 'deleteAfterTimeout',
+                    timeout: timeout as Milliseconds
                 });
             }
         };

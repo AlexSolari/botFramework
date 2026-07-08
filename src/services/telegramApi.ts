@@ -1,13 +1,18 @@
 import { IStorageClient } from '../types/storage';
 import { BotResponse, BotResponseTypes } from '../types/response';
+import { ReplyCapture } from '../types/postSendOperations';
 import { QueueItem, ResponseProcessingQueue } from './responseProcessingQueue';
-import { IReplyCapture } from '../types/capture';
 import { TraceId } from '../types/trace';
 import { ChatInfo } from '../dtos/chatInfo';
 import { TelegramApiClient, TelegramMessage } from '../types/externalAliases';
 import { BotEventType, TypedEventEmitter } from '../types/events';
 import { createTrace } from '../helpers/traceFactory';
 import { TELEGRAM_ERROR_QUOTE_INVALID } from '../helpers/constants';
+import { setTimeout } from 'timers/promises';
+import { DeleteMessageResponse } from '../dtos/responses/deleteMessage';
+import { PinResponse } from '../dtos/responses/pin';
+import { IActionState } from '../types/actionState';
+import { IActionWithState } from '../types/action';
 
 export class TelegramApiService {
     private readonly queue = new ResponseProcessingQueue();
@@ -15,7 +20,7 @@ export class TelegramApiService {
     private readonly storage: IStorageClient;
     private readonly eventEmitter: TypedEventEmitter;
     private readonly captureRegistrationCallback: (
-        capture: IReplyCapture,
+        capture: ReplyCapture,
         parentMessageId: number,
         chatInfo: ChatInfo,
         traceId: TraceId
@@ -34,6 +39,7 @@ export class TelegramApiService {
         pin: 'pinChatMessage',
         image: 'sendPhoto',
         video: 'sendVideo',
+        deleteMessage: 'deleteMessage',
         delay: null
     };
 
@@ -43,7 +49,7 @@ export class TelegramApiService {
         storage: IStorageClient,
         eventEmitter: TypedEventEmitter,
         captureRegistrationCallback: (
-            capture: IReplyCapture,
+            capture: ReplyCapture,
             parentMessageId: number,
             chatInfo: ChatInfo,
             traceId: TraceId
@@ -137,13 +143,38 @@ export class TelegramApiService {
         const sentMessage = await this.sendApiRequest(response);
 
         if (sentMessage && 'content' in response) {
-            for (const capture of response.captures) {
-                this.captureRegistrationCallback(
-                    capture,
-                    sentMessage.message_id,
-                    response.chatInfo,
-                    response.traceId
-                );
+            for (const operation of response.postSendOperations) {
+                switch (operation.kind) {
+                    case 'captureReplies':
+                        this.captureRegistrationCallback(
+                            operation,
+                            sentMessage.message_id,
+                            response.chatInfo,
+                            response.traceId
+                        );
+                        break;
+                    case 'deleteAfterTimeout':
+                        await setTimeout(operation.timeout);
+                        await this.sendApiRequest(
+                            new DeleteMessageResponse(
+                                sentMessage.message_id,
+                                response.chatInfo,
+                                response.traceId,
+                                response.action
+                            )
+                        );
+                        break;
+                    case 'pin':
+                        await this.sendApiRequest(
+                            new PinResponse(
+                                sentMessage.message_id,
+                                response.chatInfo,
+                                response.traceId,
+                                response.action
+                            )
+                        );
+                        break;
+                }
             }
         }
     }
@@ -236,13 +267,15 @@ export class TelegramApiService {
                         { disable_notification: true }
                     );
 
-                    await this.storage.updateStateFor(
-                        response.action,
-                        response.chatInfo.id,
-                        (state) => {
-                            state.pinnedMessages.push(response.messageId);
-                        }
-                    );
+                    if ('stateConstructor' in response.action) {
+                        await this.storage.updateStateFor(
+                            response.action as IActionWithState<IActionState>,
+                            response.chatInfo.id,
+                            (state) => {
+                                state.pinnedMessages.push(response.messageId);
+                            }
+                        );
+                    }
 
                     return null;
                 case 'inlineQuery':
@@ -250,6 +283,13 @@ export class TelegramApiService {
                         response.queryId,
                         response.queryResults,
                         { cache_time: 0 }
+                    );
+
+                    return null;
+                case 'deleteMessage':
+                    await this.telegram.deleteMessage(
+                        response.chatInfo.id,
+                        response.messageId
                     );
 
                     return null;

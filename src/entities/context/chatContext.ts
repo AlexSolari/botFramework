@@ -54,7 +54,7 @@ export class ChatContextInternal<
 
             this.responses.push(response);
 
-            return this.createCaptureController(response);
+            return this.createPostSendOperationController(response);
         },
 
         /**
@@ -73,7 +73,7 @@ export class ChatContextInternal<
 
             this.responses.push(response);
 
-            return this.createCaptureController(response);
+            return this.createPostSendOperationController(response);
         },
 
         /**
@@ -92,7 +92,7 @@ export class ChatContextInternal<
 
             this.responses.push(response);
 
-            return this.createCaptureController(response);
+            return this.createPostSendOperationController(response);
         }
     };
 

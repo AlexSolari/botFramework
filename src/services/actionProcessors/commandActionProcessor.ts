@@ -5,7 +5,6 @@ import { MessageContextInternal } from '../../entities/context/messageContext';
 import { ReplyContextInternal } from '../../entities/context/replyContext';
 import { IActionState } from '../../types/actionState';
 import { TelegramApiService } from '../telegramApi';
-import { IReplyCapture } from '../../types/capture';
 import { ChatInfo } from '../../dtos/chatInfo';
 import {
     INTERNAL_MESSAGE_TYPE_PREFIX,
@@ -20,6 +19,7 @@ import { BotEventType } from '../../types/events';
 import { TraceId } from '../../types/trace';
 import { MESSAGE_HISTORY_LENGTH_LIMIT } from '../../helpers/constants';
 import { BotResponse } from '../../types/response';
+import { ReplyCapture } from '../../types/postSendOperations';
 
 export class CommandActionProcessor extends BaseActionProcessor {
     private static readonly fallbackFactory: () => ChatHistoryMessage[] =
@@ -93,7 +93,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
     }
 
     captureRegistrationCallback(
-        capture: IReplyCapture,
+        capture: ReplyCapture,
         parentMessageId: number,
         chatInfo: ChatInfo,
         traceId: TraceId

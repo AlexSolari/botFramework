@@ -98,7 +98,7 @@ export class MessageContextInternal<
 
         this.responses.push(response);
 
-        return this.createCaptureController(response);
+        return this.createPostSendOperationController(response);
     }
 
     private replyWithImage(name: string, quote: boolean | string) {
@@ -114,7 +114,7 @@ export class MessageContextInternal<
 
         this.responses.push(response);
 
-        return this.createCaptureController(response);
+        return this.createPostSendOperationController(response);
     }
 
     private replyWithVideo(name: string, quote: boolean | string) {
@@ -130,7 +130,7 @@ export class MessageContextInternal<
 
         this.responses.push(response);
 
-        return this.createCaptureController(response);
+        return this.createPostSendOperationController(response);
     }
 
     skipCooldown() {
