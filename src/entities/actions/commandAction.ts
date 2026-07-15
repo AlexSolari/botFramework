@@ -81,7 +81,7 @@ export class CommandAction<
         this.semaphoreFactory = () =>
             new Semaphore(this.maxAllowedSimultaniousExecutions);
 
-        this.key = `command:${this.name.replace('.', '-')}` as ActionKey;
+        this.key = `command:${this.name.replaceAll('.', '-')}` as ActionKey;
     }
 
     async exec(

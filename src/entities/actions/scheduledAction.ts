@@ -40,7 +40,7 @@ export class ScheduledAction<
         stateConstructor: () => TActionState
     ) {
         this.name = name;
-        this.key = `scheduled:${this.name.replace('.', '-')}` as ActionKey;
+        this.key = `scheduled:${this.name.replaceAll('.', '-')}` as ActionKey;
 
         this.timeinHoursProvider = providers.timeinHoursProvider;
         this.activeProvider = providers.isActiveProvider;
@@ -142,7 +142,10 @@ export class ScheduledAction<
 
             ctx.scheduler.createOnetimeTask(
                 `Drop cached value [${this.name} : ${key}]`,
-                () => this.cachedState.delete(key),
+                () => {
+                    this.cachedState.delete(key);
+                    ScheduledAction.locks.delete(semaphoreKey);
+                },
                 hoursToMilliseconds(
                     cachedItemFactory.invalidationTimeoutInHours
                 ),
@@ -169,13 +172,18 @@ export class ScheduledAction<
         ctx: ChatContextInternal<TActionState>
     ): boolean {
         const now = new Date();
-        const startOfToday = new Date(now).setHours(0, 0, 0, 0);
+        const startOfToday =
+            now.getTime() -
+            (now.getHours() * 3600000 +
+                now.getMinutes() * 60000 +
+                now.getSeconds() * 1000 +
+                now.getMilliseconds());
         const lastExecutedDate = new Date(state.lastExecutedDate);
-        const currentTime = now;
-        const scheduledTime = new Date(new Date().setHours(0, 0, 0, 0));
-        scheduledTime.setTime(scheduledTime.getTime() + this.timeinHoursProvider(ctx) * 3600000);
+        const scheduledTime = new Date(
+            startOfToday + this.timeinHoursProvider(ctx) * 3600000
+        );
 
-        const isAllowedToTrigger = currentTime >= scheduledTime;
+        const isAllowedToTrigger = now >= scheduledTime;
         const hasTriggeredToday = lastExecutedDate.getTime() > startOfToday;
 
         return isAllowedToTrigger && !hasTriggeredToday;
