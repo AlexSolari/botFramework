@@ -69,7 +69,13 @@ export class NodeTimeoutScheduler implements IScheduler {
             });
             action();
         };
-        setTimeout(actionWrapper, delay);
+
+        const handle = setTimeout(() => {
+            this.activeTasks.splice(this.activeTasks.indexOf(task), 1);
+            actionWrapper();
+        }, delay);
+        const task = new TaskRecord(name, handle, delay, traceId);
+        this.activeTasks.push(task);
 
         this.eventEmitter.emit(BotEventType.taskCreated, {
             name,
