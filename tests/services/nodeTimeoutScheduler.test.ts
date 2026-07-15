@@ -248,15 +248,19 @@ describe('NodeTimeoutScheduler', () => {
             });
         });
 
-        test('should not add to activeTasks (one-time tasks are not tracked)', () => {
+        test('should add to activeTasks while pending, then remove on completion', async () => {
             scheduler.createOnetimeTask(
-                'not-tracked',
+                'tracked',
                 () => {},
-                100 as Milliseconds,
+                50 as Milliseconds,
                 'test-bot'
             );
 
-            // One-time tasks are not added to activeTasks
+            // One-time tasks are added to activeTasks while pending
+            expect(scheduler.activeTasks.length).toBe(1);
+
+            // After the task fires it removes itself
+            await new Promise((resolve) => setTimeout(resolve, 100));
             expect(scheduler.activeTasks.length).toBe(0);
         });
 

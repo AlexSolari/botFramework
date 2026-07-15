@@ -54,22 +54,20 @@ describe('mapUtils', () => {
             const map = new Map<string, number>();
             map.set('zero', 0);
 
-            // Note: current implementation treats 0 as falsy, so fallback is used
-            // This is a known edge case in the implementation
+            // 0 is a valid stored value; should be returned, not replaced with fallback
             const result = getOrSetIfNotExists(map, 'zero', 999);
 
-            // Based on implementation: if (existingValue) - 0 is falsy
-            expect(result).toBe(999);
+            expect(result).toBe(0);
         });
 
         test('should handle empty string value', () => {
             const map = new Map<string, string>();
             map.set('empty', '');
 
-            // Empty string is falsy, so fallback is used
+            // Empty string is a valid stored value; should be returned, not replaced with fallback
             const result = getOrSetIfNotExists(map, 'empty', 'fallback');
 
-            expect(result).toBe('fallback');
+            expect(result).toBe('');
         });
 
         // Real-world usage: JsonFileStorage uses this for file paths and locks
@@ -154,10 +152,10 @@ describe('mapUtils', () => {
             const map = new Map<string, number>();
             map.set('zero', 0);
 
-            // Note: current implementation treats 0 as falsy, so it throws
-            expect(() => getOrThrow(map, 'zero')).toThrow(
-                'Key not found in collection'
-            );
+            // 0 is a valid stored value; should be returned, not throw
+            const result = getOrThrow(map, 'zero');
+
+            expect(result).toBe(0);
         });
     });
 });
