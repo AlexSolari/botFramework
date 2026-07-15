@@ -18,14 +18,18 @@ import { BotInfo, TelegramBot } from '../../types/externalAliases';
 import { BotEventType } from '../../types/events';
 import { TraceId } from '../../types/trace';
 import { MESSAGE_HISTORY_LENGTH_LIMIT } from '../../helpers/constants';
-import { BotResponse } from '../../types/response';
 import { ReplyCapture } from '../../types/postSendOperations';
 
 export class CommandActionProcessor extends BaseActionProcessor {
-    private static readonly fallbackFactory: () => ChatHistoryMessage[] =
+    private static readonly fallbackFactoryForChatHistory: () => ChatHistoryMessage[] =
+        () => [];
+    private static readonly fallbackFactoryForCaptures: () => ReplyCaptureAction<IActionState>[] =
         () => [];
 
-    private readonly replyCaptures: ReplyCaptureAction<IActionState>[] = [];
+    private readonly replyCaptures = new Map<
+        number,
+        ReplyCaptureAction<IActionState>[]
+    >();
     private readonly chatHistory = new Map<number, ChatHistoryMessage[]>();
     private botInfo!: BotInfo;
 
@@ -77,7 +81,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
                     getOrCreateIfNotExists(
                         this.chatHistory,
                         message.chat.id,
-                        CommandActionProcessor.fallbackFactory
+                        CommandActionProcessor.fallbackFactoryForChatHistory
                     )
                 );
 
@@ -112,18 +116,26 @@ export class CommandActionProcessor extends BaseActionProcessor {
             traceId
         });
 
-        this.replyCaptures.push(replyAction);
+        const chatCaptures = getOrCreateIfNotExists(
+            this.replyCaptures,
+            chatInfo.id,
+            CommandActionProcessor.fallbackFactoryForCaptures
+        );
+        chatCaptures.push(replyAction);
 
         capture.abortController.signal.addEventListener(
             'abort',
             () => {
-                const capturesWithController = this.replyCaptures.filter(
+                const chatCaptures = this.replyCaptures.get(chatInfo.id);
+                if (!chatCaptures) return;
+
+                const capturesWithController = chatCaptures.filter(
                     (x) => x.abortController == capture.abortController
                 );
 
                 for (const captureToCancel of capturesWithController) {
-                    const index = this.replyCaptures.indexOf(captureToCancel);
-                    this.replyCaptures.splice(index, 1);
+                    const index = chatCaptures.indexOf(captureToCancel);
+                    chatCaptures.splice(index, 1);
 
                     this.eventEmitter.emit(
                         BotEventType.commandActionCaptureAborted,
@@ -143,11 +155,14 @@ export class CommandActionProcessor extends BaseActionProcessor {
         const chatHistoryArray = getOrCreateIfNotExists(
             this.chatHistory,
             msg.chatInfo.id,
-            CommandActionProcessor.fallbackFactory
+            CommandActionProcessor.fallbackFactoryForChatHistory
         );
 
-        while (chatHistoryArray.length > MESSAGE_HISTORY_LENGTH_LIMIT)
-            chatHistoryArray.shift();
+        if (chatHistoryArray.length >= MESSAGE_HISTORY_LENGTH_LIMIT)
+            chatHistoryArray.splice(
+                0,
+                chatHistoryArray.length - MESSAGE_HISTORY_LENGTH_LIMIT + 1
+            );
 
         chatHistoryArray.push(
             new ChatHistoryMessage(
@@ -178,13 +193,10 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         const { proxy, revoke } = Proxy.revocable(ctx, {});
 
-        let responses: BotResponse[] | undefined = undefined;
         try {
-            responses = await this.executeAction(command, proxy);
+            await this.executeAction(command, proxy);
         } finally {
-            if (responses && responses.length > 0) {
-                this.api.flushResponses();
-            }
+            this.api.flushResponses();
             revoke();
         }
     }
@@ -205,13 +217,10 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         const { proxy, revoke } = Proxy.revocable(ctx, {});
 
-        let responses: BotResponse[] | undefined = undefined;
         try {
-            responses = await this.executeAction(capture, proxy);
+            await this.executeAction(capture, proxy);
         } finally {
-            if (responses && responses.length > 0) {
-                this.api.flushResponses();
-            }
+            this.api.flushResponses();
             revoke();
         }
     }
@@ -236,7 +245,12 @@ export class CommandActionProcessor extends BaseActionProcessor {
             actionPromises.push(this.processCommand(command, msg));
         }
 
-        for (const capture of this.replyCaptures) {
+        const chatCaptures = getOrCreateIfNotExists(
+            this.replyCaptures,
+            msg.chatInfo.id,
+            CommandActionProcessor.fallbackFactoryForCaptures
+        );
+        for (const capture of chatCaptures) {
             actionPromises.push(this.processReply(capture, msg));
         }
 
