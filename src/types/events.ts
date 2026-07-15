@@ -15,21 +15,21 @@ import { TraceId } from './trace';
 export const BotEventType = {
     error: 'error.generic',
 
-    messageRecieved: 'message.recieved',
+    messageRecieved: 'message.received',
     messageProcessingStarted: 'message.processingStarted',
     messageProcessingFinished: 'message.processingFinished',
 
     commandActionExecuting: 'command.actionExecuting',
     commandActionExecuted: 'command.actionExecuted',
-    commandActionCaptureStarted: 'command.captionStarted',
-    commandActionCaptureAborted: 'command.captionAborted',
+    commandActionCaptureStarted: 'command.captureStarted',
+    commandActionCaptureAborted: 'command.captureAborted',
 
     replyActionExecuting: 'reply.actionExecuting',
     replyActionExecuted: 'reply.actionExecuted',
 
     inlineProcessingStarted: 'inline.processingStarted',
     inlineProcessingFinished: 'inline.processingFinished',
-    inlineQueryRecieved: 'inline.queryRecieved',
+    inlineQueryRecieved: 'inline.queryReceived',
     inlineActionExecuting: 'inline.actionExecuting',
     inlineActionExecuted: 'inline.actionExecuted',
     inlineProcessingAborting: 'inline.processingAborting',
