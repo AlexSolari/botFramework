@@ -9,7 +9,7 @@ export function getOrCreateIfNotExists<K, V>(
     fallbackFactory: () => V
 ) {
     const existingValue = map.get(key);
-    if (existingValue) return existingValue;
+    if (existingValue !== undefined) return existingValue;
 
     const fallback = fallbackFactory();
     map.set(key, fallback);
@@ -23,7 +23,7 @@ export function getOrSetIfNotExists<K, V>(
     fallback: V
 ) {
     const existingValue = map.get(key);
-    if (existingValue) return existingValue;
+    if (existingValue !== undefined) return existingValue;
 
     map.set(key, fallback);
 
@@ -36,7 +36,7 @@ export function getOrThrow<K, V>(
     error: string = 'Key not found in collection'
 ) {
     const existingValue = map.get(key);
-    if (existingValue) return existingValue;
+    if (existingValue !== undefined) return existingValue;
 
     throw new Error(error);
 }
