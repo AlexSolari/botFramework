@@ -7,6 +7,7 @@ import { IScheduler } from './types/scheduler';
 import { InlineQueryAction } from './entities/actions/inlineQueryAction';
 import { IActionState } from './types/actionState';
 import { TypedEventEmitter } from './types/events';
+import { IncomingMessage } from './dtos/incomingMessage';
 
 class BotOrchestrator {
     bots: BotInstance[] = [];
@@ -26,6 +27,8 @@ class BotOrchestrator {
             scheduled: ScheduledAction<IActionState>[];
             /** Collection of actions that will handle inline queries */
             inlineQueries: InlineQueryAction[];
+            /** Function to filter incoming messages. If provided, only messages for which this function returns `true` will be processed. */
+            messageFilter?: (message: IncomingMessage) => boolean;
         };
         /** Object containing chat name and chat id pairs. Used for logging and execution of scheduled action. */
         chats: Record<string, number>;

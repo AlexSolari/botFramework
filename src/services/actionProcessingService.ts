@@ -14,6 +14,7 @@ import { TelegramBot } from '../types/externalAliases';
 import { Telegraf } from 'telegraf';
 import { TypedEventEmitter } from '../types/events';
 import { DEFAULT_SCHEDULED_ACTION_PERIOD_SECONDS } from '../helpers/constants';
+import { IncomingMessage } from '../dtos/incomingMessage';
 
 export class ActionProcessingService {
     private readonly eventEmitter: TypedEventEmitter;
@@ -65,6 +66,8 @@ export class ActionProcessingService {
             commands: CommandAction<IActionState>[];
             scheduled: ScheduledAction<IActionState>[];
             inlineQueries: InlineQueryAction[];
+
+            messageFilter?: (message: IncomingMessage) => boolean;
         },
         scheduledPeriod?: Seconds
     ) {
@@ -102,7 +105,8 @@ export class ActionProcessingService {
             api,
             this.telegramBot,
             commandActions,
-            botInfo
+            botInfo,
+            actions.messageFilter
         );
         this.inlineQueryProcessor.initialize(
             api,

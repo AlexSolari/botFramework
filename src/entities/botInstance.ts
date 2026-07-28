@@ -10,6 +10,7 @@ import { InlineQueryAction } from './actions/inlineQueryAction';
 import { ActionProcessingService } from '../services/actionProcessingService';
 import { BotEventType, TypedEventEmitter } from '../types/events';
 import { createTrace } from '../helpers/traceFactory';
+import { IncomingMessage } from '../dtos/incomingMessage';
 
 export class BotInstance {
     private readonly storage: IStorageClient;
@@ -64,6 +65,8 @@ export class BotInstance {
             commands: CommandAction<IActionState>[];
             scheduled: ScheduledAction<IActionState>[];
             inlineQueries: InlineQueryAction[];
+
+            messageFilter?: (message: IncomingMessage) => boolean;
         },
         scheduledPeriod?: Seconds
     ) {

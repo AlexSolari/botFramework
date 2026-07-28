@@ -44,7 +44,8 @@ export class CommandActionProcessor extends BaseActionProcessor {
         api: TelegramApiService,
         telegram: TelegramBot,
         commands: CommandAction<IActionState>[],
-        botInfo: BotInfo
+        botInfo: BotInfo,
+        messageFilter?: (message: IncomingMessage) => boolean
     ) {
         this.botInfo = botInfo;
         this.initializeDependencies(api);
@@ -84,6 +85,13 @@ export class CommandActionProcessor extends BaseActionProcessor {
                         CommandActionProcessor.fallbackFactoryForChatHistory
                     )
                 );
+
+                const shouldProcessMessage = messageFilter
+                    ? messageFilter(internalMessage)
+                    : true;
+                if (!shouldProcessMessage) {
+                    return;
+                }
 
                 this.eventEmitter.emit(BotEventType.messageRecieved, {
                     botInfo: this.botInfo,
