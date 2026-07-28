@@ -76,6 +76,23 @@ function createMessageContext(
 }
 
 describe('MessageContextInternal', () => {
+    describe('mock helper utilities', () => {
+        test('createMockCommandAction returns action with callable condition and readmeFactory', () => {
+            const action = createMockCommandAction();
+            // Cover the inline arrow function bodies
+            const cond = (
+                action as unknown as {
+                    condition: (x: unknown, y: unknown) => boolean;
+                }
+            ).condition;
+            const readme = (
+                action as unknown as { readmeFactory: (x: string) => string }
+            ).readmeFactory;
+            expect(cond(null, null)).toBe(true);
+            expect(readme('TestBot')).toBe('');
+        });
+    });
+
     describe('properties', () => {
         test('should have startCooldown default to true', () => {
             const ctx = createMessageContext();

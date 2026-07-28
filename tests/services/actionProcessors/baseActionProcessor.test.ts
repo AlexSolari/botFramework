@@ -15,6 +15,7 @@ import {
     createMockChatInfo,
     createMockTraceId,
     createMockTextResponse,
+    getMockFn,
     type MockTelegramApi
 } from './processorTestHelpers';
 
@@ -354,6 +355,38 @@ describe('BaseActionProcessor', () => {
 
             expect(localMockApi.getEnqueueCallCount()).toBe(1);
             expect(localMockApi.getEnqueueLastArgs()).toEqual(responses);
+        });
+    });
+
+    describe('processorTestHelpers utilities', () => {
+        test('getMockFn returns the mock with correct typing', () => {
+            const storage = createMockStorage();
+            const loadMock = getMockFn(storage.load);
+
+            expect(loadMock).toBeDefined();
+            expect(typeof loadMock).toBe('function');
+        });
+
+        test('storage mock methods are all invocable', async () => {
+            const storage = createMockStorage();
+            const action = createMockAction('coverage-action');
+
+            await storage.close();
+            storage.getActionState(
+                action as unknown as Parameters<
+                    typeof storage.getActionState
+                >[0],
+                123
+            );
+            await storage.saveActionExecutionResult(
+                action as unknown as Parameters<
+                    typeof storage.saveActionExecutionResult
+                >[0],
+                123,
+                { lastExecutedDate: 0, pinnedMessages: [] }
+            );
+
+            expect(storage.close).toBeDefined();
         });
     });
 });

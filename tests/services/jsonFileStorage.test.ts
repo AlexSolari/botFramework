@@ -367,6 +367,17 @@ describe('JsonFileStorage', () => {
             // Just verify the method exists and is callable
             expect(typeof localStorage.close).toBe('function');
         });
+
+        test('should resolve without error when called', async () => {
+            const localStorage = new JsonFileStorage(
+                TEST_BOT_NAME,
+                [testAction],
+                TEST_STORAGE_PATH
+            );
+
+            // Calling close should complete without throwing
+            await expect(localStorage.close()).resolves.toBeUndefined();
+        });
     });
 
     describe('locking behavior', () => {

@@ -1,0 +1,6 @@
+[test]
+# Always enable coverage
+coverage = true
+
+[test.coverageThreshold]
+line = 0.95

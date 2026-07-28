@@ -609,4 +609,114 @@ describe('InlineQueryActionProcessor', () => {
             expect(localProcessor).toBeDefined();
         });
     });
+
+    describe('error handling in query processing', () => {
+        test('should emit inlineProcessingAborted when action throws AbortError', async () => {
+            const localEventEmitter = new TypedEventEmitter();
+            const localProcessor = new InlineQueryActionProcessor(
+                'abort-error-bot',
+                createMockStorage(),
+                createMockScheduler(),
+                localEventEmitter
+            );
+
+            const abortedEvents: unknown[] = [];
+            localEventEmitter.on(
+                BotEventType.inlineProcessingAborted,
+                (_ts, data) => {
+                    abortedEvents.push(data);
+                }
+            );
+
+            const mockApi = createMockTelegramApi();
+            const mockTelegram = createMockTelegramBot();
+
+            // Action that throws an AbortError
+            const abortError = new Error('The operation was aborted');
+            abortError.name = 'AbortError';
+            const throwingAction = createMockInlineQueryAction(
+                'abort-throw-action',
+                /abort/
+            );
+            throwingAction.exec = mock(() => Promise.reject(abortError));
+
+            localProcessor.initialize(
+                mockApi,
+                mockTelegram as unknown as Parameters<
+                    typeof localProcessor.initialize
+                >[1],
+                [throwingAction as unknown as InlineQueryAction]
+            );
+
+            const inlineQueryHandler =
+                mockTelegram.getEventHandler('inline_query');
+            expect(inlineQueryHandler).toBeDefined();
+
+            if (inlineQueryHandler) {
+                inlineQueryHandler({
+                    inlineQuery: {
+                        id: 'abort-q1',
+                        query: 'test',
+                        from: { id: 11111 }
+                    }
+                });
+            }
+
+            // Wait for async processing
+            await new Promise((resolve) => setTimeout(resolve, 30));
+
+            expect(abortedEvents.length).toBeGreaterThanOrEqual(1);
+        });
+
+        test('should emit error event when action throws a non-AbortError', async () => {
+            const localEventEmitter = new TypedEventEmitter();
+            const localProcessor = new InlineQueryActionProcessor(
+                'error-event-bot',
+                createMockStorage(),
+                createMockScheduler(),
+                localEventEmitter
+            );
+
+            const errorEvents: unknown[] = [];
+            localEventEmitter.on(BotEventType.error, (_ts, data) => {
+                errorEvents.push(data);
+            });
+
+            const mockApi = createMockTelegramApi();
+            const mockTelegram = createMockTelegramBot();
+
+            const regularError = new Error('Something went wrong');
+            const throwingAction = createMockInlineQueryAction(
+                'error-throw-action',
+                /error/
+            );
+            throwingAction.exec = mock(() => Promise.reject(regularError));
+
+            localProcessor.initialize(
+                mockApi,
+                mockTelegram as unknown as Parameters<
+                    typeof localProcessor.initialize
+                >[1],
+                [throwingAction as unknown as InlineQueryAction]
+            );
+
+            const inlineQueryHandler =
+                mockTelegram.getEventHandler('inline_query');
+            expect(inlineQueryHandler).toBeDefined();
+
+            if (inlineQueryHandler) {
+                inlineQueryHandler({
+                    inlineQuery: {
+                        id: 'error-q1',
+                        query: 'test',
+                        from: { id: 22222 }
+                    }
+                });
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 30));
+
+            expect(errorEvents.length).toBeGreaterThanOrEqual(1);
+        });
+    });
 });

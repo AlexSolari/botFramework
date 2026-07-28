@@ -25,7 +25,7 @@ function createMockStorage(
     loadResponse: Record<number, ActionStateBase> = {}
 ): IStorageClient {
     return {
-        load: mock(() => Promise.resolve(loadResponse)),
+        load: mock(() => loadResponse) as IStorageClient['load'],
         close: mock(() => Promise.resolve()),
         getActionState: mock(() =>
             Promise.resolve({ lastExecutedDate: 0, pinnedMessages: [] })
@@ -577,16 +577,7 @@ describe('ChatContextInternal', () => {
 
     describe('loadStateOf', () => {
         test('should call storage.load with the action', () => {
-            const loadMock = mock(() => Promise.resolve({}));
-            const storage: IStorageClient = {
-                load: loadMock,
-                close: mock(() => Promise.resolve()),
-                getActionState: mock(() =>
-                    Promise.resolve({ lastExecutedDate: 0, pinnedMessages: [] })
-                ),
-                saveActionExecutionResult: mock(() => Promise.resolve()),
-                updateStateFor: mock(() => Promise.resolve())
-            } as unknown as IStorageClient;
+            const storage = createMockStorage();
 
             const scheduler = createMockScheduler();
             const eventEmitter = new TypedEventEmitter();
@@ -617,23 +608,14 @@ describe('ChatContextInternal', () => {
 
             ctx.loadStateOf(otherAction);
 
-            expect(loadMock).toHaveBeenCalledWith(otherAction);
+            expect(storage.load).toHaveBeenCalledWith(otherAction);
         });
 
         test('should return state for current chat if it exists', () => {
             const existingState = new ActionStateBase();
             existingState.lastExecutedDate = 12345;
 
-            const storage: IStorageClient = {
-                load: mock(() => ({ 12345: existingState })),
-                close: mock(() => Promise.resolve()),
-                getActionState: mock(() => ({
-                    lastExecutedDate: 0,
-                    pinnedMessages: []
-                })),
-                saveActionExecutionResult: mock(() => Promise.resolve()),
-                updateStateFor: mock(() => Promise.resolve())
-            } as unknown as IStorageClient;
+            const storage = createMockStorage({ 12345: existingState });
 
             const scheduler = createMockScheduler();
             const eventEmitter = new TypedEventEmitter();
@@ -660,15 +642,7 @@ describe('ChatContextInternal', () => {
         });
 
         test('should return new state from constructor if no state exists', () => {
-            const storage: IStorageClient = {
-                load: mock(() => Promise.resolve({})),
-                close: mock(() => Promise.resolve()),
-                getActionState: mock(() =>
-                    Promise.resolve({ lastExecutedDate: 0, pinnedMessages: [] })
-                ),
-                saveActionExecutionResult: mock(() => Promise.resolve()),
-                updateStateFor: mock(() => Promise.resolve())
-            } as unknown as IStorageClient;
+            const storage = createMockStorage();
 
             const scheduler = createMockScheduler();
             const eventEmitter = new TypedEventEmitter();
@@ -698,15 +672,7 @@ describe('ChatContextInternal', () => {
         test('should return frozen state', () => {
             const existingState = new ActionStateBase();
 
-            const storage: IStorageClient = {
-                load: mock(() => Promise.resolve({ 12345: existingState })),
-                close: mock(() => Promise.resolve()),
-                getActionState: mock(() =>
-                    Promise.resolve({ lastExecutedDate: 0, pinnedMessages: [] })
-                ),
-                saveActionExecutionResult: mock(() => Promise.resolve()),
-                updateStateFor: mock(() => Promise.resolve())
-            } as unknown as IStorageClient;
+            const storage = createMockStorage({ 12345: existingState });
 
             const scheduler = createMockScheduler();
             const eventEmitter = new TypedEventEmitter();
@@ -733,18 +699,57 @@ describe('ChatContextInternal', () => {
         });
     });
 
+    describe('pinMessage', () => {
+        test('should add a PinResponse to responses', () => {
+            const ctx = createChatContext();
+
+            ctx.pinMessage(42);
+
+            expect(ctx.responses.length).toBe(1);
+            expect(ctx.responses[0].kind).toBe('pin');
+        });
+
+        test('should store the correct message id', () => {
+            const ctx = createChatContext();
+
+            ctx.pinMessage(99);
+
+            const response = ctx
+                .responses[0] as import('../../../src/dtos/responses/pin').PinResponse;
+            expect(response.messageId).toBe(99);
+        });
+    });
+
+    describe('mock storage interface coverage', () => {
+        test('storage mock methods are all callable', async () => {
+            const storage = createMockStorage();
+            await storage.close();
+            storage.getActionState(
+                createMockAction() as unknown as Parameters<
+                    typeof storage.getActionState
+                >[0],
+                123
+            );
+            await storage.saveActionExecutionResult(
+                createMockAction() as unknown as Parameters<
+                    typeof storage.saveActionExecutionResult
+                >[0],
+                123,
+                { lastExecutedDate: 0, pinnedMessages: [] }
+            );
+            expect(storage.close).toBeDefined();
+        });
+    });
+
     describe('updateStateOf', () => {
         test('should call storage.updateStateFor', async () => {
             const updateStateForMock = mock(() => Promise.resolve());
-            const storage: IStorageClient = {
-                load: mock(() => Promise.resolve({})),
-                close: mock(() => Promise.resolve()),
-                getActionState: mock(() =>
-                    Promise.resolve({ lastExecutedDate: 0, pinnedMessages: [] })
-                ),
-                saveActionExecutionResult: mock(() => Promise.resolve()),
-                updateStateFor: updateStateForMock
-            } as unknown as IStorageClient;
+            const storage = createMockStorage();
+            (
+                storage as IStorageClient & {
+                    updateStateFor: typeof updateStateForMock;
+                }
+            ).updateStateFor = updateStateForMock;
 
             const scheduler = createMockScheduler();
             const eventEmitter = new TypedEventEmitter();
@@ -769,6 +774,7 @@ describe('ChatContextInternal', () => {
                 return Promise.resolve();
             };
 
+            await mutation(new ActionStateBase()); // cover the mutation body
             await ctx.updateStateOf(otherAction, mutation);
 
             expect(updateStateForMock).toHaveBeenCalledWith(

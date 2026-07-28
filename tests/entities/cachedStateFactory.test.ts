@@ -74,24 +74,26 @@ describe('CachedStateFactory', () => {
     });
 
     describe('invalidationTimeoutInHours', () => {
-        test('should be readonly', () => {
+        test('should be readonly', async () => {
             const timeout = 12 as Hours;
             const cached = new CachedStateFactory(
                 () => Promise.resolve(null),
                 timeout
             );
 
+            await cached.getValue();
             // TypeScript enforces readonly, but we can verify it exists
             expect(cached.invalidationTimeoutInHours).toBe(timeout);
         });
 
-        test('should preserve Hours type value', () => {
+        test('should preserve Hours type value', async () => {
             const timeout = 48 as Hours;
             const cached = new CachedStateFactory(
                 () => Promise.resolve(null),
                 timeout
             );
 
+            await cached.getValue();
             expect(cached.invalidationTimeoutInHours).toBe(timeout);
         });
     });
