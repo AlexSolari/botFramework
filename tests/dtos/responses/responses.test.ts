@@ -102,7 +102,7 @@ describe('PinResponse', () => {
 });
 
 describe('ImageMessage', () => {
-    describe('quotelessReply', () => {
+    describe('messageWithoutReplyInfo', () => {
         test('should return a new ImageMessage without replyInfo', () => {
             const chatInfo = createMockChatInfo();
             const traceId = createMockTraceId();
@@ -117,7 +117,7 @@ describe('ImageMessage', () => {
                 replyInfo
             );
 
-            const quoteless = msg.quotelessReply;
+            const quoteless = msg.messageWithoutReplyInfo;
 
             expect(quoteless).toBeInstanceOf(ImageMessage);
             expect(quoteless.replyInfo).toBeUndefined();
@@ -137,7 +137,7 @@ describe('ImageMessage', () => {
                 new ReplyInfo(1, undefined)
             );
 
-            const quoteless = msg.quotelessReply;
+            const quoteless = msg.messageWithoutReplyInfo;
 
             expect(quoteless.content).toEqual(content);
             expect(quoteless.chatInfo).toBe(chatInfo);
@@ -148,7 +148,7 @@ describe('ImageMessage', () => {
 });
 
 describe('TextMessage', () => {
-    describe('quotelessReply', () => {
+    describe('messageWithoutReplyInfo', () => {
         test('should return a new TextMessage without replyInfo', () => {
             const chatInfo = createMockChatInfo();
             const traceId = createMockTraceId();
@@ -163,7 +163,7 @@ describe('TextMessage', () => {
                 replyInfo
             );
 
-            const quoteless = msg.quotelessReply;
+            const quoteless = msg.messageWithoutReplyInfo;
 
             expect(quoteless).toBeInstanceOf(TextMessage);
             expect(quoteless.replyInfo).toBeUndefined();
@@ -183,7 +183,7 @@ describe('TextMessage', () => {
                 { pin: true }
             );
 
-            const quoteless = msg.quotelessReply;
+            const quoteless = msg.messageWithoutReplyInfo;
 
             expect(quoteless.content).toBe('pinned message');
             expect(quoteless.shouldPin).toBe(true);
@@ -202,7 +202,7 @@ describe('TextMessage', () => {
                 new ReplyInfo(1, undefined)
             );
 
-            const quoteless = msg.quotelessReply;
+            const quoteless = msg.messageWithoutReplyInfo;
 
             expect(quoteless.chatInfo).toBe(chatInfo);
             expect(quoteless.traceId).toBe(traceId);
@@ -212,7 +212,7 @@ describe('TextMessage', () => {
 });
 
 describe('VideoMessage', () => {
-    describe('quotelessReply', () => {
+    describe('messageWithoutReplyInfo', () => {
         test('should return a new VideoMessage without replyInfo', () => {
             const chatInfo = createMockChatInfo();
             const traceId = createMockTraceId();
@@ -227,7 +227,7 @@ describe('VideoMessage', () => {
                 replyInfo
             );
 
-            const quoteless = msg.quotelessReply;
+            const quoteless = msg.messageWithoutReplyInfo;
 
             expect(quoteless).toBeInstanceOf(VideoMessage);
             expect(quoteless.replyInfo).toBeUndefined();
@@ -247,7 +247,7 @@ describe('VideoMessage', () => {
                 new ReplyInfo(1, undefined)
             );
 
-            const quoteless = msg.quotelessReply;
+            const quoteless = msg.messageWithoutReplyInfo;
 
             expect(quoteless.content).toEqual(content);
             expect(quoteless.chatInfo).toBe(chatInfo);

@@ -35,7 +35,7 @@ export class ImageMessage implements IReplyResponseWithContent<InputFile> {
         this.action = action;
     }
 
-    get quotelessReply() {
+    get messageWithoutReplyInfo() {
         return new ImageMessage(
             this.content,
             this.chatInfo,

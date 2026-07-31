@@ -9,3 +9,4 @@ export const DEFAULT_SCHEDULED_ACTION_PERIOD_SECONDS = hoursToSeconds(
 export const DEFAULT_STORAGE_DIRECTORY = 'storage';
 export const TELEGRAM_RATELIMIT_DELAY = 35 as Milliseconds;
 export const TELEGRAM_ERROR_QUOTE_INVALID = 'QUOTE_TEXT_INVALID';
+export const TELEGRAM_ERROR_REPLY_NOT_FOUND = 'message to be replied not found';

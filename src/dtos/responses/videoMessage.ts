@@ -35,7 +35,7 @@ export class VideoMessage implements IReplyResponseWithContent<InputFile> {
         this.action = action;
     }
 
-    get quotelessReply() {
+    get messageWithoutReplyInfo() {
         return new VideoMessage(
             this.content,
             this.chatInfo,

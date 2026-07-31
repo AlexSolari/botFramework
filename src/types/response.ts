@@ -50,7 +50,7 @@ export interface IReplyResponse extends IChatResponse {
     readonly replyInfo: ReplyInfo | undefined;
     readonly disableWebPreview: boolean;
 
-    get quotelessReply(): IReplyResponse;
+    get messageWithoutReplyInfo(): IReplyResponse;
 }
 
 export interface IReplyResponseWithContent<TType> extends IReplyResponse {

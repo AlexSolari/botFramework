@@ -7,7 +7,10 @@ import { ChatInfo } from '../dtos/chatInfo';
 import { TelegramApiClient, TelegramMessage } from '../types/externalAliases';
 import { BotEventType, TypedEventEmitter } from '../types/events';
 import { createTrace } from '../helpers/traceFactory';
-import { TELEGRAM_ERROR_QUOTE_INVALID } from '../helpers/constants';
+import {
+    TELEGRAM_ERROR_QUOTE_INVALID,
+    TELEGRAM_ERROR_REPLY_NOT_FOUND
+} from '../helpers/constants';
 import { setTimeout } from 'timers/promises';
 import { DeleteMessageResponse } from '../dtos/responses/deleteMessage';
 import { PinResponse } from '../dtos/responses/pin';
@@ -85,40 +88,22 @@ export class TelegramApiService {
                                 ? reason
                                 : new Error('Unknown error');
 
-                        if (
-                            'quotelessReply' in response &&
-                            'message' in error &&
-                            error.message.includes(TELEGRAM_ERROR_QUOTE_INVALID)
-                        ) {
-                            this.eventEmitter.emit(BotEventType.error, {
-                                error: new Error(
-                                    'Quote error recieved, retrying without quote'
-                                ),
-                                traceId: response.traceId
-                            });
-
-                            try {
-                                await this.processResponse(
-                                    response.quotelessReply
+                        if ('messageWithoutReplyInfo' in response) {
+                            if (
+                                error.message.includes(
+                                    TELEGRAM_ERROR_QUOTE_INVALID
+                                ) ||
+                                error.message.includes(
+                                    TELEGRAM_ERROR_REPLY_NOT_FOUND
+                                )
+                            ) {
+                                await this.retryWithFallback(
+                                    response.messageWithoutReplyInfo,
+                                    'Reply error received, retrying without reply info',
+                                    response.traceId
                                 );
-                            } catch (reason) {
-                                const error =
-                                    reason instanceof Error
-                                        ? reason
-                                        : new Error('Unknown error');
-                                this.eventEmitter.emit(BotEventType.error, {
-                                    error,
-                                    traceId: response.traceId
-                                });
                             }
-
-                            return;
                         }
-
-                        this.eventEmitter.emit(BotEventType.error, {
-                            error,
-                            traceId: response.traceId
-                        });
                     }
                 },
                 priority: response.createdAt + offset
@@ -137,6 +122,28 @@ export class TelegramApiService {
                 traceId: this.TELEGRAM_API_SERVICE_ERROR_TRACEID
             });
         });
+    }
+
+    private async retryWithFallback(
+        fallback: BotResponse,
+        warningMessage: string,
+        traceId: TraceId
+    ) {
+        this.eventEmitter.emit(BotEventType.error, {
+            error: new Error(warningMessage),
+            traceId
+        });
+        try {
+            await this.processResponse(fallback);
+        } catch (reason) {
+            this.eventEmitter.emit(BotEventType.error, {
+                error:
+                    reason instanceof Error
+                        ? reason
+                        : new Error('Unknown error'),
+                traceId
+            });
+        }
     }
 
     private async processResponse(response: BotResponse) {

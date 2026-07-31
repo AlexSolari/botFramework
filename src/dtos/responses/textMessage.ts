@@ -42,14 +42,18 @@ export class TextMessage implements IReplyResponseWithContent<string> {
         this.keyboard = options?.keyboard;
     }
 
-    get quotelessReply() {
+    get messageWithoutReplyInfo() {
         return new TextMessage(
             this.content,
             this.chatInfo,
             this.traceId,
             this.action,
             undefined,
-            { pin: this.shouldPin }
+            {
+                pin: this.shouldPin,
+                disableWebPreview: this.disableWebPreview,
+                keyboard: this.keyboard
+            }
         );
     }
 }
