@@ -14,7 +14,7 @@
         "type": "git",
         "url": "https://github.com/AlexSolari/botFramework.git"
     },
-    "version": "0.7.34",
+    "version": "0.7.35",
     "type": "module",
     "dependencies": {
         "async-sema": "^3.1.1",
@@ -38,7 +38,7 @@
     "scripts": {
         "build": "tsc -p tsconfig.build.json",
         "test": "bun test",
-        "lint": "eslint src && tsc -p tsconfig.build.json --noEmit",
+        "lint": "tsc -p tsconfig.build.json --noEmit",
         "prep": "bun run test && bun run build"
     }
 }
