@@ -3,6 +3,7 @@ import { IncomingInlineQuery } from '../../dtos/incomingQuery';
 import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
 import { InlineQueryContextInternal } from '../../entities/context/inlineQueryContext';
 import { createTrace } from '../../helpers/traceFactory';
+import { INLINE_QUERY_FAKE_CHAT_ID } from '../../helpers/constants';
 import { BotEventType } from '../../types/events';
 import { TelegramBot } from '../../types/externalAliases';
 import { TelegramApiService } from '../telegramApi';
@@ -12,7 +13,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
     private inlineQueries!: InlineQueryAction[];
     /** Fake chat info, since inline queries are chat-less */
     private readonly fakeChatInfo = new ChatInfo(
-        Math.random(),
+        INLINE_QUERY_FAKE_CHAT_ID,
         'Inline Query',
         []
     );
