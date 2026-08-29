@@ -88,21 +88,26 @@ export class TelegramApiService {
                                 ? reason
                                 : new Error('Unknown error');
 
-                        if ('messageWithoutReplyInfo' in response) {
-                            if (
-                                error.message.includes(
-                                    TELEGRAM_ERROR_QUOTE_INVALID
-                                ) ||
+                        const isRecoverableReplyError =
+                            'messageWithoutReplyInfo' in response &&
+                            (error.message.includes(
+                                TELEGRAM_ERROR_QUOTE_INVALID
+                            ) ||
                                 error.message.includes(
                                     TELEGRAM_ERROR_REPLY_NOT_FOUND
-                                )
-                            ) {
-                                await this.retryWithFallback(
-                                    response.messageWithoutReplyInfo,
-                                    'Reply error received, retrying without reply info',
-                                    response.traceId
-                                );
-                            }
+                                ));
+
+                        if (isRecoverableReplyError) {
+                            await this.retryWithFallback(
+                                response.messageWithoutReplyInfo,
+                                'Reply error received, retrying without reply info',
+                                response.traceId
+                            );
+                        } else {
+                            this.eventEmitter.emit(BotEventType.error, {
+                                error,
+                                traceId: response.traceId
+                            });
                         }
                     }
                 },
