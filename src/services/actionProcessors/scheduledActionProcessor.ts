@@ -42,26 +42,19 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
 
         if (this.scheduled.length > 0) {
             const now = new Date();
-
-            if (now.getMinutes() == 0 && now.getSeconds() == 0) {
-                this.scheduler.createTask(
-                    'ScheduledProcessing',
-                    () => void this.runScheduled(),
-                    secondsToMilliseconds(period),
-                    true,
-                    this.botName
-                );
-
-                return;
-            }
-
-            let nextExecutionTime = new Date(now);
+            const nextExecutionTime = new Date(now);
             nextExecutionTime.setMinutes(0, 0, 0);
-            if (now.getMinutes() > 0 || now.getSeconds() > 0) {
-                nextExecutionTime = new Date(nextExecutionTime.getTime() + 3600000);
+
+            if (nextExecutionTime.getTime() < now.getTime()) {
+                nextExecutionTime.setTime(
+                    nextExecutionTime.getTime() + 3600000
+                );
             }
 
-            const delay = nextExecutionTime.getTime() - now.getTime();
+            const delay = Math.max(
+                0,
+                nextExecutionTime.getTime() - now.getTime()
+            ) as Milliseconds;
 
             this.scheduler.createOnetimeTask(
                 'ScheduledProcessing_OneTime',
@@ -74,7 +67,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                         this.botName
                     );
                 },
-                delay as Milliseconds,
+                delay,
                 this.botName
             );
 

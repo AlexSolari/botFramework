@@ -321,8 +321,8 @@ describe('ScheduledActionProcessor', () => {
             expect(createTaskMock.mock.calls.length).toBe(1);
         });
 
-        test('should create periodic task directly when initialized at aligned time', async () => {
-            // Set system time to exactly HH:00:00 to trigger the aligned-time branch
+        test('should schedule via onetime task (with zero delay) when initialized at aligned time', async () => {
+            // Set system time to exactly HH:00:00, where the computed delay is 0
             const alignedTime = new Date();
             alignedTime.setMinutes(0, 0, 0);
             setSystemTime(alignedTime);
@@ -344,12 +344,13 @@ describe('ScheduledActionProcessor', () => {
 
                 localProcessor.initialize(mockApi, [action], 3600 as Seconds);
 
-                // The aligned branch should call createTask (not createOnetimeTask)
-                expect(localScheduler.createTaskCallCount()).toBe(1);
-                expect(localScheduler.createOnetimeTaskCallCount()).toBe(0);
+                // Scheduling always goes through createOnetimeTask, even with zero delay
+                expect(localScheduler.createOnetimeTaskCallCount()).toBe(1);
+                expect(localScheduler.createTaskCallCount()).toBe(0);
 
-                // Wait for the task to fire via setImmediate
+                // Once the zero-delay onetime task fires, the periodic task is created
                 await new Promise((resolve) => setTimeout(resolve, 20));
+                expect(localScheduler.createTaskCallCount()).toBe(1);
             } finally {
                 setSystemTime(); // restore real time
             }
