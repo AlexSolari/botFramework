@@ -144,7 +144,6 @@ export class ScheduledAction<
                 `Drop cached value [${this.name} : ${key}]`,
                 () => {
                     this.cachedState.delete(key);
-                    ScheduledAction.locks.delete(semaphoreKey);
                 },
                 hoursToMilliseconds(
                     cachedItemFactory.invalidationTimeoutInHours
