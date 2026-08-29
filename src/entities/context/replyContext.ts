@@ -154,7 +154,7 @@ export class ReplyContextInternal<
         andQuote: {
             /**
              * Reply with text message to message that triggered this action after action execution is finished.
-             * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+             * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
              * @param text Message contents.
              * @param options Message sending option.
              */
@@ -167,7 +167,7 @@ export class ReplyContextInternal<
             },
             /**
              * Reply with image message to message that triggered this action after action execution is finished.
-             * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+             * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
              * @param text Message contents.
              * @param options Message sending option.
              */
@@ -177,7 +177,7 @@ export class ReplyContextInternal<
 
             /**
              * Reply with video/gif message to message that triggered this action after action execution is finished.
-             * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+             * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
              * @param text Message contents.
              * @param options Message sending option.
              */
@@ -188,7 +188,7 @@ export class ReplyContextInternal<
 
         /**
          * Reply with text message to message that triggered this action after action execution is finished.
-         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
          * @param text Message contents.
          * @param options Message sending option.
          */
@@ -197,7 +197,7 @@ export class ReplyContextInternal<
         },
         /**
          * Reply with image message to message that triggered this action after action execution is finished.
-         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
          * @param text Message contents.
          * @param options Message sending option.
          */
@@ -207,7 +207,7 @@ export class ReplyContextInternal<
 
         /**
          * Reply with video/gif message to message that triggered this action after action execution is finished.
-         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
          * @param text Message contents.
          * @param options Message sending option.
          */
@@ -217,7 +217,7 @@ export class ReplyContextInternal<
 
         /**
          * React to the message that triggered this action after action execution is finished.
-         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
          * @param emoji Telegram emoji to react with.
          */
         withReaction: (emoji: TelegramEmoji) => {

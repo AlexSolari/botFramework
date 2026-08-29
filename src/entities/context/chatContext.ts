@@ -38,7 +38,7 @@ export class ChatContextInternal<
     send = {
         /**
          * Sends text message to chat after action execution is finished.
-         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
          * @param text Message contents.
          * @param options Message sending option.
          */
@@ -59,7 +59,7 @@ export class ChatContextInternal<
 
         /**
          * Sends image message to chat after action execution is finished.
-         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
          * @param name Message contents.
          * @param options Message sending option.
          */
@@ -78,7 +78,7 @@ export class ChatContextInternal<
 
         /**
          * Sends video/gif message to chat after action execution is finished.
-         * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+         * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
          * @param name Message contents.
          * @param options Message sending option.
          */
@@ -98,7 +98,7 @@ export class ChatContextInternal<
 
     /**
      * Unpins message after action execution is finished.
-     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+     * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
      * @param messageId Message id.
      */
     unpinMessage(messageId: number) {
@@ -114,7 +114,7 @@ export class ChatContextInternal<
 
     /**
      * Pins message after action execution is finished.
-     * If multiple responses are sent, they will be sent in the order they were added, with delay of at least 35ms as per Telegram rate-limit.
+     * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
      * @param messageId Message id.
      */
     pinMessage(messageId: number) {
