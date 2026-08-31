@@ -56,7 +56,7 @@ export class IncomingMessage {
             'title' in ctxMessage.chat
                 ? `${ctxMessage.chat.title} ${ctxMessage.chat.id}`
                 : 'DM',
-            history
+            [...history]
         );
         this.type = this.detectMessageType(ctxMessage);
         this.updateObject = ctxMessage;
