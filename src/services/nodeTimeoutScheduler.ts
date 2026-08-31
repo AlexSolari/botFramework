@@ -28,7 +28,7 @@ export class NodeTimeoutScheduler implements IScheduler {
         ownerName: string
     ) {
         const traceId = createTrace(this, this.botName, name);
-        const taskId = setInterval(() => {
+        const runAndEmit = () => {
             action();
             this.eventEmitter.emit(BotEventType.taskRun, {
                 name,
@@ -36,11 +36,13 @@ export class NodeTimeoutScheduler implements IScheduler {
                 interval,
                 traceId
             });
-        }, interval);
+        };
+
+        const taskId = setInterval(runAndEmit, interval);
         const task = new TaskRecord(name, taskId, interval, traceId);
 
         if (executeRightAway) {
-            setImmediate(action);
+            setImmediate(runAndEmit);
         }
 
         this.eventEmitter.emit(BotEventType.taskCreated, {
