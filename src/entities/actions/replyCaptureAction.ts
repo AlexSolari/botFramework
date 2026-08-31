@@ -1,4 +1,3 @@
-import { CommandTriggerCheckResult } from '../../dtos/commandTriggerCheckResult';
 import { Noop } from '../../helpers/noop';
 import { IActionState } from '../../types/actionState';
 import { CommandTrigger } from '../../types/commandTrigger';
@@ -32,23 +31,22 @@ export class ReplyCaptureAction<
         this.triggers = triggers;
         this.abortController = abortController;
 
-        this.key = `capture:${parentAction.key}:${Math.random()
-            .toString()
-            .replace('.', '')}` as ActionKey;
+        this.key = `capture:${parentAction.key}` as ActionKey;
     }
 
     async exec(ctx: ReplyContextInternal<TParentActionState>) {
-        let triggerCheckResult =
-            CommandTriggerCheckResult.DoNotTrigger('Other');
-        for (const trigger of this.triggers) {
-            triggerCheckResult = triggerCheckResult.mergeWith(
-                this.checkIfShouldBeExecuted(ctx, trigger)
-            );
-        }
-        const { shouldExecute, matchResults } = triggerCheckResult;
+        if (!this.isReplyToParentMessage(ctx)) return Noop.NoResponse;
 
-        if (!shouldExecute) return Noop.NoResponse;
+        const matchResults = this.checkTriggers(ctx);
+        if (matchResults == null) return Noop.NoResponse;
 
+        return await this.executeHandler(ctx, matchResults);
+    }
+
+    private async executeHandler(
+        ctx: ReplyContextInternal<TParentActionState>,
+        matchResults: RegExpExecArray[]
+    ) {
         ctx.observability.eventEmitter.emit(BotEventType.replyActionExecuting, {
             action: this,
             ctx,
@@ -67,48 +65,50 @@ export class ReplyCaptureAction<
         return ctx.responses;
     }
 
-    private checkIfShouldBeExecuted(
-        ctx: ReplyContextInternal<TParentActionState>,
-        trigger: CommandTrigger
+    private isReplyToParentMessage(
+        ctx: ReplyContextInternal<TParentActionState>
     ) {
-        if (ctx.replyMessageId != this.parentMessageId)
-            return CommandTriggerCheckResult.DoNotTrigger(
-                'TriggerNotSatisfied'
-            );
+        return ctx.replyMessageId == this.parentMessageId;
+    }
 
-        if (trigger == ctx.messageInfo.type)
-            return CommandTriggerCheckResult.Trigger();
-
-        if (typeof trigger == 'string')
-            return ctx.messageInfo.text.toLowerCase() == trigger.toLowerCase()
-                ? CommandTriggerCheckResult.Trigger()
-                : CommandTriggerCheckResult.DoNotTrigger('TriggerNotSatisfied');
-
+    private checkTriggers(ctx: ReplyContextInternal<TParentActionState>) {
+        let matched = false;
         const matchResults: RegExpExecArray[] = [];
 
-        trigger.lastIndex = 0;
+        for (const trigger of this.triggers) {
+            if (trigger == ctx.messageInfo.type) {
+                matched = true;
+                continue;
+            }
 
-        const execResult = trigger.exec(ctx.messageInfo.text);
-        if (execResult != null) {
-            let regexMatchLimit = REGEX_MATCH_LIMIT;
-            matchResults.push(execResult);
+            if (typeof trigger == 'string') {
+                if (ctx.messageInfo.text.toLowerCase() == trigger.toLowerCase())
+                    matched = true;
 
-            if (trigger.global) {
-                while (regexMatchLimit > 0) {
-                    const nextResult = trigger.exec(ctx.messageInfo.text);
+                continue;
+            }
 
-                    if (nextResult == null) break;
+            trigger.lastIndex = 0;
 
-                    matchResults.push(nextResult);
-                    regexMatchLimit -= 1;
+            const execResult = trigger.exec(ctx.messageInfo.text);
+            if (execResult != null) {
+                matched = true;
+                let regexMatchLimit = REGEX_MATCH_LIMIT;
+                matchResults.push(execResult);
+
+                if (trigger.global) {
+                    while (regexMatchLimit > 0) {
+                        const nextResult = trigger.exec(ctx.messageInfo.text);
+
+                        if (nextResult == null) break;
+
+                        matchResults.push(nextResult);
+                        regexMatchLimit -= 1;
+                    }
                 }
             }
         }
 
-        return new CommandTriggerCheckResult(
-            matchResults.length > 0,
-            matchResults,
-            false
-        );
+        return matched ? matchResults : null;
     }
 }

@@ -29,7 +29,7 @@ function createMockReplyContext(
     const scheduler = createMockScheduler();
     const eventEmitter = new TypedEventEmitter();
     const action = new ReplyCaptureAction(
-        100,
+        123,
         createMockParentAction(),
         mock(() => Promise.resolve()),
         [messageText],
@@ -161,12 +161,12 @@ describe('ReplyCaptureAction', () => {
                 new AbortController()
             );
 
-            expect(
-                action.key.startsWith('capture:command:parent-action:')
-            ).toBe(true);
+            expect(action.key).toBe(
+                'capture:command:parent-action' as ActionKey
+            );
         });
 
-        test('should generate unique keys for different instances', () => {
+        test('should derive the key from the parent action', () => {
             const parentAction = createMockParentAction();
 
             const action1 = new ReplyCaptureAction(
@@ -185,7 +185,7 @@ describe('ReplyCaptureAction', () => {
                 new AbortController()
             );
 
-            expect(action1.key).not.toBe(action2.key);
+            expect(action1.key).toBe(action2.key);
         });
     });
 
@@ -412,8 +412,7 @@ describe('ReplyCaptureAction', () => {
             expect(handler).toHaveBeenCalledTimes(1);
         });
 
-        test('should use mergeWith to combine trigger results', async () => {
-            // Test that multiple matching triggers get their results merged
+        test('should collect results from multiple matching regex triggers', async () => {
             const action = new ReplyCaptureAction(
                 123,
                 createMockParentAction(),
@@ -425,8 +424,7 @@ describe('ReplyCaptureAction', () => {
             const ctx = createMockReplyContext(123, 'test 123');
             await action.exec(ctx);
 
-            // Both regexes should match and results should be merged
-            expect(ctx.matchResults.length).toBeGreaterThanOrEqual(1);
+            expect(ctx.matchResults).toHaveLength(2);
         });
     });
 

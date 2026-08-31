@@ -4,7 +4,6 @@ import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { toArray } from '../../helpers/toArray';
 import { IActionState } from '../../types/actionState';
 import { IActionWithState, ActionKey } from '../../types/action';
-import { CommandTriggerCheckResult } from '../../dtos/commandTriggerCheckResult';
 import { MessageContextInternal } from '../context/messageContext';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { Noop } from '../../helpers/noop';
@@ -102,106 +101,24 @@ export class CommandAction<
                 ctx.chatInfo.id
             );
 
-            let triggerCheckResult =
-                CommandTriggerCheckResult.DoNotTrigger('Other');
-            for (const trigger of this.triggers) {
-                triggerCheckResult = triggerCheckResult.mergeWith(
-                    this.checkIfShouldBeExecuted(ctx, trigger, state)
-                );
-            }
-            const { shouldExecute, matchResults, skipCooldown, reason } =
-                triggerCheckResult;
+            if (!this.canExecuteIn(ctx)) return Noop.NoResponse;
 
-            if (!shouldExecute) {
-                if (reason == 'OnCooldown') {
-                    const cooldownMessage =
-                        this.cooldownInfoProvider(ctx).message;
+            const matchResults = this.checkTriggers(ctx);
+            if (matchResults == null) return Noop.NoResponse;
 
-                    return cooldownMessage
-                        ? [
-                              new TextMessage(
-                                  cooldownMessage,
-                                  ctx.chatInfo,
-                                  ctx.observability.traceId,
-                                  this,
-                                  new ReplyInfo(ctx.messageInfo.id)
-                              )
-                          ]
-                        : Noop.NoResponse;
-                }
+            const cooldownResponse = this.checkCooldown(ctx, state);
+            if (cooldownResponse !== null) return cooldownResponse;
 
-                return Noop.NoResponse;
-            }
+            if (!this.condition(ctx, state)) return Noop.NoResponse;
 
-            ctx.observability.eventEmitter.emit(
-                BotEventType.commandActionExecuting,
-                {
-                    action: this,
-                    ctx,
-                    state,
-                    traceId: ctx.observability.traceId
-                }
-            );
-            ctx.matchResults = matchResults;
-
-            await this.handler(ctx, state);
-
-            if (skipCooldown) {
-                ctx.startCooldown = false;
-            }
-
-            if (ctx.startCooldown) {
-                if (ctx.customCooldown) {
-                    this.customCooldowns.set(
-                        ctx.chatInfo.id,
-                        ctx.customCooldown
-                    );
-                } else {
-                    this.customCooldowns.delete(ctx.chatInfo.id);
-                }
-
-                state.lastExecutedDate = Date.now();
-            }
-
-            await ctx.storage.saveActionExecutionResult(
-                this,
-                ctx.chatInfo.id,
-                state
-            );
-
-            ctx.observability.eventEmitter.emit(
-                BotEventType.commandActionExecuted,
-                {
-                    action: this,
-                    ctx,
-                    state,
-                    traceId: ctx.observability.traceId
-                }
-            );
-            return ctx.responses;
+            return await this.executeHandler(ctx, state, matchResults);
         } finally {
             lock?.release();
         }
     }
 
-    private checkIfShouldBeExecuted(
-        ctx: MessageContextInternal<TActionState>,
-        trigger: CommandTrigger,
-        state: TActionState
-    ) {
-        if (!ctx.userInfo.id)
-            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
-                'UserIdMissing'
-            );
-
-        if (!this.isActiveProvider(ctx))
-            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
-                'ActionDisabled'
-            );
-
-        const triggerCheckResult = this.checkTrigger(ctx, trigger);
-
-        if (!triggerCheckResult.shouldExecute) return triggerCheckResult;
+    private canExecuteIn(ctx: MessageContextInternal<TActionState>): boolean {
+        if (!ctx.userInfo.id || !this.isActiveProvider(ctx)) return false;
 
         const chatsBlacklist = this.chatsBlacklistProvider(ctx);
         const chatsWhitelist = this.chatsWhitelistProvider(ctx);
@@ -211,59 +128,116 @@ export class CommandAction<
             chatsWhitelist.length == 0 ||
             chatsWhitelist.includes(ctx.chatInfo.id);
 
-        if (isChatInBlacklist || !isChatInWhitelist)
-            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
-                'ChatForbidden'
-            );
+        if (isChatInBlacklist || !isChatInWhitelist) return false;
 
         const usersWhitelist = this.usersWhitelistProvider(ctx);
         const isUserAllowed =
             usersWhitelist.length == 0 ||
             usersWhitelist.includes(ctx.userInfo.id);
 
-        if (!isUserAllowed)
-            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
-                'UserForbidden'
-            );
+        return isUserAllowed;
+    }
 
-        const lastExecutedDate = state.lastExecutedDate;
+    private checkCooldown(
+        ctx: MessageContextInternal<TActionState>,
+        state: TActionState
+    ): BotResponse[] | null {
         const cooldownInMilliseconds = secondsToMilliseconds(
             this.customCooldowns.get(ctx.chatInfo.id) ??
                 this.cooldownInfoProvider(ctx).cooldown
         );
         const onCooldown =
-            Date.now() - lastExecutedDate < cooldownInMilliseconds;
+            Date.now() - state.lastExecutedDate < cooldownInMilliseconds;
 
-        if (onCooldown)
-            return CommandTriggerCheckResult.DoNotTrigger('OnCooldown');
+        if (!onCooldown) return null;
 
-        const isCustomConditionMet = this.condition(ctx, state);
-        if (!isCustomConditionMet)
-            return CommandTriggerCheckResult.DontTriggerAndSkipCooldown(
-                'CustomConditionNotMet'
-            );
+        const cooldownMessage = this.cooldownInfoProvider(ctx).message;
 
-        return triggerCheckResult;
+        return cooldownMessage
+            ? [
+                  new TextMessage(
+                      cooldownMessage,
+                      ctx.chatInfo,
+                      ctx.observability.traceId,
+                      this,
+                      new ReplyInfo(ctx.messageInfo.id)
+                  )
+              ]
+            : Noop.NoResponse;
     }
 
-    private checkTrigger(
+    private async executeHandler(
         ctx: MessageContextInternal<TActionState>,
-        trigger: CommandTrigger
-    ) {
-        if (trigger == MessageType.Any || trigger == ctx.messageInfo.type)
-            return CommandTriggerCheckResult.Trigger();
+        state: TActionState,
+        matchResults: RegExpExecArray[]
+    ): Promise<BotResponse[]> {
+        ctx.observability.eventEmitter.emit(
+            BotEventType.commandActionExecuting,
+            {
+                action: this,
+                ctx,
+                state,
+                traceId: ctx.observability.traceId
+            }
+        );
+        ctx.matchResults = matchResults;
 
-        if (typeof trigger == 'string')
-            return ctx.messageInfo.text.toLowerCase() == trigger.toLowerCase()
-                ? CommandTriggerCheckResult.Trigger()
-                : CommandTriggerCheckResult.DoNotTrigger('TriggerNotSatisfied');
+        await this.handler(ctx, state);
 
+        if (ctx.startCooldown) {
+            if (ctx.customCooldown) {
+                this.customCooldowns.set(ctx.chatInfo.id, ctx.customCooldown);
+            } else {
+                this.customCooldowns.delete(ctx.chatInfo.id);
+            }
+
+            state.lastExecutedDate = Date.now();
+        }
+
+        await ctx.storage.saveActionExecutionResult(
+            this,
+            ctx.chatInfo.id,
+            state
+        );
+
+        ctx.observability.eventEmitter.emit(
+            BotEventType.commandActionExecuted,
+            {
+                action: this,
+                ctx,
+                state,
+                traceId: ctx.observability.traceId
+            }
+        );
+
+        return ctx.responses;
+    }
+
+    private checkTriggers(
+        ctx: MessageContextInternal<TActionState>
+    ): RegExpExecArray[] | null {
+        let matched = false;
         const matchResults: RegExpExecArray[] = [];
 
-        trigger.lastIndex = 0;
+        for (const trigger of this.triggers) {
+            if (trigger == MessageType.Any || trigger == ctx.messageInfo.type) {
+                matched = true;
+                continue;
+            }
 
-        const execResult = trigger.exec(ctx.messageInfo.text);
-        if (execResult != null) {
+            if (typeof trigger == 'string') {
+                if (ctx.messageInfo.text.toLowerCase() == trigger.toLowerCase())
+                    matched = true;
+
+                continue;
+            }
+
+            trigger.lastIndex = 0;
+
+            const execResult = trigger.exec(ctx.messageInfo.text);
+            if (execResult == null) continue;
+
+            matched = true;
             matchResults.push(execResult);
 
             if (trigger.global) {
@@ -280,10 +254,6 @@ export class CommandAction<
             }
         }
 
-        return new CommandTriggerCheckResult(
-            matchResults.length > 0,
-            matchResults,
-            false
-        );
+        return matched ? matchResults : null;
     }
 }
