@@ -32,7 +32,7 @@ export class TelegramApiService {
     private readonly TELEGRAM_API_SERVICE_ERROR_TRACEID: TraceId;
 
     private readonly methodMap: Record<
-        'pin' | keyof typeof BotResponseTypes,
+        keyof typeof BotResponseTypes,
         string | null
     > = {
         inlineQuery: 'answerInlineQuery',
