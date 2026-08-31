@@ -1,9 +1,15 @@
-type KeyedReadonlyCollection<K, V> = { get: (key: K) => V | undefined };
-type KeyedWriteableCollection<K, V> = KeyedReadonlyCollection<K, V> & {
+// V is constrained to exclude undefined, since these helpers use `undefined` to mean "key not present".
+type KeyedReadonlyCollection<K, V extends {}> = {
+    get: (key: K) => V | undefined;
+};
+type KeyedWriteableCollection<K, V extends {}> = KeyedReadonlyCollection<
+    K,
+    V
+> & {
     set: (key: K, value: V) => KeyedWriteableCollection<K, V>;
 };
 
-export function getOrCreateIfNotExists<K, V>(
+export function getOrCreateIfNotExists<K, V extends {}>(
     map: KeyedWriteableCollection<K, V>,
     key: K,
     fallbackFactory: () => V
@@ -17,7 +23,7 @@ export function getOrCreateIfNotExists<K, V>(
     return fallback;
 }
 
-export function getOrSetIfNotExists<K, V>(
+export function getOrSetIfNotExists<K, V extends {}>(
     map: KeyedWriteableCollection<K, V>,
     key: K,
     fallback: V
@@ -30,7 +36,7 @@ export function getOrSetIfNotExists<K, V>(
     return fallback;
 }
 
-export function getOrThrow<K, V>(
+export function getOrThrow<K, V extends {}>(
     map: KeyedReadonlyCollection<K, V>,
     key: K,
     error: string = 'Key not found in collection'
