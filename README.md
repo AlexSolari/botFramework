@@ -55,6 +55,7 @@ Create a file named `token.txt` in your project and paste your Telegram Bot toke
 Create an `index.ts` file with the following content:
 
 ```typescript
+import { readFile } from 'node:fs/promises';
 import {
     botOrchestrator,
     CommandActionBuilder,
@@ -84,19 +85,23 @@ async function main() {
         // Start the bot
         const bot = await botOrchestrator.startBot({
             name: 'MyFirstBot',
-            tokenFilePath: './token.txt',
+            tokenProvider: async () =>
+                (await readFile('./token.txt', 'utf-8')).trim(),
             actions: {
                 commands,
                 scheduled: [], // Add scheduled actions if needed
-                inlineQueries: []
+                inlineQueries: [],
+                messageFilter: (message) => {
+                    // Optional: ignore messages from bots or other unwanted sources
+                    return !message.from?.is_bot;
+                }
             },
             chats: {
                 MyChat: -1001234567890 // Replace with your chat ID
             },
             scheduledPeriod: (60 * 5) as Seconds,
             // Optional settings
-            storagePath: './data',
-            verboseLoggingForIncomingMessage: false
+            storagePath: './data'
         });
 
         // Add logging
@@ -170,10 +175,10 @@ const myCommand = new CommandActionBuilder('WelcomeMessage')
 Scheduled actions run periodically without user interaction:
 
 ```typescript
-import { ScheduledActionBuilder, Hours } from 'chz-telegram-bot';
+import { ScheduledActionBuilder } from 'chz-telegram-bot';
 
 const dailyNotification = new ScheduledActionBuilder('GM')
-    .runAt(9 as Hours) // Run at 9 AM
+    .runAt(9) // Run at 9 AM
     .do((ctx) => {
         ctx.send.text('Good morning!');
     })
@@ -184,24 +189,28 @@ const dailyNotification = new ScheduledActionBuilder('GM')
 
 Depending on the type of action, you will have access to the following interaction options:
 
-| Method               | Action type | Description                                                  |
-| -------------------- | ----------- | ------------------------------------------------------------ |
-| `send.text`          | Both        | Send text to chat as a standalone message                    |
-| `send.image`         | Both        | Send image to chat as a standalone message                   |
-| `send.video`         | Both        | Send video/gif to chat as a standalone message               |
-| `unpinMessage`       | Both        | Unpins message by its ID                                     |
-| `wait`               | Both        | Delays next replies from this action by given amount of ms   |
-| `reply.withText`     | Command     | Replies with text to a message that triggered an action      |
-| `reply.withImage`    | Command     | Replies with image to a message that triggered an action     |
-| `reply.withVideo`    | Command     | Replies with video/gif to a message that triggered an action |
-| `reply.withReaction` | Command     | Sets an emoji reaction to a message that triggered an action |
+| Method               | Action type | Description                                                     |
+| -------------------- | ----------- | --------------------------------------------------------------- |
+| `send.text`          | Both        | Send text to chat as a standalone message                       |
+| `send.image`         | Both        | Send image to chat as a standalone message from `./content`     |
+| `send.video`         | Both        | Send video/gif to chat as a standalone message from `./content` |
+| `pinMessage`         | Both        | Pins a message by its ID                                        |
+| `unpinMessage`       | Both        | Unpins a message by its ID                                      |
+| `wait`               | Both        | Delays next replies from this action by given amount of ms      |
+| `reply.withText`     | Command     | Replies with text to a message that triggered an action         |
+| `reply.withImage`    | Command     | Replies with image to a message that triggered an action        |
+| `reply.withVideo`    | Command     | Replies with video/gif to a message that triggered an action    |
+| `reply.withReaction` | Command     | Sets an emoji reaction to a message that triggered an action    |
 
-Keep in mind that reply sending is deferred until action execution finishes and will be done in order of calling in the action handler.
+Keep in mind that reply sending is deferred until action execution finishes and is queued in the order it was added. Telegram rate limits still apply between queued sends, so the framework inserts spacing between responses rather than promising strict real-time ordering.
+
+Media files used by `send.image` and `send.video` are resolved from the `./content` directory, so `ctx.send.image('welcome')` loads `./content/welcome.png` and `ctx.send.video('demo')` loads `./content/demo.mp4`.
+
 Example:
 
 ```typescript
 ctx.send.text('Message 1');
-ctx.wait(5000 as Millisecond);
+ctx.wait(5000 as Milliseconds);
 ctx.send.text('Message 2');
 ```
 
@@ -211,21 +220,22 @@ This will result in `Message 1` being sent, followed by `Message 2` after a 5 se
 
 When starting a bot, you can provide the following configuration:
 
-| Option            | Type                                                                                              | Required                    | Description                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------- |
-| `name`            | `string`                                                                                          | Yes                         | Bot name used in logging                                                                     |
-| `tokenFilePath`   | `string`                                                                                          | Yes                         | Path to file containing Telegram Bot token                                                   |
-| `actions`         | `{ commands: CommandAction[], scheduled: ScheduledAction[], inlineQueries: InlineQueryAction[] }` | Yes (can be empty)          | Collection of actions grouped under `actions` — `commands`, `scheduled`, and `inlineQueries` |
-| `chats`           | `Record<string, number>`                                                                          | Yes                         | Object containing chat name-id pairs. Used for logging and execution of scheduled action.    |
-| `storagePath`     | `string`                                                                                          | No                          | Custom storage path for default JsonFileStorage client                                       |
-| `scheduledPeriod` | `Seconds`                                                                                         | No (will default to 1 hour) | Period between scheduled action executions                                                   |
-| `services`        |                                                                                                   | No                          | Custom services to be used instead of default ones                                           |
+| Option            | Type                                                                                                                   | Required                    | Description                                                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `name`            | `string`                                                                                                               | Yes                         | Bot name used in logging                                                                                               |
+| `tokenProvider`   | `() => Promise<string>`                                                                                                | Yes                         | Function that returns the Telegram Bot token (e.g., read from a file or secret manager)                                |
+| `actions`         | `{ commands: CommandAction[], scheduled: ScheduledAction[], inlineQueries: InlineQueryAction[], messageFilter?: ... }` | Yes (can be empty)          | Collection of actions grouped under `actions` — `commands`, `scheduled`, `inlineQueries`, and optional `messageFilter` |
+| `chats`           | `Record<string, number>`                                                                                               | Yes                         | Object containing chat name-id pairs. Used for logging and scheduled execution.                                        |
+| `storagePath`     | `string`                                                                                                               | No                          | Custom storage path for default JsonFileStorage client                                                                 |
+| `scheduledPeriod` | `Seconds`                                                                                                              | No (will default to 1 hour) | Period between scheduled action executions                                                                             |
+| `services`        |                                                                                                                        | No                          | Custom services to be used instead of default ones                                                                     |
 
 Services object should have following structure:
 | Option | Type | Required | Description |
 |------------------|--------------------------|----------|---------------------------------------------------------------|
 | `storageClient` | `IStorageClient` | No (will default to `JsonFileStorage`) | Persistence state provider |
 | `scheduler` | `IScheduler` | No (will default to `NodeTimeoutScheduler`) | Scheduler used to schedule actions |
+| `eventEmitter` | `TypedEventEmitter<Record<string, unknown>>` | No | Emits framework lifecycle and execution events |
 
 ## Advanced Usage
 
@@ -234,7 +244,10 @@ Services object should have following structure:
 The framework allows you to create custom state for your actions:
 
 ```typescript
-import { ActionStateBase } from 'chz-telegram-bot';
+import {
+    ActionStateBase,
+    CommandActionBuilderWithState
+} from 'chz-telegram-bot';
 
 class MyCustomState extends ActionStateBase {
     counter: number = 0;
@@ -262,27 +275,28 @@ The framework provides support for handling inline queries with type-safe builde
 import { InlineQueryActionBuilder } from 'chz-telegram-bot';
 
 const searchCommand = new InlineQueryActionBuilder('Search')
+    .on(/search/i)
     .do((ctx) => {
         const query = ctx.queryText;
         // Process the query and return inline results
-        ctx.showInlineQueryResult([
-            {
-                id: '1',
-                type: 'article',
-                title: `Search results for: ${query}`,
-                description: 'Click to send',
-                input_message_content: {
-                    message_text: `Search result for: ${query}`
-                }
+        ctx.showInlineQueryResult({
+            id: '1',
+            type: 'article',
+            title: `Search results for: ${query}`,
+            description: 'Click to send',
+            input_message_content: {
+                message_text: `Search result for: ${query}`
             }
-        ]);
+        });
     })
     .build();
 ```
 
+You can also use the builder’s built-in `withConfiguration` and `disabled()` helpers to toggle the action at runtime.
+
 ### Response Queue
 
-The framework includes a response processing queue that ensures reliable message delivery and proper ordering of responses:
+The framework includes a response processing queue that batches deferred actions and sends them after the handler completes:
 
 ```typescript
 ctx.send.text('First message');
@@ -290,7 +304,7 @@ ctx.send.image('image');
 ctx.reply.withReaction('👍');
 ```
 
-All responses are queued and processed in order, ensuring proper sequencing of messages and reactions.
+Responses are queued in the order they were added, and the framework applies spacing to respect Telegram rate limiting. This is best-effort handling rather than a strict real-time guarantee for every send.
 
 ## Stopping the Bot
 
