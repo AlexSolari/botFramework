@@ -48,6 +48,8 @@ class CachedDataSource {
             if (!existsSync(dir)) {
                 mkdirSync(dir, { recursive: true });
             }
+
+            this.loadFromFile(action.key);
         }
     }
 
