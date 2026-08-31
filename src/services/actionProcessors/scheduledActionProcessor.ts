@@ -70,8 +70,6 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                 delay,
                 this.botName
             );
-
-            void this.runScheduled();
         }
     }
 

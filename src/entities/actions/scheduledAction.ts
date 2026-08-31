@@ -16,6 +16,7 @@ export class ScheduledAction<
     TActionState extends IActionState
 > implements IActionWithState<TActionState> {
     static readonly locks = new Map<string, Semaphore>();
+    static readonly sharedCache = new Map<string, unknown>();
     static readonly semaphoreFactory: () => Semaphore = () => new Semaphore(1);
 
     readonly name: string;
@@ -27,7 +28,6 @@ export class ScheduledAction<
         number[]
     >;
 
-    readonly cachedState = new Map<string, unknown>();
     readonly stateConstructor: () => TActionState;
     readonly cachedStateFactories: Map<string, CachedStateFactory>;
     readonly handler: ScheduledHandler<TActionState>;
@@ -123,8 +123,9 @@ export class ScheduledAction<
         await semaphore.acquire();
 
         try {
-            if (this.cachedState.has(key)) {
-                return this.cachedState.get(key) as TResult;
+            const cacheKey = `${this.key}:${key}`;
+            if (ScheduledAction.sharedCache.has(cacheKey)) {
+                return ScheduledAction.sharedCache.get(cacheKey) as TResult;
             }
 
             ctx.observability.eventEmitter.emit(
@@ -138,12 +139,12 @@ export class ScheduledAction<
             );
             const value = await cachedItemFactory.getValue();
 
-            this.cachedState.set(key, value);
+            ScheduledAction.sharedCache.set(cacheKey, value);
 
             ctx.scheduler.createOnetimeTask(
                 `Drop cached value [${this.name} : ${key}]`,
                 () => {
-                    this.cachedState.delete(key);
+                    ScheduledAction.sharedCache.delete(cacheKey);
                 },
                 hoursToMilliseconds(
                     cachedItemFactory.invalidationTimeoutInHours

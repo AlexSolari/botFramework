@@ -27,6 +27,22 @@ function createMockScheduledAction(): ScheduledAction<never> {
     } as unknown as ScheduledAction<never>;
 }
 
+function createImmediateOnetimeScheduler(): MockScheduler {
+    const scheduler = createMockScheduler();
+    const createOnetimeTaskMock = mock(
+        (_name: string, action: () => void, _delay: number, _owner: string) => {
+            action();
+        }
+    );
+
+    return {
+        ...scheduler,
+        createOnetimeTask: createOnetimeTaskMock,
+        createOnetimeTaskCallCount: () =>
+            createOnetimeTaskMock.mock.calls.length
+    };
+}
+
 // =============================================================================
 // ScheduledActionProcessor Tests
 // =============================================================================
@@ -171,7 +187,7 @@ describe('ScheduledActionProcessor', () => {
     describe('runScheduled', () => {
         test('should emit scheduledProcessingStarted when executed', async () => {
             const localEventEmitter = new TypedEventEmitter();
-            const localScheduler = createMockScheduler();
+            const localScheduler = createImmediateOnetimeScheduler();
 
             const localProcessor = new ScheduledActionProcessor(
                 'run-bot',
@@ -202,7 +218,7 @@ describe('ScheduledActionProcessor', () => {
 
         test('should emit scheduledProcessingFinished after execution', async () => {
             const localEventEmitter = new TypedEventEmitter();
-            const localScheduler = createMockScheduler();
+            const localScheduler = createImmediateOnetimeScheduler();
 
             const localProcessor = new ScheduledActionProcessor(
                 'finish-run-bot',
@@ -232,7 +248,7 @@ describe('ScheduledActionProcessor', () => {
 
         test('should call executeAction for each chat and action combination', async () => {
             const localEventEmitter = new TypedEventEmitter();
-            const localScheduler = createMockScheduler();
+            const localScheduler = createImmediateOnetimeScheduler();
 
             const localProcessor = new ScheduledActionProcessor(
                 'multi-run-bot',
