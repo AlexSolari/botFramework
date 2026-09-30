@@ -2,7 +2,7 @@ import { describe, test, expect } from 'bun:test';
 import { ChatHistoryMessage } from '../../src/dtos/chatHistoryMessage';
 import { MessageType } from '../../src/types/messageTypes';
 import { TraceId } from '../../src/types/trace';
-import type { TelegramUser } from '../../src/types/externalAliases';
+import type { User } from '../../src/types/botApi.generated';
 
 describe('ChatHistoryMessage', () => {
     describe('constructor', () => {
@@ -25,7 +25,7 @@ describe('ChatHistoryMessage', () => {
                 id: 1,
                 is_bot: false,
                 first_name: 'Alice'
-            } as TelegramUser;
+            } as User;
 
             const msg = new ChatHistoryMessage(
                 1,

@@ -2,7 +2,7 @@ import { BotResponseTypes, IChatResponse } from '../../types/response';
 import { IAction } from '../../types/action';
 import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';
-import { TelegramEmoji } from '../../types/externalAliases';
+import { ReactionTypeEmoji } from '../../types/botApi.generated';
 
 export class Reaction implements IChatResponse {
     readonly kind = BotResponseTypes.react;
@@ -11,14 +11,14 @@ export class Reaction implements IChatResponse {
     readonly chatInfo: ChatInfo;
     readonly messageId: number;
     readonly traceId: TraceId;
-    readonly emoji: TelegramEmoji;
+    readonly emoji: ReactionTypeEmoji['emoji'];
     readonly action: IAction;
 
     constructor(
         traceId: TraceId,
         chatInfo: ChatInfo,
         messageId: number,
-        emoji: TelegramEmoji,
+        emoji: ReactionTypeEmoji['emoji'],
         action: IAction
     ) {
         this.chatInfo = chatInfo;

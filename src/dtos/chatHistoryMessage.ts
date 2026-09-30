@@ -1,4 +1,4 @@
-import { TelegramUser } from '../types/externalAliases';
+import { User } from '../types/botApi.generated';
 import { MessageTypeValue } from '../types/messageTypes';
 import { TraceId } from '../types/trace';
 
@@ -7,7 +7,7 @@ export class ChatHistoryMessage {
         /** The unique identifier for the message */
         readonly id: number,
         /** The user who sent the message */
-        readonly from: TelegramUser | undefined,
+        readonly from: User | undefined,
         /** The content of the message */
         readonly text: string,
         /** The type of the message */

@@ -15,24 +15,21 @@ import {
 import { ActionKey } from '../../../src/types/action';
 import { MessageType } from '../../../src/types/messageTypes';
 import type { CommandAction } from '../../../src/entities/actions/commandAction';
-import type {
-    BotInfo,
-    TelegramMessage
-} from '../../../src/types/externalAliases';
+import type { BotInfo } from '../../../src/types/botInfo';
+import type { Message } from '../../../src/types/botApi.generated';
 import type { CommandTrigger } from '../../../src/types/commandTrigger';
-import { Message } from '@telegraf/types';
 
 // ---- Mock helpers for initialize() tests ----
 
-type MessageEventHandler = (params: {
-    message: TelegramMessage;
-}) => void | Promise<void>;
+type MessageEventHandler = (
+    message: Message
+) => void | Promise<void>;
 
 interface MockTelegramBot {
     on: (event: string, handler: MessageEventHandler) => void;
     getOnCallCount: () => number;
     hasRegisteredEvent: (eventName: string) => boolean;
-    triggerMessage: (message: TelegramMessage) => Promise<void>;
+    triggerMessage: (message: Message) => Promise<void>;
 }
 
 function createMockTelegramBot(): MockTelegramBot {
@@ -45,9 +42,9 @@ function createMockTelegramBot(): MockTelegramBot {
         on: onMock,
         getOnCallCount: () => onMock.mock.calls.length,
         hasRegisteredEvent: (eventName: string) => handlers.has(eventName),
-        triggerMessage: async (message: TelegramMessage) => {
+        triggerMessage: async (message: Message) => {
             const handler = handlers.get('message');
-            if (handler) await handler({ message });
+            if (handler) await handler(message);
         }
     };
 }
@@ -78,7 +75,7 @@ function createMockBotInfo(): BotInfo {
 function createTelegramMessage(
     text = '/test',
     chatId = 12345
-): TelegramMessage {
+): Message {
     return {
         message_id: 42,
         date: Math.floor(Date.now() / 1000),
@@ -548,7 +545,7 @@ describe('CommandActionProcessor', () => {
                 from: { id: 1, is_bot: false, first_name: 'User' },
                 text: 'reply text',
                 reply_to_message: { message_id: 42 } // marks it as a reply to message 42
-            } as unknown as TelegramMessage;
+            } as unknown as Message;
 
             await mockTelegram.triggerMessage(replyMessage);
             await new Promise((resolve) => setTimeout(resolve, 50));

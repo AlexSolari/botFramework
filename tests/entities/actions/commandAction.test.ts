@@ -15,8 +15,9 @@ import { IStorageClient } from '../../../src/types/storage';
 import { ActionKey } from '../../../src/types/action';
 import { Seconds } from '../../../src/types/timeValues';
 import { Noop } from '../../../src/helpers/noop';
-import { createMockScheduler } from '../../services/actionProcessors/processorTestHelpers';
-import type { Message, UserFromGetMe } from '@telegraf/types';
+import { createMockScheduler, createMockBotApiClient } from '../../services/actionProcessors/processorTestHelpers';
+import type { BotInfo } from '../../../src/types/botInfo';
+import type { Message } from '../../../src/types/botApi.generated';
 
 function createMockStorage(
     state: IActionState = { lastExecutedDate: 0, pinnedMessages: [] }
@@ -97,12 +98,13 @@ function createContext(
         supports_inline_queries: false,
         can_connect_to_business: false,
         has_main_web_app: false
-    } as UserFromGetMe;
+    } as BotInfo;
 
     const ctx = new MessageContextInternal<ActionStateBase>(
         storage,
         scheduler,
         eventEmitter,
+        createMockBotApiClient(),
         action,
         incomingMessage,
         'TestBot',

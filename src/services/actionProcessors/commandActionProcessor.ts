@@ -14,7 +14,8 @@ import { typeSafeObjectFromEntries } from '../../helpers/objectFromEntries';
 import { BaseActionProcessor } from './baseProcessor';
 import { getOrCreateIfNotExists } from '../../helpers/mapUtils';
 import { ChatHistoryMessage } from '../../dtos/chatHistoryMessage';
-import { BotInfo, TelegramBot } from '../../types/externalAliases';
+import { BotInfo } from '../../types/botInfo';
+import { UpdatePoller } from '../telegram/updatePoller';
 import { BotEventType } from '../../types/events';
 import { TraceId } from '../../types/trace';
 import { MESSAGE_HISTORY_LENGTH_LIMIT } from '../../helpers/constants';
@@ -42,7 +43,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
     initialize(
         api: TelegramApiService,
-        telegram: TelegramBot,
+        telegram: UpdatePoller,
         commands: CommandAction<IActionState>[],
         botInfo: BotInfo,
         messageFilter?: (message: IncomingMessage) => boolean
@@ -75,7 +76,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         }
 
         if (commands.length > 0) {
-            telegram.on('message', ({ message }) => {
+            telegram.on('message', (message) => {
                 const internalMessage = new IncomingMessage(
                     message,
                     this.botName,
@@ -193,6 +194,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
             this.storage,
             this.scheduler,
             this.eventEmitter,
+            this.api.client,
             command,
             msg,
             this.botName,
@@ -217,6 +219,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
             this.storage,
             this.scheduler,
             this.eventEmitter,
+            this.api.client,
             capture,
             msg,
             this.botName,

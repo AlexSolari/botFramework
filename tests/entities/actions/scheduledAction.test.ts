@@ -20,7 +20,7 @@ import { ActionKey } from '../../../src/types/action';
 import { Hours, HoursOfDay } from '../../../src/types/timeValues';
 import { TraceId } from '../../../src/types/trace';
 import { Noop } from '../../../src/helpers/noop';
-import { createMockScheduler } from '../../services/actionProcessors/processorTestHelpers';
+import { createMockScheduler, createMockBotApiClient } from '../../services/actionProcessors/processorTestHelpers';
 
 function createMockStorage(
     state: IActionState = { lastExecutedDate: 0, pinnedMessages: [] }
@@ -71,6 +71,7 @@ function createContext(
         storage,
         scheduler,
         eventEmitter,
+        createMockBotApiClient(),
         action,
         chatInfo,
         'trace:test' as TraceId,

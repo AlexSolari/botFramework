@@ -16,7 +16,8 @@ import {
     createMockTraceId,
     createMockTextResponse,
     getMockFn,
-    type MockTelegramApi
+    type MockTelegramApi,
+    createMockBotApiClient
 } from './processorTestHelpers';
 
 // =============================================================================
@@ -42,6 +43,7 @@ class MockBaseContext extends BaseContextInternal<IAction> {
             storage,
             scheduler,
             eventEmitter,
+            createMockBotApiClient(),
             action,
             chatInfo,
             traceId,

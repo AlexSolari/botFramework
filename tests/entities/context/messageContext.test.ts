@@ -9,10 +9,12 @@ import { Reaction } from '../../../src/dtos/responses/reaction';
 import { ActionKey } from '../../../src/types/action';
 import { Seconds } from '../../../src/types/timeValues';
 import { CommandAction } from '../../../src/entities/actions/commandAction';
-import { Message, UserFromGetMe } from '@telegraf/types';
+import { BotInfo } from '../../../src/types/botInfo';
+import { Message } from '../../../src/types/botApi.generated';
 import {
     createMockStorage,
-    createMockScheduler
+    createMockScheduler,
+    createMockBotApiClient
 } from '../../services/actionProcessors/processorTestHelpers';
 import { IncomingMessage } from '../../../src/dtos/incomingMessage';
 
@@ -39,7 +41,7 @@ function createMessageContext(
     const eventEmitter = new TypedEventEmitter();
     const action = createMockCommandAction();
 
-    // Create a minimal TelegramMessage-like object
+    // Create a minimal Message-like object
     const telegramMessage = {
         message_id: 100,
         date: Math.floor(Date.now() / 1000),
@@ -60,12 +62,13 @@ function createMessageContext(
         supports_inline_queries: false,
         can_connect_to_business: false,
         has_main_web_app: false
-    } as UserFromGetMe;
+    } as BotInfo;
 
     const ctx = new MessageContextInternal<ActionStateBase>(
         storage,
         scheduler,
         eventEmitter,
+        createMockBotApiClient(),
         action,
         incomingMessage,
         'TestBot',

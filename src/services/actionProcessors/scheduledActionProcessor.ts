@@ -88,6 +88,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                         this.storage,
                         this.scheduler,
                         this.eventEmitter,
+                        this.api.client,
                         scheduledAction,
                         chatInfo,
                         createTrace(

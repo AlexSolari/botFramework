@@ -9,7 +9,8 @@ import { TypedEventEmitter, BotEventType } from '../../../src/types/events';
 import { Noop } from '../../../src/helpers/noop';
 import {
     createMockStorage,
-    createMockScheduler
+    createMockScheduler,
+    createMockBotApiClient
 } from '../../services/actionProcessors/processorTestHelpers';
 import { IncomingInlineQuery } from '../../../src/dtos/incomingQuery';
 import { ChatInfo } from '../../../src/dtos/chatInfo';
@@ -40,6 +41,7 @@ function createMockInlineContext(
         storage,
         scheduler,
         eventEmitter,
+        createMockBotApiClient(),
         action,
         query,
         chatInfo,

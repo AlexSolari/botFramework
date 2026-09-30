@@ -8,7 +8,7 @@ import { ChatInfo } from '../chatInfo';
 import { TraceId } from '../../types/trace';
 import { ReplyInfo } from '../replyInfo';
 import { PostSendOperation } from '../../types/postSendOperations';
-import { TelegramInlineKeyboardButton } from '../../types/externalAliases';
+import { InlineKeyboardButton } from '../../types/botApi.generated';
 
 export class TextMessage implements IReplyResponseWithContent<string> {
     readonly kind = BotResponseTypes.text;
@@ -22,7 +22,7 @@ export class TextMessage implements IReplyResponseWithContent<string> {
     readonly disableWebPreview: boolean;
     readonly shouldPin: boolean;
     readonly action: IAction;
-    readonly keyboard?: TelegramInlineKeyboardButton[][];
+    readonly keyboard?: InlineKeyboardButton[][];
 
     constructor(
         text: string,

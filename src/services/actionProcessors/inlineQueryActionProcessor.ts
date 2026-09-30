@@ -5,7 +5,7 @@ import { InlineQueryContextInternal } from '../../entities/context/inlineQueryCo
 import { createTrace } from '../../helpers/traceFactory';
 import { INLINE_QUERY_FAKE_CHAT_ID } from '../../helpers/constants';
 import { BotEventType } from '../../types/events';
-import { TelegramBot } from '../../types/externalAliases';
+import { UpdatePoller } from '../telegram/updatePoller';
 import { TelegramApiService } from '../telegramApi';
 import { BaseActionProcessor } from './baseProcessor';
 
@@ -20,7 +20,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
 
     initialize(
         api: TelegramApiService,
-        telegram: TelegramBot,
+        telegram: UpdatePoller,
         inlineQueries: InlineQueryAction[]
     ) {
         this.initializeDependencies(api);
@@ -29,7 +29,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
         const queriesInProcessing = new Map<number, IncomingInlineQuery>();
 
         if (this.inlineQueries.length > 0) {
-            telegram.on('inline_query', async ({ inlineQuery }) => {
+            telegram.on('inline_query', async (inlineQuery) => {
                 const query = new IncomingInlineQuery(
                     inlineQuery.id,
                     inlineQuery.query,
@@ -82,6 +82,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                             this.storage,
                             this.scheduler,
                             this.eventEmitter,
+                            this.api.client,
                             inlineQueryAction,
                             query,
                             this.fakeChatInfo,

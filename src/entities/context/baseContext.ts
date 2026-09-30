@@ -1,4 +1,5 @@
 import { ChatInfo } from '../../dtos/chatInfo';
+import { BotApiClient } from '../../services/telegram/botApiClient';
 import { IAction, IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
 import { CommandTrigger } from '../../types/commandTrigger';
@@ -37,6 +38,9 @@ export abstract class BaseContextInternal<TAction extends IAction> {
         traceId: TraceId;
     };
 
+    /** Telegram API client instance for the bot executing this action. */
+    readonly telegramApiClient: BotApiClient;
+
     get actionKey() {
         return this.action.key;
     }
@@ -45,6 +49,7 @@ export abstract class BaseContextInternal<TAction extends IAction> {
         storage: IStorageClient,
         scheduler: IScheduler,
         eventEmitter: TypedEventEmitter,
+        telegramApiClient: BotApiClient,
         action: TAction,
         chatInfo: ChatInfo,
         traceId: TraceId,
@@ -55,6 +60,7 @@ export abstract class BaseContextInternal<TAction extends IAction> {
         this.botName = botName;
         this.action = action;
         this.chatInfo = chatInfo;
+        this.telegramApiClient = telegramApiClient;
         this.observability = {
             eventEmitter,
             traceId

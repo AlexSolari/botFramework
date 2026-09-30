@@ -6,10 +6,11 @@ import { TypedEventEmitter, BotEventType } from '../../../src/types/events';
 import { Noop } from '../../../src/helpers/noop';
 import { ActionStateBase } from '../../../src/entities/states/actionStateBase';
 import { MessageType, MessageTypeValue } from '../../../src/types/messageTypes';
-import { Message } from '@telegraf/types';
+import { Message } from '../../../src/types/botApi.generated';
 import {
     createMockStorage,
-    createMockScheduler
+    createMockScheduler,
+    createMockBotApiClient
 } from '../../services/actionProcessors/processorTestHelpers';
 import { IncomingMessage } from '../../../src/dtos/incomingMessage';
 
@@ -36,7 +37,7 @@ function createMockReplyContext(
         new AbortController()
     );
 
-    // Create a TelegramMessage with the appropriate structure for the message type
+    // Create a Message with the appropriate structure for the message type
     let telegramMessage: Message;
 
     if (messageType === MessageType.Photo) {
@@ -89,6 +90,7 @@ function createMockReplyContext(
         storage,
         scheduler,
         eventEmitter,
+        createMockBotApiClient(),
         action,
         incomingMessage,
         'TestBot',

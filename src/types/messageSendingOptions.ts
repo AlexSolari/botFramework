@@ -1,4 +1,4 @@
-import { TelegramInlineKeyboardButton } from './externalAliases';
+import { InlineKeyboardButton } from './botApi.generated';
 
 export interface MessageSendingOptions {
     pin?: boolean;
@@ -6,5 +6,5 @@ export interface MessageSendingOptions {
 
 export interface TextMessageSendingOptions extends MessageSendingOptions {
     disableWebPreview?: boolean;
-    keyboard?: TelegramInlineKeyboardButton[][];
+    keyboard?: InlineKeyboardButton[][];
 }

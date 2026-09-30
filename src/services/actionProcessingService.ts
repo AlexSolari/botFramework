@@ -10,11 +10,13 @@ import { buildHelpCommand } from '../builtin/helpAction';
 import { CommandActionProcessor } from './actionProcessors/commandActionProcessor';
 import { InlineQueryActionProcessor } from './actionProcessors/inlineQueryActionProcessor';
 import { ScheduledActionProcessor } from './actionProcessors/scheduledActionProcessor';
-import { TelegramBot } from '../types/externalAliases';
-import { Telegraf } from 'telegraf';
-import { TypedEventEmitter } from '../types/events';
+import { BotInfo } from '../types/botInfo';
+import { BotEventType, TypedEventEmitter } from '../types/events';
 import { DEFAULT_SCHEDULED_ACTION_PERIOD_SECONDS } from '../helpers/constants';
 import { IncomingMessage } from '../dtos/incomingMessage';
+import { BotApiClient } from './telegram/botApiClient';
+import { UpdatePoller } from './telegram/updatePoller';
+import { createTrace } from '../helpers/traceFactory';
 
 export class ActionProcessingService {
     private readonly eventEmitter: TypedEventEmitter;
@@ -25,7 +27,7 @@ export class ActionProcessingService {
 
     private readonly botName: string;
 
-    private telegramBot!: TelegramBot;
+    private telegramBot!: UpdatePoller;
 
     constructor(
         botName: string,
@@ -71,10 +73,16 @@ export class ActionProcessingService {
         },
         scheduledPeriod?: Seconds
     ) {
-        this.telegramBot = new Telegraf(token);
+        const client = new BotApiClient(token);
+        this.telegramBot = new UpdatePoller(client, (error) => {
+            this.eventEmitter.emit(BotEventType.error, {
+                error,
+                traceId: createTrace(this, this.botName, 'Polling')
+            });
+        });
         const api = new TelegramApiService(
             this.botName,
-            this.telegramBot.telegram,
+            client,
             this.storage,
             this.eventEmitter,
             (capture, id, chatInfo, traceId) => {
@@ -87,9 +95,13 @@ export class ActionProcessingService {
             }
         );
 
-        const botInfo = await this.telegramBot.telegram.getMe();
+        const botUser = await client.call('getMe', {});
+        if (!botUser.username) {
+            throw new Error('getMe returned a bot without username');
+        }
+        const botInfo: BotInfo = { ...botUser, username: botUser.username };
         const commandActions =
-            actions.commands.length > 0 && botInfo.username
+            actions.commands.length > 0
                 ? [
                       buildHelpCommand(
                           actions.commands
@@ -119,7 +131,7 @@ export class ActionProcessingService {
             scheduledPeriod ?? DEFAULT_SCHEDULED_ACTION_PERIOD_SECONDS
         );
 
-        void this.telegramBot.launch();
+        void this.telegramBot.start();
     }
 
     stop() {

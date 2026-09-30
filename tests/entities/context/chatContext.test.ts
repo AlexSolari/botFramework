@@ -12,7 +12,7 @@ import { ActionKey } from '../../../src/types/action';
 import { ChatInfo } from '../../../src/dtos/chatInfo';
 import { TraceId } from '../../../src/types/trace';
 import { ScheduledAction } from '../../../src/entities/actions/scheduledAction';
-import { createMockScheduler } from '../../services/actionProcessors/processorTestHelpers';
+import { createMockScheduler, createMockBotApiClient } from '../../services/actionProcessors/processorTestHelpers';
 import { IStorageClient } from '../../../src/types/storage';
 import {
     DeleteAfterTimeout,
@@ -69,6 +69,7 @@ function createChatContext(): ChatContextInternal<
         storage,
         scheduler,
         eventEmitter,
+        createMockBotApiClient(),
         action,
         chatInfo,
         'trace-123' as TraceId,
@@ -113,6 +114,7 @@ describe('ChatContextInternal', () => {
                 storage,
                 scheduler,
                 eventEmitter,
+                createMockBotApiClient(),
                 action,
                 chatInfo,
                 'trace-123' as TraceId,
@@ -591,6 +593,7 @@ describe('ChatContextInternal', () => {
                 storage,
                 scheduler,
                 eventEmitter,
+                createMockBotApiClient(),
                 action,
                 chatInfo,
                 'trace-123' as TraceId,
@@ -629,6 +632,7 @@ describe('ChatContextInternal', () => {
                 storage,
                 scheduler,
                 eventEmitter,
+                createMockBotApiClient(),
                 action,
                 chatInfo,
                 'trace-123' as TraceId,
@@ -656,6 +660,7 @@ describe('ChatContextInternal', () => {
                 storage,
                 scheduler,
                 eventEmitter,
+                createMockBotApiClient(),
                 action,
                 chatInfo,
                 'trace-123' as TraceId,
@@ -686,6 +691,7 @@ describe('ChatContextInternal', () => {
                 storage,
                 scheduler,
                 eventEmitter,
+                createMockBotApiClient(),
                 action,
                 chatInfo,
                 'trace-123' as TraceId,
@@ -763,6 +769,7 @@ describe('ChatContextInternal', () => {
                 storage,
                 scheduler,
                 eventEmitter,
+                createMockBotApiClient(),
                 action,
                 chatInfo,
                 'trace-123' as TraceId,
