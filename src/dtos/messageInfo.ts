@@ -1,4 +1,4 @@
-import { TelegramMessage } from '../types/externalAliases';
+import { Message } from '../types/botApi.generated';
 import { MessageTypeValue } from '../types/messageTypes';
 
 export class MessageInfo {
@@ -10,6 +10,6 @@ export class MessageInfo {
         /** Type of message being received */
         readonly type: MessageTypeValue,
         /** Message object recieved from Telegram */
-        readonly telegramUpdateObject: TelegramMessage
+        readonly telegramUpdateObject: Message
     ) {}
 }

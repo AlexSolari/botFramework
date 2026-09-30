@@ -13,16 +13,14 @@ import {
 } from './baseContext';
 import { UserInfo } from '../../dtos/userInfo';
 import { MessageInfo } from '../../dtos/messageInfo';
-import {
-    TelegramUser,
-    TelegramEmoji,
-    BotInfo
-} from '../../types/externalAliases';
+import { User, ReactionTypeEmoji } from '../../types/botApi.generated';
+import { BotInfo } from '../../types/botInfo';
 import { TypedEventEmitter } from '../../types/events';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { IncomingMessage } from '../../dtos/incomingMessage';
 import { getQuotedText } from '../../helpers/getQuotedText';
+import { BotApiClient } from '../../services/telegram/botApiClient';
 
 export type ReplyContext<TActionState extends IActionState> = Omit<
     ReplyContextInternal<TActionState>,
@@ -44,12 +42,13 @@ export class ReplyContextInternal<
     /** Information about the message that triggered this action */
     readonly messageInfo: MessageInfo;
     /** Bot info from Telegram */
-    readonly botInfo: TelegramUser;
+    readonly botInfo: User;
 
     constructor(
         storage: IStorageClient,
         scheduler: IScheduler,
         eventEmitter: TypedEventEmitter,
+        telegramApiClient: BotApiClient,
         action: ReplyCaptureAction<TParentActionState>,
         message: IncomingMessage,
         botName: string,
@@ -59,6 +58,7 @@ export class ReplyContextInternal<
             storage,
             scheduler,
             eventEmitter,
+            telegramApiClient,
             action,
             message.chatInfo,
             message.traceId,
@@ -220,7 +220,7 @@ export class ReplyContextInternal<
          * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
          * @param emoji Telegram emoji to react with.
          */
-        withReaction: (emoji: TelegramEmoji) => {
+        withReaction: (emoji: ReactionTypeEmoji['emoji']) => {
             this.responses.push(
                 new Reaction(
                     this.observability.traceId,

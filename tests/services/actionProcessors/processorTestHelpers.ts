@@ -8,6 +8,7 @@ import { TextMessage } from '../../../src/dtos/responses/textMessage';
 import { TraceId } from '../../../src/types/trace';
 import { Milliseconds } from '../../../src/types/timeValues';
 import { TelegramApiService } from '../../../src/services/telegramApi';
+import { BotApiClient } from '../../../src/services/telegram/botApiClient';
 
 // Re-export Mock type for use in tests
 export type { Mock } from 'bun:test';
@@ -102,6 +103,12 @@ export function createMockAction(
     };
 }
 
+export function createMockBotApiClient(): BotApiClient {
+    return {
+        call: mock(() => Promise.resolve(undefined))
+    } as unknown as BotApiClient;
+}
+
 // Extended telegram api type that exposes mock call tracking
 export interface MockTelegramApi extends TelegramApiService {
     getEnqueueCallCount: () => number;
@@ -116,6 +123,7 @@ export function createMockTelegramApi(): MockTelegramApi {
         /* no-op */
     });
     return {
+        client: createMockBotApiClient(),
         enqueueBatchedResponses: enqueueMock,
         flushResponses: flushMock,
         getEnqueueCallCount: () => enqueueMock.mock.calls.length,

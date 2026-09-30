@@ -10,11 +10,12 @@ import { Reaction } from '../../../src/dtos/responses/reaction';
 import { ActionKey, IAction } from '../../../src/types/action';
 import { IncomingMessage } from '../../../src/dtos/incomingMessage';
 import { BotResponseTypes } from '../../../src/types/response';
-import type { BotInfo } from '../../../src/types/externalAliases';
-import { Message } from '@telegraf/types';
+import type { BotInfo } from '../../../src/types/botInfo';
+import type { Message } from '../../../src/types/botApi.generated';
 import {
     createMockStorage,
-    createMockScheduler
+    createMockScheduler,
+    createMockBotApiClient
 } from '../../services/actionProcessors/processorTestHelpers';
 
 function createMockParentAction(): IAction {
@@ -87,6 +88,7 @@ function createReplyContext(
         storage,
         scheduler,
         eventEmitter,
+        createMockBotApiClient(),
         action,
         incomingMessage,
         'TestBot',
@@ -464,6 +466,7 @@ describe('ReplyContextInternal', () => {
                 storage,
                 scheduler,
                 eventEmitter,
+                createMockBotApiClient(),
                 action,
                 incomingMessage,
                 'TestBot',

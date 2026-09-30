@@ -19,17 +19,21 @@ import { IncomingInlineQuery } from '../../../src/dtos/incomingQuery';
 // =============================================================================
 
 // Mock for telegram.on() handler
+interface InlineQueryEventPayload {
+    id: string;
+    query: string;
+    from: { id: number };
+}
 type InlineQueryEventHandler = (params: {
-    inlineQuery: {
-        id: string;
-        query: string;
-        from: { id: number };
-    };
+    inlineQuery: InlineQueryEventPayload;
 }) => void;
 
 // Mock TelegramBot interface with call tracking
 interface MockTelegramBot {
-    on: (event: string, handler: InlineQueryEventHandler) => void;
+    on: (
+        event: string,
+        handler: (inlineQuery: InlineQueryEventPayload) => void
+    ) => void;
     getOnCallCount: () => number;
     getOnLastArgs: () => [string, InlineQueryEventHandler] | undefined;
     hasRegisteredEvent: (eventName: string) => boolean;
@@ -38,9 +42,16 @@ interface MockTelegramBot {
 
 function createMockTelegramBot(): MockTelegramBot {
     const handlers = new Map<string, InlineQueryEventHandler>();
-    const onMock = mock((event: string, handler: InlineQueryEventHandler) => {
-        handlers.set(event, handler);
-    });
+    const onMock = mock(
+        (
+            event: string,
+            handler: (inlineQuery: InlineQueryEventPayload) => void
+        ) => {
+            handlers.set(event, ({ inlineQuery }) => {
+                handler(inlineQuery);
+            });
+        }
+    );
 
     return {
         on: onMock,

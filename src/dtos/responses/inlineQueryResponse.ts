@@ -1,5 +1,5 @@
 import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
-import { TelegramInlineQueryResult } from '../../types/externalAliases';
+import { InlineQueryResult } from '../../types/botApi.generated';
 import { BotResponseTypes } from '../../types/response';
 import { TraceId } from '../../types/trace';
 
@@ -10,10 +10,10 @@ export class InlineQueryResponse {
     readonly queryId: string;
     readonly traceId: TraceId;
     readonly action: InlineQueryAction;
-    readonly queryResults: TelegramInlineQueryResult[];
+    readonly queryResults: InlineQueryResult[];
 
     constructor(
-        queryResult: TelegramInlineQueryResult[],
+        queryResult: InlineQueryResult[],
         queryId: string,
         traceId: TraceId,
         action: InlineQueryAction

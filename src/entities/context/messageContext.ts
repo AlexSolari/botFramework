@@ -12,12 +12,14 @@ import { Seconds } from '../../types/timeValues';
 import { BaseContextPropertiesToOmit } from './baseContext';
 import { MessageInfo } from '../../dtos/messageInfo';
 import { UserInfo } from '../../dtos/userInfo';
-import { BotInfo, TelegramEmoji } from '../../types/externalAliases';
+import { BotInfo } from '../../types/botInfo';
+import { ReactionTypeEmoji } from '../../types/botApi.generated';
 import { TypedEventEmitter } from '../../types/events';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { IncomingMessage } from '../../dtos/incomingMessage';
 import { getQuotedText } from '../../helpers/getQuotedText';
+import { BotApiClient } from '../../services/telegram/botApiClient';
 
 export type MessageContext<TActionState extends IActionState> = Omit<
     MessageContextInternal<TActionState>,
@@ -47,6 +49,7 @@ export class MessageContextInternal<
         storage: IStorageClient,
         scheduler: IScheduler,
         eventEmitter: TypedEventEmitter,
+        telegramApiClient: BotApiClient,
         action: CommandAction<TActionState>,
         message: IncomingMessage,
         botName: string,
@@ -56,6 +59,7 @@ export class MessageContextInternal<
             storage,
             scheduler,
             eventEmitter,
+            telegramApiClient,
             action,
             message.chatInfo,
             message.traceId,
@@ -210,7 +214,7 @@ export class MessageContextInternal<
          * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
          * @param emoji Telegram emoji to react with.
          */
-        withReaction: (emoji: TelegramEmoji) => {
+        withReaction: (emoji: ReactionTypeEmoji['emoji']) => {
             this.responses.push(
                 new Reaction(
                     this.observability.traceId,

@@ -3,20 +3,20 @@ import { ChatInfo } from './chatInfo';
 import { createTrace } from '../helpers/traceFactory';
 import { TraceId } from '../types/trace';
 import { ChatHistoryMessage } from './chatHistoryMessage';
-import { TelegramMessage, TelegramUser } from '../types/externalAliases';
+import { Message, User } from '../types/botApi.generated';
 
 export class IncomingMessage {
     readonly messageId: number;
     readonly chatInfo: ChatInfo;
-    readonly from: TelegramUser | undefined;
+    readonly from: User | undefined;
     readonly text: string;
     readonly type: MessageTypeValue;
     readonly traceId: TraceId;
     readonly replyToMessageId: number | undefined;
 
-    readonly updateObject: TelegramMessage;
+    readonly updateObject: Message;
 
-    private detectMessageType(message: TelegramMessage) {
+    private detectMessageType(message: Message) {
         if ('forward_origin' in message) return MessageType.Forward;
         if ('text' in message) return MessageType.Text;
         if ('video' in message) return MessageType.Video;
@@ -35,7 +35,7 @@ export class IncomingMessage {
     }
 
     constructor(
-        ctxMessage: TelegramMessage,
+        ctxMessage: Message,
         botName: string,
         history: ChatHistoryMessage[]
     ) {
@@ -50,7 +50,7 @@ export class IncomingMessage {
                 ? ctxMessage.reply_to_message?.message_id
                 : undefined;
         this.from = ctxMessage.from;
-        this.text = this.getMessageText(ctxMessage);
+        this.text = ctxMessage.text ?? ctxMessage.caption ?? '';
         this.chatInfo = new ChatInfo(
             ctxMessage.chat.id,
             'title' in ctxMessage.chat
@@ -60,11 +60,5 @@ export class IncomingMessage {
         );
         this.type = this.detectMessageType(ctxMessage);
         this.updateObject = ctxMessage;
-    }
-
-    private getMessageText(ctxMessage: TelegramMessage) {
-        if ('text' in ctxMessage) return ctxMessage.text;
-
-        return 'caption' in ctxMessage ? (ctxMessage.caption ?? '') : '';
     }
 }

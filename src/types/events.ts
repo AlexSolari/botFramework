@@ -7,7 +7,7 @@ import { MessageContext } from '../entities/context/messageContext';
 import { ReplyContext } from '../entities/context/replyContext';
 import { IAction, IActionWithState } from './action';
 import { IActionState } from './actionState';
-import { BotInfo } from './externalAliases';
+import { BotInfo } from './botInfo';
 import { BotResponse } from './response';
 import { Milliseconds } from './timeValues';
 import { TraceId } from './trace';

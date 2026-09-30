@@ -4,7 +4,7 @@ import { ReplyCapture } from '../types/postSendOperations';
 import { QueueItem, ResponseProcessingQueue } from './responseProcessingQueue';
 import { TraceId } from '../types/trace';
 import { ChatInfo } from '../dtos/chatInfo';
-import { TelegramApiClient, TelegramMessage } from '../types/externalAliases';
+import { Message } from '../types/botApi.generated';
 import { BotEventType, TypedEventEmitter } from '../types/events';
 import { createTrace } from '../helpers/traceFactory';
 import {
@@ -16,10 +16,10 @@ import { DeleteMessageResponse } from '../dtos/responses/deleteMessage';
 import { PinResponse } from '../dtos/responses/pin';
 import { IActionState } from '../types/actionState';
 import { IActionWithState } from '../types/action';
+import { BotApiClient, BotApiMethod } from './telegram/botApiClient';
 
 export class TelegramApiService {
     private readonly queue = new ResponseProcessingQueue();
-    private readonly telegram: TelegramApiClient;
     private readonly storage: IStorageClient;
     private readonly eventEmitter: TypedEventEmitter;
     private readonly captureRegistrationCallback: (
@@ -33,7 +33,7 @@ export class TelegramApiService {
 
     private readonly methodMap: Record<
         keyof typeof BotResponseTypes,
-        string | null
+        BotApiMethod | null
     > = {
         inlineQuery: 'answerInlineQuery',
         text: 'sendMessage',
@@ -46,9 +46,11 @@ export class TelegramApiService {
         delay: null
     };
 
+    readonly client: BotApiClient;
+
     constructor(
         botName: string,
-        telegram: TelegramApiClient,
+        client: BotApiClient,
         storage: IStorageClient,
         eventEmitter: TypedEventEmitter,
         captureRegistrationCallback: (
@@ -58,7 +60,7 @@ export class TelegramApiService {
             traceId: TraceId
         ) => void
     ) {
-        this.telegram = telegram;
+        this.client = client;
         this.storage = storage;
         this.eventEmitter = eventEmitter;
         this.captureRegistrationCallback = captureRegistrationCallback;
@@ -193,7 +195,7 @@ export class TelegramApiService {
 
     private async sendApiRequest(
         response: BotResponse
-    ): Promise<TelegramMessage | null> {
+    ): Promise<Message | null> {
         this.eventEmitter.emit(BotEventType.apiRequestSending, {
             response,
             telegramMethod: this.methodMap[response.kind],
@@ -203,63 +205,57 @@ export class TelegramApiService {
         try {
             switch (response.kind) {
                 case 'text':
-                    return await this.telegram.sendMessage(
-                        response.chatInfo.id,
-                        response.content,
-                        {
-                            reply_parameters: response.replyInfo
-                                ? {
-                                      message_id: response.replyInfo.id,
-                                      quote: response.replyInfo.quote
-                                  }
-                                : undefined,
-                            parse_mode: 'MarkdownV2',
-                            link_preview_options: {
-                                is_disabled: response.disableWebPreview
-                            },
-                            reply_markup: {
-                                inline_keyboard: response.keyboard ?? []
-                            }
+                    return await this.client.call('sendMessage', {
+                        chat_id: response.chatInfo.id,
+                        text: response.content,
+                        reply_parameters: response.replyInfo
+                            ? {
+                                  message_id: response.replyInfo.id,
+                                  quote: response.replyInfo.quote
+                              }
+                            : undefined,
+                        parse_mode: 'MarkdownV2',
+                        link_preview_options: {
+                            is_disabled: response.disableWebPreview
+                        },
+                        reply_markup: {
+                            inline_keyboard: response.keyboard ?? []
                         }
-                    );
+                    });
                 case 'image':
-                    return await this.telegram.sendPhoto(
-                        response.chatInfo.id,
-                        response.content,
-                        {
-                            // @ts-expect-error reply_parameters is bugged in sendPhoto,
-                            // fallback to reply_to_message_id which is deprecated but still functional
-                            reply_to_message_id: response.replyInfo?.id
-                        }
-                    );
+                    return await this.client.call('sendPhoto', {
+                        chat_id: response.chatInfo.id,
+                        photo: response.content,
+                        reply_parameters: response.replyInfo
+                            ? { message_id: response.replyInfo.id }
+                            : undefined
+                    });
                 case 'video':
-                    return await this.telegram.sendVideo(
-                        response.chatInfo.id,
-                        response.content,
-                        {
-                            // @ts-expect-error reply_parameters is bugged in sendPhoto,
-                            // fallback to reply_to_message_id which is deprecated but still functional
-                            reply_to_message_id: response.replyInfo?.id
-                        }
-                    );
+                    return await this.client.call('sendVideo', {
+                        chat_id: response.chatInfo.id,
+                        video: response.content,
+                        reply_parameters: response.replyInfo
+                            ? { message_id: response.replyInfo.id }
+                            : undefined
+                    });
                 case 'react':
-                    await this.telegram.setMessageReaction(
-                        response.chatInfo.id,
-                        response.messageId,
-                        [
+                    await this.client.call('setMessageReaction', {
+                        chat_id: response.chatInfo.id,
+                        message_id: response.messageId,
+                        reaction: [
                             {
                                 type: 'emoji',
                                 emoji: response.emoji
                             }
                         ]
-                    );
+                    });
 
                     return null;
                 case 'unpin':
-                    await this.telegram.unpinChatMessage(
-                        response.chatInfo.id,
-                        response.messageId
-                    );
+                    await this.client.call('unpinChatMessage', {
+                        chat_id: response.chatInfo.id,
+                        message_id: response.messageId
+                    });
 
                     await this.storage.updateStateFor(
                         response.action,
@@ -273,11 +269,11 @@ export class TelegramApiService {
 
                     return null;
                 case 'pin':
-                    await this.telegram.pinChatMessage(
-                        response.chatInfo.id,
-                        response.messageId,
-                        { disable_notification: true }
-                    );
+                    await this.client.call('pinChatMessage', {
+                        chat_id: response.chatInfo.id,
+                        message_id: response.messageId,
+                        disable_notification: true
+                    });
 
                     if ('stateConstructor' in response.action) {
                         await this.storage.updateStateFor(
@@ -291,18 +287,18 @@ export class TelegramApiService {
 
                     return null;
                 case 'inlineQuery':
-                    await this.telegram.answerInlineQuery(
-                        response.queryId,
-                        response.queryResults,
-                        { cache_time: 0 }
-                    );
+                    await this.client.call('answerInlineQuery', {
+                        inline_query_id: response.queryId,
+                        results: response.queryResults,
+                        cache_time: 0
+                    });
 
                     return null;
                 case 'deleteMessage':
-                    await this.telegram.deleteMessage(
-                        response.chatInfo.id,
-                        response.messageId
-                    );
+                    await this.client.call('deleteMessage', {
+                        chat_id: response.chatInfo.id,
+                        message_id: response.messageId
+                    });
 
                     return null;
                 case 'delay':
