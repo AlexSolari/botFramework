@@ -9,14 +9,14 @@ botFramework is a TypeScript library that provides a structured approach to buil
 ## Features
 
 - **Type-Safe Command Building**: Fully TypeScript-supported command builders
-- **Stateful Actions**: Built-in state management for commands, scheduled actions, and inline queries
+- **Stateful Actions**: Built-in per-chat state management for command and scheduled actions
 - **Flexible Triggering**: Support for exact matches, regex patterns, and message types
-- **Scheduled Tasks**: Time-based actions with customizable execution schedules
+- **Scheduled Tasks**: Daily time-of-day actions, checked on a configurable period
 - **Access Control**: Built-in user and chat-based permissions
 - **Cooldown Management**: Configurable cooldown periods for commands
 - **Cached Values**: Process-wide caching system for optimizing resource usage
 - **Custom State Types**: Extensible state system for complex bot logic
-- **Comprehensive Logging**: Built-in logging system with trace IDs
+- **Observability**: Typed event emitter that reports lifecycle and execution events with trace IDs, so you can plug in your own logging
 - **Persistent Storage**: JSON-based file storage with automatic state management
 - **Inline Query Support**: Handle inline queries with type-safe builders
 - **Response Queue**: Managed response processing queue for reliable message delivery
@@ -140,6 +140,8 @@ main().catch(console.error);
 bun index.ts
 ```
 
+The library itself does not depend on Bun-specific APIs; any TypeScript runner (or compiled JavaScript on Node.js) works. The bot receives updates via Telegram `getUpdates` long polling.
+
 ## Core Concepts
 
 ### Command Actions
@@ -157,6 +159,20 @@ const myCommand = new CommandActionBuilder('StartCommand')
     .build();
 ```
 
+A string trigger matches the whole message exactly, a `RegExp` triggers on a match, and an array can mix both. Builders also offer access control and tuning:
+
+| Method                    | Description                                                                |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `from(ids)`               | Only these user ids can trigger the action (empty = everyone)              |
+| `in(chatIds)`             | Only run in these chats (empty = all chats)                                |
+| `notIn(chatIds)`          | Ignore these chats                                                         |
+| `when(condition)`         | Extra condition checked before the trigger match                           |
+| `withCooldown({...})`     | Cooldown in seconds with an optional message                               |
+| `withRatelimit(n)`        | Max simultaneous executions per chat (0 = unlimited)                       |
+| `withHelp(factory)`       | Text shown by the built-in `/help` command (active once any command provides help text) |
+| `withConfiguration(...)`  | Use runtime-changeable providers instead of static values                  |
+| `disabled()`              | Marks the action as disabled                                               |
+
 Message types can also trigger commands:
 
 ```typescript
@@ -172,18 +188,26 @@ const myCommand = new CommandActionBuilder('WelcomeMessage')
 
 ### Scheduled Actions
 
-Scheduled actions run periodically without user interaction:
+Scheduled actions run without user interaction, at most once per day per chat:
 
 ```typescript
 import { ScheduledActionBuilder } from 'chz-telegram-bot';
 
 const dailyNotification = new ScheduledActionBuilder('GM')
-    .runAt(9) // Run at 9 AM
+    .in([-1001234567890]) // Required: chat ids to run in
+    .runAt(9) // Run at or after 9:00 (server local time)
     .do((ctx) => {
         ctx.send.text('Good morning!');
     })
     .build();
 ```
+
+How scheduling works:
+
+- Actions only run in chats that are both listed in the `chats` option of `startBot` and in the action's `.in([...])` whitelist. **Without `.in(...)` a scheduled action never runs.**
+- `scheduledPeriod` controls how often the bot checks for due actions. The first check happens at the top of the next hour, then repeats every period.
+- `runAt(hour)` (0-23, server local time, default `0`) means "run at the first check at or after this hour, if the action hasn't already run today". With the default 1 hour period it fires shortly after the hour; with a longer period it can fire later.
+- The scheduled handler also receives a cache accessor and the state: `.do((ctx, getCached, state) => ...)`. Values are registered with `.withSharedCache(key, factory, invalidationHours)`; they are shared process-wide and refreshed after the timeout (20 hours by default).
 
 ### Replies and message sending
 
@@ -201,6 +225,9 @@ Depending on the type of action, you will have access to the following interacti
 | `reply.withImage`    | Command     | Replies with image to a message that triggered an action        |
 | `reply.withVideo`    | Command     | Replies with video/gif to a message that triggered an action    |
 | `reply.withReaction` | Command     | Sets an emoji reaction to a message that triggered an action    |
+| `reply.andQuote.*`   | Command     | `withText`, `withImage`, `withVideo` that also quote the trigger text (or a given quote) |
+
+`send.*` and `reply.with*` (except `withReaction`) return a controller with post-send operations: `pin()`, `deleteAfter(ms)` and `captureReplies(triggers, handler)` (handle replies to the sent message). Text messages accept options such as `pin`, `disableWebPreview` and an inline `keyboard`.
 
 Keep in mind that reply sending is deferred until action execution finishes and is queued in the order it was added. Telegram rate limits still apply between queued sends, so the framework inserts spacing between responses rather than promising strict real-time ordering.
 
@@ -226,7 +253,7 @@ When starting a bot, you can provide the following configuration:
 | `tokenProvider`   | `() => Promise<string>`                                                                                                | Yes                         | Function that returns the Telegram Bot token (e.g., read from a file or secret manager)                                |
 | `actions`         | `{ commands: CommandAction[], scheduled: ScheduledAction[], inlineQueries: InlineQueryAction[], messageFilter?: ... }` | Yes (can be empty)          | Collection of actions grouped under `actions` — `commands`, `scheduled`, `inlineQueries`, and optional `messageFilter` |
 | `chats`           | `Record<string, number>`                                                                                               | Yes                         | Object containing chat name-id pairs. Used for logging and scheduled execution.                                        |
-| `storagePath`     | `string`                                                                                                               | No                          | Custom storage path for default JsonFileStorage client                                                                 |
+| `storagePath`     | `string`                                                                                                               | No (defaults to `./storage`) | Custom storage path for default JsonFileStorage client; ignored if `services.storageClient` is provided               |
 | `scheduledPeriod` | `Seconds`                                                                                                              | No (will default to 1 hour) | Period between scheduled action executions                                                                             |
 | `services`        |                                                                                                                        | No                          | Custom services to be used instead of default ones                                                                     |
 
