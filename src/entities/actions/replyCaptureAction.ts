@@ -4,7 +4,7 @@ import { CommandTrigger } from '../../types/commandTrigger';
 import { ActionKey, IAction } from '../../types/action';
 import { ReplyContextInternal } from '../context/replyContext';
 import { BotEventType } from '../../types/events';
-import { REGEX_MATCH_LIMIT } from '../../helpers/constants';
+import { matchTriggers } from '../../helpers/matchTriggers';
 
 export class ReplyCaptureAction<
     TParentActionState extends IActionState
@@ -37,7 +37,11 @@ export class ReplyCaptureAction<
     async exec(ctx: ReplyContextInternal<TParentActionState>) {
         if (!this.isReplyToParentMessage(ctx)) return Noop.NoResponse;
 
-        const matchResults = this.checkTriggers(ctx);
+        const matchResults = matchTriggers(
+            this.triggers,
+            ctx.messageInfo.text,
+            ctx.messageInfo.type
+        );
         if (matchResults == null) return Noop.NoResponse;
 
         return await this.executeHandler(ctx, matchResults);
@@ -69,46 +73,5 @@ export class ReplyCaptureAction<
         ctx: ReplyContextInternal<TParentActionState>
     ) {
         return ctx.replyMessageId == this.parentMessageId;
-    }
-
-    private checkTriggers(ctx: ReplyContextInternal<TParentActionState>) {
-        let matched = false;
-        const matchResults: RegExpExecArray[] = [];
-
-        for (const trigger of this.triggers) {
-            if (trigger == ctx.messageInfo.type) {
-                matched = true;
-                continue;
-            }
-
-            if (typeof trigger == 'string') {
-                if (ctx.messageInfo.text.toLowerCase() == trigger.toLowerCase())
-                    matched = true;
-
-                continue;
-            }
-
-            trigger.lastIndex = 0;
-
-            const execResult = trigger.exec(ctx.messageInfo.text);
-            if (execResult != null) {
-                matched = true;
-                let regexMatchLimit = REGEX_MATCH_LIMIT;
-                matchResults.push(execResult);
-
-                if (trigger.global) {
-                    while (regexMatchLimit > 0) {
-                        const nextResult = trigger.exec(ctx.messageInfo.text);
-
-                        if (nextResult == null) break;
-
-                        matchResults.push(nextResult);
-                        regexMatchLimit -= 1;
-                    }
-                }
-            }
-        }
-
-        return matched ? matchResults : null;
     }
 }

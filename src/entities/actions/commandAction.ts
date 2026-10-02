@@ -7,7 +7,6 @@ import { IActionWithState, ActionKey } from '../../types/action';
 import { MessageContextInternal } from '../context/messageContext';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { Noop } from '../../helpers/noop';
-import { MessageType } from '../../types/messageTypes';
 import { Sema as Semaphore } from 'async-sema';
 import { getOrCreateIfNotExists } from '../../helpers/mapUtils';
 import { CooldownInfo } from '../../dtos/cooldownInfo';
@@ -18,7 +17,7 @@ import { CommandActionPropertyProvider } from '../../types/propertyProvider';
 import { CommandActionProviders } from '../../dtos/propertyProviderSets';
 import { BotResponse } from '../../types/response';
 import { BotEventType } from '../../types/events';
-import { REGEX_MATCH_LIMIT } from '../../helpers/constants';
+import { matchTriggers } from '../../helpers/matchTriggers';
 
 export class CommandAction<
     TActionState extends IActionState
@@ -103,7 +102,11 @@ export class CommandAction<
 
             if (!this.canExecuteIn(ctx)) return Noop.NoResponse;
 
-            const matchResults = this.checkTriggers(ctx);
+            const matchResults = matchTriggers(
+                this.triggers,
+                ctx.messageInfo.text,
+                ctx.messageInfo.type
+            );
             if (matchResults == null) return Noop.NoResponse;
 
             const cooldownResponse = this.checkCooldown(ctx, state);
@@ -211,49 +214,5 @@ export class CommandAction<
         );
 
         return ctx.responses;
-    }
-
-    private checkTriggers(
-        ctx: MessageContextInternal<TActionState>
-    ): RegExpExecArray[] | null {
-        let matched = false;
-        const matchResults: RegExpExecArray[] = [];
-
-        for (const trigger of this.triggers) {
-            if (trigger == MessageType.Any || trigger == ctx.messageInfo.type) {
-                matched = true;
-                continue;
-            }
-
-            if (typeof trigger == 'string') {
-                if (ctx.messageInfo.text.toLowerCase() == trigger.toLowerCase())
-                    matched = true;
-
-                continue;
-            }
-
-            trigger.lastIndex = 0;
-
-            const execResult = trigger.exec(ctx.messageInfo.text);
-            if (execResult == null) continue;
-
-            matched = true;
-            matchResults.push(execResult);
-
-            if (trigger.global) {
-                let regexMatchLimit = REGEX_MATCH_LIMIT;
-
-                while (regexMatchLimit > 0) {
-                    const nextResult = trigger.exec(ctx.messageInfo.text);
-
-                    if (nextResult == null) break;
-
-                    matchResults.push(nextResult);
-                    regexMatchLimit -= 1;
-                }
-            }
-        }
-
-        return matched ? matchResults : null;
     }
 }

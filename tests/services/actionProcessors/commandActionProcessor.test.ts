@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, mock } from 'bun:test';
+import { describe, test, expect, beforeEach, mock, spyOn } from 'bun:test';
 import { BotEventType, TypedEventEmitter } from '../../../src/types/events';
 import { IScheduler } from '../../../src/types/scheduler';
 import { IStorageClient } from '../../../src/types/storage';
@@ -10,7 +10,8 @@ import {
     createMockScheduler,
     createMockAction,
     createMockTelegramApi,
-    createMockChatInfo
+    createMockChatInfo,
+    getMockFn
 } from './processorTestHelpers';
 import { ActionKey } from '../../../src/types/action';
 import { MessageType } from '../../../src/types/messageTypes';
@@ -18,6 +19,7 @@ import type { CommandAction } from '../../../src/entities/actions/commandAction'
 import type { BotInfo } from '../../../src/types/botInfo';
 import type { Message } from '../../../src/types/botApi.generated';
 import type { CommandTrigger } from '../../../src/types/commandTrigger';
+import { ReplyCaptureAction } from '../../../src/entities/actions/replyCaptureAction';
 
 // ---- Mock helpers for initialize() tests ----
 
@@ -434,6 +436,28 @@ describe('CommandActionProcessor', () => {
             expect(finishedEvents.length).toBe(1);
         });
 
+        test('should execute only commands whose triggers match the message', async () => {
+            const mockApi = createMockTelegramApi();
+            const mockTelegram = createMockTelegramBot();
+            const matching = createMockCommandAction(['/test']);
+            const notMatching = createMockCommandAction(['/other', /^!x/]);
+
+            processor.initialize(
+                mockApi,
+                mockTelegram as unknown as Parameters<
+                    typeof processor.initialize
+                >[1],
+                [matching, notMatching],
+                createMockBotInfo()
+            );
+
+            await mockTelegram.triggerMessage(createTelegramMessage('/test'));
+            await new Promise((resolve) => setTimeout(resolve, 20));
+
+            expect(getMockFn(matching.exec).mock.calls.length).toBe(1);
+            expect(getMockFn(notMatching.exec).mock.calls.length).toBe(0);
+        });
+
         test('should not process message when filter returns false', async () => {
             const mockApi = createMockTelegramApi();
             const mockTelegram = createMockTelegramBot();
@@ -552,6 +576,64 @@ describe('CommandActionProcessor', () => {
 
             // The capture handler should have been invoked via processReply
             expect(captureHandlerMock.mock.calls.length).toBe(1);
+        });
+
+        test('should execute only captures for the replied message with matching triggers', async () => {
+            const mockApi = createMockTelegramApi();
+            const mockTelegram = createMockTelegramBot();
+            const execSpy = spyOn(ReplyCaptureAction.prototype, 'exec');
+
+            processor.initialize(
+                mockApi,
+                mockTelegram as unknown as Parameters<
+                    typeof processor.initialize
+                >[1],
+                [createMockCommandAction(['/start'])],
+                createMockBotInfo()
+            );
+
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+            const registerCapture = (
+                parentMessageId: number,
+                trigger: CommandTrigger[]
+            ) => {
+                const handler = mock(() => Promise.resolve());
+                processor.captureRegistrationCallback(
+                    {
+                        kind: 'captureReplies',
+                        action: createMockAction('parent-action'),
+                        handler,
+                        trigger,
+                        abortController: new AbortController()
+                    },
+                    parentMessageId,
+                    chatInfo,
+                    'trace:capture' as TraceId
+                );
+
+                return handler;
+            };
+
+            const matchingHandler = registerCapture(42, ['reply text']);
+            const otherParentHandler = registerCapture(43, ['reply text']);
+            const otherTriggerHandler = registerCapture(42, ['something else']);
+
+            await mockTelegram.triggerMessage({
+                message_id: 100,
+                date: Math.floor(Date.now() / 1000),
+                chat: { id: 12345, type: 'private' as const },
+                from: { id: 1, is_bot: false, first_name: 'User' },
+                text: 'reply text',
+                reply_to_message: { message_id: 42 }
+            } as unknown as Message);
+            await new Promise((resolve) => setTimeout(resolve, 20));
+
+            expect(execSpy).toHaveBeenCalledTimes(1);
+            expect(matchingHandler).toHaveBeenCalledTimes(1);
+            expect(otherParentHandler).not.toHaveBeenCalled();
+            expect(otherTriggerHandler).not.toHaveBeenCalled();
+
+            execSpy.mockRestore();
         });
 
         test('should process captures registered before message arrives', async () => {

@@ -297,6 +297,22 @@ describe('ReplyCaptureAction', () => {
             expect(handler).toHaveBeenCalledTimes(1);
         });
 
+        test('should execute handler when Any trigger is used', async () => {
+            const handler = mock(() => Promise.resolve());
+            const action = new ReplyCaptureAction(
+                123,
+                createMockParentAction(),
+                handler,
+                [MessageType.Any],
+                new AbortController()
+            );
+
+            const ctx = createMockReplyContext(123, '', MessageType.Photo);
+            await action.exec(ctx);
+
+            expect(handler).toHaveBeenCalledTimes(1);
+        });
+
         test('should set matchResults on context for regex trigger', async () => {
             const action = new ReplyCaptureAction(
                 123,
