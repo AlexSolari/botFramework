@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 This file was reconstructed from the git history and `package.json` version bumps. The repository has no git tags, so dates are the dates of the commit that bumped the version, and patch releases are grouped by minor version. While the major version is `0`, minor releases may contain breaking changes.
 
+## [0.8.1] - 2026-10-02
+
+### Changed
+
+- Command processing checks each command's triggers before creating its context. Commands that don't match a message are skipped entirely: no context is created, no state is loaded, no providers are called, and a rate-limited command no longer makes non-matching messages wait for its running execution. Bots with many commands process each message faster.
+- Reply captures are only executed for messages that reply to their parent message and match their triggers, so the cost of processing a message no longer grows with the number of active captures in the chat.
+- Commands and reply captures share one trigger matching implementation.
+
+### Fixed
+
+- `MessageType.Any` now works as a `captureReplies()` trigger. Previously such captures never fired.
+
 ## [0.8.0] - 2026-09-30
 
 ### Changed

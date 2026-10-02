@@ -166,12 +166,14 @@ A string trigger matches the whole message exactly, a `RegExp` triggers on a mat
 | `from(ids)`               | Only these user ids can trigger the action (empty = everyone)              |
 | `in(chatIds)`             | Only run in these chats (empty = all chats)                                |
 | `notIn(chatIds)`          | Ignore these chats                                                         |
-| `when(condition)`         | Extra condition checked before the trigger match                           |
+| `when(condition)`         | Extra condition, checked last (after the trigger, access and cooldown checks) |
 | `withCooldown({...})`     | Cooldown in seconds with an optional message                               |
 | `withRatelimit(n)`        | Max simultaneous executions per chat (0 = unlimited)                       |
 | `withHelp(factory)`       | Text shown by the built-in `/help` command (active once any command provides help text) |
 | `withConfiguration(...)`  | Use runtime-changeable providers instead of static values                  |
 | `disabled()`              | Marks the action as disabled                                               |
+
+For each incoming message, the framework first checks every command's triggers. Only commands whose triggers match get a context, so their providers, state and conditions are never evaluated for other messages. For a matching command, the checks then run in this order: rate limit, active flag and chat/user restrictions, cooldown, `when` condition. Commands triggered by `MessageType.Any` or `MessageType.Text` match every message, so keep their providers and conditions cheap.
 
 Message types can also trigger commands:
 
@@ -227,7 +229,7 @@ Depending on the type of action, you will have access to the following interacti
 | `reply.withReaction` | Command     | Sets an emoji reaction to a message that triggered an action    |
 | `reply.andQuote.*`   | Command     | `withText`, `withImage`, `withVideo` that also quote the trigger text (or a given quote) |
 
-`send.*` and `reply.with*` (except `withReaction`) return a controller with post-send operations: `pin()`, `deleteAfter(ms)` and `captureReplies(triggers, handler)` (handle replies to the sent message). Text messages accept options such as `pin`, `disableWebPreview` and an inline `keyboard`.
+`send.*` and `reply.with*` (except `withReaction`) return a controller with post-send operations: `pin()`, `deleteAfter(ms)` and `captureReplies(triggers, handler)` (handle replies to the sent message; triggers work like command triggers, including message types such as `MessageType.Any`). Text messages accept options such as `pin`, `disableWebPreview` and an inline `keyboard`.
 
 Keep in mind that reply sending is deferred until action execution finishes and is queued in the order it was added. Telegram rate limits still apply between queued sends, so the framework inserts spacing between responses rather than promising strict real-time ordering.
 
