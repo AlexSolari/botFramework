@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 This file was reconstructed from the git history and `package.json` version bumps. The repository has no git tags, so dates are the dates of the commit that bumped the version, and patch releases are grouped by minor version. While the major version is `0`, minor releases may contain breaking changes.
 
+## [0.8.2] - 2026-10-05
+
+### Fixed
+
+- `commandActionCaptureAborted` events now report the parent message ID of the capture that was aborted. Previously, when one abort signal cancelled several reply captures, every event carried the same parent message ID.
+
 ## [0.8.1] - 2026-10-02
 
 ### Changed
