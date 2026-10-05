@@ -15,8 +15,8 @@ const LONG_POLLING_TIMEOUT = 50 as Seconds;
  * Delays between consecutive failed polling attempts.
  * Recoverable errors keep retrying with the last delay.
  */
-const DEFAULT_RETRY_DELAYS = [1, 3, 5, 10, 30, 60].map(
-    (x) => secondsToMilliseconds(x as Seconds)
+const DEFAULT_RETRY_DELAYS = [1, 3, 5, 10, 30, 60].map((x) =>
+    secondsToMilliseconds(x as Seconds)
 );
 
 /**
@@ -70,11 +70,7 @@ export class UpdatePoller {
         this.abortController = abortController;
 
         try {
-            await this.client.call(
-                'deleteWebhook',
-                {},
-                abortController.signal
-            );
+            await this.client.call('deleteWebhook', {}, abortController.signal);
             await this.poll(abortController.signal);
         } catch (error) {
             if (!abortController.signal.aborted) {
@@ -124,19 +120,15 @@ export class UpdatePoller {
                 }
 
                 this.onError(this.toError(error));
-                await setTimeout(
-                    this.retryDelay(failedAttempts),
-                    undefined,
-                    { signal }
-                ).catch(() => undefined);
+                await setTimeout(this.retryDelay(failedAttempts), undefined, {
+                    signal
+                }).catch(() => undefined);
                 failedAttempts += 1;
             }
         }
 
         if (this.offset == 0) return;
 
-        // The offset is confirmed by the next getUpdates call, so the last batch
-        // would be delivered again after restart without this call.
         await this.client
             .call('getUpdates', { offset: this.offset, limit: 1, timeout: 0 })
             .catch((error: unknown) => {

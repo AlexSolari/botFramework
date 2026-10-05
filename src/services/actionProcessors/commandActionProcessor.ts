@@ -254,7 +254,6 @@ export class CommandActionProcessor extends BaseActionProcessor {
 
         const actionPromises: Promise<void>[] = [];
         for (const command of commandsToCheck) {
-            // Most commands do not match a given message, so filter them out before paying for context creation
             if (matchTriggers(command.triggers, msg.text, msg.type) == null)
                 continue;
 
@@ -267,7 +266,6 @@ export class CommandActionProcessor extends BaseActionProcessor {
             CommandActionProcessor.fallbackFactoryForCaptures
         );
         for (const capture of chatCaptures) {
-            // Each capture waits for replies to a single message, so most captures do not apply to a given message
             if (
                 capture.parentMessageId != msg.replyToMessageId ||
                 matchTriggers(capture.triggers, msg.text, msg.type) == null
