@@ -150,7 +150,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
                     this.eventEmitter.emit(
                         BotEventType.commandActionCaptureAborted,
                         {
-                            parentMessageId,
+                            parentMessageId: captureToCancel.parentMessageId,
                             chatInfo,
                             traceId
                         }
