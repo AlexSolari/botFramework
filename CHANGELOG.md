@@ -8,6 +8,8 @@ This file was reconstructed from the git history and `package.json` version bump
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-10-06
+
 ### Changed
 
 - `stopBots()` now waits for messages, inline queries and scheduled actions that are already being processed, and sends the responses that are due before closing storage. Responses still waiting on `ctx.wait()` are dropped, and pending `deleteAfter()` timers are cancelled, leaving those messages in the chat. Previously processing was cut off, and these timers kept the process running and fired after shutdown.
