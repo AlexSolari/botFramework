@@ -351,4 +351,76 @@ describe('ResponseProcessingQueue', () => {
             expect(queue['items'].length).toBe(0);
         });
     });
+
+    describe('delayed items', () => {
+        const record = (sent: string[], name: string) => () => {
+            sent.push(name);
+            return Promise.resolve();
+        };
+
+        test('should wait for a delayed item without polling', async () => {
+            const limiter = queue['rateLimiter'];
+            let limiterCalls = 0;
+            Object.defineProperty(queue, 'rateLimiter', {
+                value: () => {
+                    limiterCalls++;
+                    return limiter();
+                }
+            });
+            const sent: string[] = [];
+            const start = Date.now();
+
+            queue.enqueue({
+                priority: start + 300,
+                callback: record(sent, 'delayed')
+            });
+            await queue.flushReadyItems();
+
+            expect(sent).toEqual(['delayed']);
+            expect(Date.now() - start).toBeGreaterThanOrEqual(290);
+            expect(limiterCalls).toBe(1);
+        });
+
+        test('should send an item enqueued during the wait right away', async () => {
+            const sent: string[] = [];
+            const now = Date.now();
+
+            queue.enqueue({
+                priority: now + 300,
+                callback: record(sent, 'delayed')
+            });
+            const flush = queue.flushReadyItems();
+
+            queue.enqueue({
+                priority: now,
+                callback: record(sent, 'immediate')
+            });
+            await new Promise((resolve) => setTimeout(resolve, 50));
+
+            expect(sent).toEqual(['immediate']);
+
+            await flush;
+
+            expect(sent).toEqual(['immediate', 'delayed']);
+        });
+
+        test('should send an earlier delayed item enqueued during the wait when it is due', async () => {
+            const sentAt: Record<string, number> = {};
+            const start = Date.now();
+            const recordTime = (name: string) => () => {
+                sentAt[name] = Date.now() - start;
+                return Promise.resolve();
+            };
+
+            queue.enqueue({ priority: start + 300, callback: recordTime('later') });
+            const flush = queue.flushReadyItems();
+            queue.enqueue({ priority: start + 100, callback: recordTime('sooner') });
+
+            await flush;
+
+            expect(sentAt['sooner']).toBeGreaterThanOrEqual(90);
+            expect(sentAt['sooner']).toBeLessThan(250);
+            expect(sentAt['later']).toBeGreaterThanOrEqual(290);
+        });
+    });
 });

@@ -21,6 +21,7 @@ This file was reconstructed from the git history and `package.json` version bump
 - `deleteAfter()` no longer delays the post-send operations that come after it. Previously, `ctx.send.text('...').deleteAfter(60000).pin()` waited for the message to be deleted before pinning it, so the pin failed, and a `captureReplies()` after `deleteAfter()` was only registered once the message was gone.
 - `JsonFileStorage` saves are now crash-safe. Each save writes to a temporary file, flushes it to disk and then replaces the old file in one step, so a crash or power loss leaves either the previous or the new state. Previously the file was emptied before writing, so an interruption could leave it empty, which reset that action's state, or half-written, which stopped the bot from starting.
 - When a storage file contains invalid JSON, `JsonFileStorage` now throws an error that names the file. Previously startup failed with a bare `SyntaxError`.
+- While a response delayed with `ctx.wait()` is waiting to be sent, the response queue now sleeps until it is due. Previously it checked about 28 times a second for the whole delay, wasting CPU on slow hardware.
 
 ## [0.8.2] - 2026-10-05
 

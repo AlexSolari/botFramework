@@ -10,6 +10,9 @@ export class Noop {
     static false(arg1: unknown) {
         return false;
     }
+    static void() {
+        return;
+    }
     static emptyString() {
         return '';
     }

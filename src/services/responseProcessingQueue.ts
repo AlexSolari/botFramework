@@ -1,5 +1,6 @@
 import { RateLimit } from 'async-sema';
 import { TELEGRAM_RATELIMIT_DELAY } from '../helpers/constants';
+import { Noop } from '../helpers/noop';
 
 export type QueueItem = {
     priority: number;
@@ -12,6 +13,7 @@ export class ResponseProcessingQueue {
     });
     private readonly items: QueueItem[] = [];
     private isFlushing = false;
+    private wakeUp = Noop.void;
 
     enqueue(item: QueueItem) {
         if (
@@ -30,6 +32,10 @@ export class ResponseProcessingQueue {
             insertIndex--;
         }
         this.items.splice(insertIndex, 0, item);
+
+        if (insertIndex === 0) {
+            this.wakeUp();
+        }
     }
 
     async flushReadyItems() {
@@ -39,15 +45,31 @@ export class ResponseProcessingQueue {
 
         try {
             while (this.items.length > 0) {
-                await this.rateLimiter();
-                if (Date.now() >= this.items[0].priority) {
-                    const item = this.items.shift();
-
-                    void item?.callback();
+                const delay = this.items[0].priority - Date.now();
+                if (delay > 0) {
+                    await this.sleep(delay);
+                    continue;
                 }
+
+                await this.rateLimiter();
+                const item = this.items.shift();
+
+                void item?.callback();
             }
         } finally {
             this.isFlushing = false;
         }
+    }
+
+    private sleep(ms: number) {
+        return new Promise<void>((resolve) => {
+            const done = () => {
+                clearTimeout(timer);
+                this.wakeUp = Noop.void;
+                resolve();
+            };
+            const timer = setTimeout(done, ms);
+            this.wakeUp = done;
+        });
     }
 }
