@@ -584,6 +584,50 @@ describe('InlineQueryActionProcessor', () => {
             // which would be emitted when the aborted query throws AbortError
         });
 
+        test('should abort the newer query after the query it replaced finishes', async () => {
+            const abortedQueryIds: string[] = [];
+            eventEmitter.on(
+                BotEventType.inlineProcessingAborting,
+                (_ts, data) => {
+                    abortedQueryIds.push(data.abortedQuery.queryId);
+                }
+            );
+
+            const releaseCallbacks: (() => void)[] = [];
+            const slowAction = createMockInlineQueryAction('slow');
+            slowAction.exec = mock(
+                () =>
+                    new Promise<BotResponse[]>((resolve) => {
+                        releaseCallbacks.push(() => resolve([]));
+                    })
+            );
+
+            const mockTelegram = createMockTelegramBot();
+            processor.initialize(
+                createMockTelegramApi(),
+                mockTelegram as unknown as Parameters<
+                    typeof processor.initialize
+                >[1],
+                [slowAction as unknown as InlineQueryAction]
+            );
+
+            const sendQuery = (id: string) =>
+                mockTelegram.getEventHandler('inline_query')?.({
+                    inlineQuery: { id, query: 'test', from: { id: 44444 } }
+                });
+
+            sendQuery('q-a');
+            sendQuery('q-b');
+
+            // Query A finishes while query B is still being processed
+            releaseCallbacks[0]();
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            sendQuery('q-c');
+
+            expect(abortedQueryIds).toEqual(['q-a', 'q-b']);
+        });
+
         test('should emit inlineProcessingFinished after processing completes', () => {
             const localEventEmitter = new TypedEventEmitter();
             const localProcessor = new InlineQueryActionProcessor(

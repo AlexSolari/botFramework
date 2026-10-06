@@ -139,7 +139,10 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                         this.api.flushResponses();
                     }
                 } finally {
-                    queriesInProcessing.delete(query.userId);
+                    // A newer query from the same user may have replaced this one
+                    if (queriesInProcessing.get(query.userId) == query) {
+                        queriesInProcessing.delete(query.userId);
+                    }
                     this.eventEmitter.emit(
                         BotEventType.inlineProcessingFinished,
                         {

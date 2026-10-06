@@ -15,6 +15,7 @@ This file was reconstructed from the git history and `package.json` version bump
 ### Fixed
 
 - An inline query is now answered once, with the results of all matching inline actions combined in the order the actions were registered. Previously each matching action sent its own answer; Telegram accepted only the first, so results from the other actions were lost and could be replaced by an empty list. Result IDs must now be unique across all inline actions, because Telegram rejects an answer that contains duplicate IDs. If the combined results exceed Telegram's limit of 50, only the first 50 are sent and an `error` event is emitted.
+- A new inline query from a user now always aborts that user's previous query that is still being processed. Previously, when a query was replaced and then finished, it removed the tracking entry of the query that replaced it, so the next query from that user did not abort it.
 
 ## [0.8.2] - 2026-10-05
 
