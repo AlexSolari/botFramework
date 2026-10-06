@@ -18,6 +18,7 @@ This file was reconstructed from the git history and `package.json` version bump
 - A new inline query from a user now always aborts that user's previous query that is still being processed. Previously, when a query was replaced and then finished, it removed the tracking entry of the query that replaced it, so the next query from that user did not abort it.
 - The built-in `/help` command now runs one at a time per chat, so its 60-second cooldown holds. Previously, several `/help` messages sent in quick succession could all pass the cooldown check and each get a reply.
 - When a reply fails because the quoted text or the replied-to message is invalid, the message is resent without the reply, and its `pin()`, `deleteAfter()` and `captureReplies()` operations now run on the resent message. Previously they were silently dropped.
+- `deleteAfter()` no longer delays the post-send operations that come after it. Previously, `ctx.send.text('...').deleteAfter(60000).pin()` waited for the message to be deleted before pinning it, so the pin failed, and a `captureReplies()` after `deleteAfter()` was only registered once the message was gone.
 
 ## [0.8.2] - 2026-10-05
 

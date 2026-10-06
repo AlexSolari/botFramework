@@ -17,6 +17,7 @@ import { PinResponse } from '../dtos/responses/pin';
 import { IActionState } from '../types/actionState';
 import { IActionWithState } from '../types/action';
 import { BotApiClient, BotApiMethod } from './telegram/botApiClient';
+import { Milliseconds } from '../types/timeValues';
 
 export class TelegramApiService {
     private readonly queue = new ResponseProcessingQueue();
@@ -168,14 +169,14 @@ export class TelegramApiService {
                         );
                         break;
                     case 'deleteAfterTimeout':
-                        await setTimeout(operation.timeout);
-                        await this.sendApiRequest(
+                        void this.deleteAfterTimeout(
                             new DeleteMessageResponse(
                                 sentMessage.message_id,
                                 response.chatInfo,
                                 response.traceId,
                                 response.action
-                            )
+                            ),
+                            operation.timeout
                         );
                         break;
                     case 'pin':
@@ -190,6 +191,24 @@ export class TelegramApiService {
                         break;
                 }
             }
+        }
+    }
+
+    private async deleteAfterTimeout(
+        deleteResponse: DeleteMessageResponse,
+        timeout: Milliseconds
+    ) {
+        try {
+            await setTimeout(timeout);
+            await this.sendApiRequest(deleteResponse);
+        } catch (reason) {
+            this.eventEmitter.emit(BotEventType.error, {
+                error:
+                    reason instanceof Error
+                        ? reason
+                        : new Error('Unknown error'),
+                traceId: deleteResponse.traceId
+            });
         }
     }
 
