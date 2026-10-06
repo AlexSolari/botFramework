@@ -2,7 +2,13 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { JsonFileStorage } from '../../src/services/jsonFileStorage';
 import { IActionState } from '../../src/types/actionState';
 import { ActionKey, IActionWithState } from '../../src/types/action';
-import { rmSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import {
+    rmSync,
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    writeFileSync
+} from 'node:fs';
 import { dirname } from 'node:path';
 
 interface TestActionState extends IActionState {
@@ -301,6 +307,95 @@ describe('JsonFileStorage', () => {
 
             expect(result1).toEqual(state1);
             expect(result2).toEqual(state2);
+        });
+    });
+
+    describe('crash safety', () => {
+        const filePath = buildPath(
+            TEST_STORAGE_PATH,
+            TEST_BOT_NAME,
+            'test:action'
+        );
+        const state: TestActionState = {
+            lastExecutedDate: 5000,
+            pinnedMessages: [100],
+            customField: 'saved'
+        };
+
+        test('should write the file without leaving a temp file behind', async () => {
+            storage = new JsonFileStorage(
+                TEST_BOT_NAME,
+                [testAction],
+                TEST_STORAGE_PATH
+            );
+
+            await storage.saveActionExecutionResult(testAction, 123, state);
+
+            expect(JSON.parse(readFileSync(filePath, 'utf-8'))).toEqual({
+                123: state
+            });
+            expect(existsSync(`${filePath}.tmp`)).toBe(false);
+        });
+
+        test('should ignore and replace a temp file left by an interrupted save', async () => {
+            ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'test:action', {
+                123: state
+            });
+            writeFileSync(`${filePath}.tmp`, '{"123": {"lastExe');
+
+            storage = new JsonFileStorage(
+                TEST_BOT_NAME,
+                [testAction],
+                TEST_STORAGE_PATH
+            );
+
+            expect(storage.getActionState(testAction, 123)).toEqual(state);
+
+            await storage.saveActionExecutionResult(testAction, 456, state);
+
+            expect(JSON.parse(readFileSync(filePath, 'utf-8'))).toEqual({
+                123: state,
+                456: state
+            });
+            expect(existsSync(`${filePath}.tmp`)).toBe(false);
+        });
+
+        test('should keep the previous file when the write fails', async () => {
+            ensureActionFileExists(TEST_STORAGE_PATH, TEST_BOT_NAME, 'test:action', {
+                123: state
+            });
+            storage = new JsonFileStorage(
+                TEST_BOT_NAME,
+                [testAction],
+                TEST_STORAGE_PATH
+            );
+            // A directory in place of the temp file makes opening it fail
+            mkdirSync(`${filePath}.tmp`);
+
+            const save = storage.saveActionExecutionResult(testAction, 456, {
+                ...state,
+                customField: 'lost'
+            });
+
+            await expect(save).rejects.toThrow();
+            expect(JSON.parse(readFileSync(filePath, 'utf-8'))).toEqual({
+                123: state
+            });
+        });
+
+        test('should name the file when it contains invalid JSON', () => {
+            writeFileSync(filePath, '{"123": {"lastExe');
+
+            let error: unknown;
+            try {
+                new JsonFileStorage(TEST_BOT_NAME, [testAction], TEST_STORAGE_PATH);
+            } catch (e) {
+                error = e;
+            }
+
+            expect(error).toBeInstanceOf(Error);
+            expect((error as Error).message).toContain(filePath);
+            expect((error as Error).cause).toBeInstanceOf(SyntaxError);
         });
     });
 

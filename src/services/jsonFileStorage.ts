@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync } from 'fs';
-import { writeFile } from 'fs/promises';
+import { open, rename } from 'fs/promises';
 import { dirname } from 'path';
 import { Sema as Semaphore } from 'async-sema';
 import { IStorageClient } from '../types/storage';
@@ -74,10 +74,15 @@ class CachedDataSource {
         });
 
         if (fileContent) {
-            const data = JSON.parse(fileContent) as Record<
-                number,
-                TActionState
-            >;
+            let data: Record<number, TActionState>;
+            try {
+                data = JSON.parse(fileContent) as Record<number, TActionState>;
+            } catch (error) {
+                throw new Error(
+                    `Storage file ${targetPath} contains invalid JSON. Fix or delete it to reset the state of action ${key}.`,
+                    { cause: error }
+                );
+            }
 
             this.cache.set(key, data);
         } else {
@@ -108,7 +113,16 @@ class CachedDataSource {
             buildPath(this.storagePath, this.botName, action.key)
         );
 
-        await writeFile(targetPath, JSON.stringify(data), { flag: 'w+' });
+        const tempPath = `${targetPath}.tmp`;
+        const file = await open(tempPath, 'w');
+        try {
+            await file.writeFile(JSON.stringify(data));
+            await file.sync();
+        } finally {
+            await file.close();
+        }
+
+        await rename(tempPath, targetPath);
     }
 }
 

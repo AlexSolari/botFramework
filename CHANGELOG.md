@@ -19,6 +19,8 @@ This file was reconstructed from the git history and `package.json` version bump
 - The built-in `/help` command now runs one at a time per chat, so its 60-second cooldown holds. Previously, several `/help` messages sent in quick succession could all pass the cooldown check and each get a reply.
 - When a reply fails because the quoted text or the replied-to message is invalid, the message is resent without the reply, and its `pin()`, `deleteAfter()` and `captureReplies()` operations now run on the resent message. Previously they were silently dropped.
 - `deleteAfter()` no longer delays the post-send operations that come after it. Previously, `ctx.send.text('...').deleteAfter(60000).pin()` waited for the message to be deleted before pinning it, so the pin failed, and a `captureReplies()` after `deleteAfter()` was only registered once the message was gone.
+- `JsonFileStorage` saves are now crash-safe. Each save writes to a temporary file, flushes it to disk and then replaces the old file in one step, so a crash or power loss leaves either the previous or the new state. Previously the file was emptied before writing, so an interruption could leave it empty, which reset that action's state, or half-written, which stopped the bot from starting.
+- When a storage file contains invalid JSON, `JsonFileStorage` now throws an error that names the file. Previously startup failed with a bare `SyntaxError`.
 
 ## [0.8.2] - 2026-10-05
 
