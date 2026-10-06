@@ -23,6 +23,8 @@ This file was reconstructed from the git history and `package.json` version bump
 - When a storage file contains invalid JSON, `JsonFileStorage` now throws an error that names the file. Previously startup failed with a bare `SyntaxError`.
 - While a response delayed with `ctx.wait()` is waiting to be sent, the response queue now sleeps until it is due. Previously it checked about 28 times a second for the whole delay, wasting CPU on slow hardware.
 - Scheduled actions run once a day on days when the clocks change for daylight saving time. Previously the start of the day was off by an hour on those days: when clocks moved forward, an action scheduled for 23:00 was skipped, and when they moved back, an action scheduled between 00:00 and 02:00 ran twice. An action scheduled in the hour that is skipped when clocks move forward runs once the clocks have moved forward.
+- An error in a scheduler task no longer crashes the process. Errors thrown by a task, including a rejected promise, are reported as `error` events and the task keeps its schedule. Previously such an error escaped the timer and terminated the bot.
+- Polling now retries when removing the webhook fails at startup, with the same delays as other polling errors. Previously a single failure, such as a network error, stopped the bot from ever receiving updates.
 
 ## [0.8.2] - 2026-10-05
 

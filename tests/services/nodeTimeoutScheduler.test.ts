@@ -282,6 +282,72 @@ describe('NodeTimeoutScheduler', () => {
         });
     });
 
+    describe('task errors', () => {
+        function collectErrors() {
+            const errors: Error[] = [];
+            eventEmitter.on(BotEventType.error, (_timestamp, { error }) => {
+                errors.push(error);
+            });
+            return errors;
+        }
+
+        test('should report a throwing task and keep running it', async () => {
+            const errors = collectErrors();
+            let runCount = 0;
+
+            scheduler.createTask(
+                'failing-task',
+                () => {
+                    runCount++;
+                    throw new Error('task failure');
+                },
+                30 as Milliseconds,
+                false,
+                'test-bot'
+            );
+
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            expect(runCount).toBeGreaterThanOrEqual(2);
+            expect(errors.length).toBe(runCount);
+            expect(errors[0].message).toBe('task failure');
+        });
+
+        test('should report a rejected task', async () => {
+            const errors = collectErrors();
+
+            scheduler.createTask(
+                'rejecting-task',
+                () => Promise.reject(new Error('async failure')),
+                1000 as Milliseconds,
+                true,
+                'test-bot'
+            );
+
+            await new Promise((resolve) => setTimeout(resolve, 20));
+
+            expect(errors.map((x) => x.message)).toEqual(['async failure']);
+        });
+
+        test('should report a throwing one-time task', async () => {
+            const errors = collectErrors();
+
+            scheduler.createOnetimeTask(
+                'failing-onetime',
+                () => {
+                    throw new Error('onetime failure');
+                },
+                10 as Milliseconds,
+                'test-bot'
+            );
+
+            await new Promise((resolve) => setTimeout(resolve, 40));
+
+            expect(errors.map((x) => x.message)).toEqual(['onetime failure']);
+            expect(scheduler.activeTasks.length).toBe(0);
+        });
+    });
+
     describe('stopAll', () => {
         test('should clear all active interval tasks', async () => {
             let task1Count = 0;

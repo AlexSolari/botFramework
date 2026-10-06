@@ -61,7 +61,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                 () => {
                     this.scheduler.createTask(
                         'ScheduledProcessing',
-                        () => void this.runScheduled(),
+                        () => this.runScheduled(),
                         secondsToMilliseconds(period),
                         true,
                         this.botName

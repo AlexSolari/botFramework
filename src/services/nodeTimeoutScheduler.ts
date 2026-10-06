@@ -3,6 +3,7 @@ import { createTrace } from '../helpers/traceFactory';
 import { BotEventType, TypedEventEmitter } from '../types/events';
 import { IScheduler } from '../types/scheduler';
 import { Milliseconds } from '../types/timeValues';
+import { TraceId } from '../types/trace';
 
 export class NodeTimeoutScheduler implements IScheduler {
     readonly activeTasks: TaskRecord[] = [];
@@ -29,7 +30,7 @@ export class NodeTimeoutScheduler implements IScheduler {
     ) {
         const traceId = createTrace(this, this.botName, name);
         const runAndEmit = () => {
-            action();
+            this.runGuarded(action, traceId);
             this.eventEmitter.emit(BotEventType.taskRun, {
                 name,
                 ownerName,
@@ -69,7 +70,7 @@ export class NodeTimeoutScheduler implements IScheduler {
                 delay,
                 traceId
             });
-            action();
+            this.runGuarded(action, traceId);
         };
 
         const handle = setTimeout(() => {
@@ -83,6 +84,27 @@ export class NodeTimeoutScheduler implements IScheduler {
             name,
             ownerName,
             delay,
+            traceId
+        });
+    }
+
+    private runGuarded(action: () => unknown, traceId: TraceId) {
+        try {
+            const result = action();
+            if (result instanceof Promise) {
+                result.catch((reason: unknown) => {
+                    this.reportError(reason, traceId);
+                });
+            }
+        } catch (reason) {
+            this.reportError(reason, traceId);
+        }
+    }
+
+    private reportError(reason: unknown, traceId: TraceId) {
+        this.eventEmitter.emit(BotEventType.error, {
+            error:
+                reason instanceof Error ? reason : new Error('Unknown error'),
             traceId
         });
     }
