@@ -4,7 +4,9 @@ import {
     expect,
     mock,
     setSystemTime,
-    afterEach
+    afterEach,
+    beforeAll,
+    afterAll
 } from 'bun:test';
 import { ScheduledAction } from '../../../src/entities/actions/scheduledAction';
 import { CachedStateFactory } from '../../../src/entities/cachedStateFactory';
@@ -197,6 +199,65 @@ describe('ScheduledAction', () => {
             expect(handler).toHaveBeenCalledTimes(1);
             expect(state.lastExecutedDate).toBeGreaterThan(0);
             expect(storage.saveActionExecutionResult).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('exec - clock changes', () => {
+        // In 2026, Berlin moves clocks forward on March 29 at 02:00 and back on October 25 at 03:00
+        const originalTimeZone = process.env.TZ;
+
+        beforeAll(() => {
+            process.env.TZ = 'Europe/Berlin';
+        });
+
+        afterAll(() => {
+            // Assigning undefined would set the string "undefined"
+            if (originalTimeZone === undefined) delete process.env.TZ;
+            else process.env.TZ = originalTimeZone;
+        });
+
+        afterEach(() => {
+            setSystemTime();
+        });
+
+        async function runsAt(hour: number, now: Date, lastExecutedDate: Date) {
+            setSystemTime(now);
+            const handler = mock(() => Promise.resolve());
+            const action = buildScheduledAction({
+                handler,
+                providers: { timeinHoursProvider: () => hour as HoursOfDay }
+            });
+            const { ctx } = createContext(action, {
+                state: {
+                    lastExecutedDate: lastExecutedDate.getTime(),
+                    pinnedMessages: []
+                }
+            });
+
+            await action.exec(ctx);
+
+            return handler.mock.calls.length > 0;
+        }
+
+        test('should run a late action on the day clocks move forward', async () => {
+            const ranAt = new Date(2026, 2, 28, 23, 0, 5);
+            const now = new Date(2026, 2, 29, 23, 0, 5);
+
+            expect(await runsAt(23, now, ranAt)).toBe(true);
+        });
+
+        test('should not run an early action twice on the day clocks move back', async () => {
+            const ranAt = new Date(2026, 9, 25, 0, 0, 5);
+            const now = new Date(2026, 9, 25, 12, 0, 0);
+
+            expect(await runsAt(0, now, ranAt)).toBe(false);
+        });
+
+        test('should run an action scheduled in the skipped hour once the clocks have moved forward', async () => {
+            const ranAt = new Date(2026, 2, 28, 2, 0, 5);
+
+            expect(await runsAt(2, new Date(2026, 2, 29, 1, 30), ranAt)).toBe(false);
+            expect(await runsAt(2, new Date(2026, 2, 29, 3, 0, 5), ranAt)).toBe(true);
         });
     });
 

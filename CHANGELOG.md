@@ -22,6 +22,7 @@ This file was reconstructed from the git history and `package.json` version bump
 - `JsonFileStorage` saves are now crash-safe. Each save writes to a temporary file, flushes it to disk and then replaces the old file in one step, so a crash or power loss leaves either the previous or the new state. Previously the file was emptied before writing, so an interruption could leave it empty, which reset that action's state, or half-written, which stopped the bot from starting.
 - When a storage file contains invalid JSON, `JsonFileStorage` now throws an error that names the file. Previously startup failed with a bare `SyntaxError`.
 - While a response delayed with `ctx.wait()` is waiting to be sent, the response queue now sleeps until it is due. Previously it checked about 28 times a second for the whole delay, wasting CPU on slow hardware.
+- Scheduled actions run once a day on days when the clocks change for daylight saving time. Previously the start of the day was off by an hour on those days: when clocks moved forward, an action scheduled for 23:00 was skipped, and when they moved back, an action scheduled between 00:00 and 02:00 ran twice. An action scheduled in the hour that is skipped when clocks move forward runs once the clocks have moved forward.
 
 ## [0.8.2] - 2026-10-05
 

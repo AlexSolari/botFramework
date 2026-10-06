@@ -172,19 +172,14 @@ export class ScheduledAction<
         ctx: ChatContextInternal<TActionState>
     ): boolean {
         const now = new Date();
-        const startOfToday =
-            now.getTime() -
-            (now.getHours() * 3600000 +
-                now.getMinutes() * 60000 +
-                now.getSeconds() * 1000 +
-                now.getMilliseconds());
-        const lastExecutedDate = new Date(state.lastExecutedDate);
-        const scheduledTime = new Date(
-            startOfToday + this.timeinHoursProvider(ctx) * 3600000
-        );
+        const startOfToday = new Date(now);
+        startOfToday.setHours(0, 0, 0, 0);
+        const scheduledTime = new Date(now);
+        scheduledTime.setHours(this.timeinHoursProvider(ctx), 0, 0, 0);
 
         const isAllowedToTrigger = now >= scheduledTime;
-        const hasTriggeredToday = lastExecutedDate.getTime() > startOfToday;
+        const hasTriggeredToday =
+            state.lastExecutedDate > startOfToday.getTime();
 
         return isAllowedToTrigger && !hasTriggeredToday;
     }
