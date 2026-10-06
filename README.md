@@ -247,6 +247,34 @@ ctx.send.text('Message 2');
 
 This will result in `Message 1` being sent, followed by `Message 2` after a 5 second delay.
 
+#### Capture lifetime
+
+Reply captures have no expiry. A capture stays in memory, and every later message in the chat is checked against it, until it is stopped, so stop captures once they are no longer needed:
+
+- From the reply handler, call `stopCapture()`.
+- From anywhere else, pass your own `AbortController` to `captureReplies` and call `abort()` on it. One controller can be shared by several captures to stop them all at once; `stopCapture()` aborts the capture's controller, so it stops every capture that shares it.
+- To give a capture a time limit, abort its controller from a timer.
+
+```typescript
+const controller = new AbortController();
+setTimeout(() => controller.abort(), 10 * 60 * 1000); // stop after 10 minutes
+
+ctx.reply
+    .withText('Guess the number! Reply to this message.')
+    .captureReplies(
+        [/\d+/],
+        async (replyCtx) => {
+            if (replyCtx.messageInfo.text == secret) {
+                replyCtx.reply.withText('Correct!');
+                replyCtx.stopCapture();
+            }
+        },
+        controller
+    );
+```
+
+Each stopped capture emits a `commandActionCaptureAborted` event.
+
 ## Configuration Options
 
 When starting a bot, you can provide the following configuration:

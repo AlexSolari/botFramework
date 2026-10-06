@@ -10,9 +10,12 @@ import { Milliseconds } from './timeValues';
 export interface IPostSendOperationController {
     /**
      * Captures replies based on the specified trigger and handler.
+     * Captures have no expiry: each one stays active until it is stopped with `stopCapture()`
+     * from the reply handler or by aborting its abort controller.
      * @param trigger Array of command triggers that will activate the handler.
      * @param handler Callback function that will be called when a trigger is matched.
      * @param abortController Optional abort controller to manually abort capturing.
+     * Abort it from a timer to give the capture a time limit.
      */
     captureReplies: <TParentActionState extends IActionState>(
         trigger: CommandTrigger[],

@@ -137,7 +137,8 @@ export class ReplyContextInternal<
     }
 
     /**
-     * Stops capturing replies and removes this action
+     * Stops capturing replies and removes this action.
+     * Aborts the capture's abort controller, so every capture that shares it is stopped too.
      */
     stopCapture() {
         this.action.abortController.abort();
