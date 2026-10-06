@@ -16,6 +16,7 @@ import {
 import { ActionKey } from '../../../src/types/action';
 import { MessageType } from '../../../src/types/messageTypes';
 import type { CommandAction } from '../../../src/entities/actions/commandAction';
+import type { IActionState } from '../../../src/types/actionState';
 import type { BotInfo } from '../../../src/types/botInfo';
 import type { Message } from '../../../src/types/botApi.generated';
 import type { CommandTrigger } from '../../../src/types/commandTrigger';
@@ -53,12 +54,12 @@ function createMockTelegramBot(): MockTelegramBot {
 
 function createMockCommandAction(
     triggers: CommandTrigger[] = ['/test']
-): CommandAction<never> {
+): CommandAction<IActionState> {
     return {
         key: 'command:test' as ActionKey,
         exec: mock(() => Promise.resolve([])),
         triggers
-    } as unknown as CommandAction<never>;
+    } as unknown as CommandAction<IActionState>;
 }
 
 function createMockBotInfo(): BotInfo {
@@ -136,6 +137,7 @@ describe('CommandActionProcessor', () => {
             const traceId = createMockTraceId();
             const abortController = new AbortController();
             const mockCapture = {
+                kind: 'captureReplies' as const,
                 action: createMockAction('parent-action'),
                 handler: async () => {},
                 trigger: [],
@@ -173,6 +175,7 @@ describe('CommandActionProcessor', () => {
             const traceId = createMockTraceId();
             const abortController = new AbortController();
             const mockCapture = {
+                kind: 'captureReplies' as const,
                 action: createMockAction('parent-action'),
                 handler: async () => {},
                 trigger: [],
@@ -217,6 +220,7 @@ describe('CommandActionProcessor', () => {
 
             for (let i = 0; i < 3; i++) {
                 const mockCapture = {
+                    kind: 'captureReplies' as const,
                     action: createMockAction(`parent-action-${i}`),
                     handler: async () => {},
                     trigger: [],
@@ -267,6 +271,7 @@ describe('CommandActionProcessor', () => {
             const traceId = createMockTraceId();
             const abortController = new AbortController();
             const mockCapture = {
+                kind: 'captureReplies' as const,
                 action: createMockAction('lifecycle-action'),
                 handler: async () => {},
                 trigger: [],
@@ -319,6 +324,7 @@ describe('CommandActionProcessor', () => {
             const traceId = createMockTraceId();
             const abortController = new AbortController();
             const mockCapture = {
+                kind: 'captureReplies' as const,
                 action: createMockAction('double-abort-action'),
                 handler: async () => {},
                 trigger: [],
@@ -551,6 +557,7 @@ describe('CommandActionProcessor', () => {
             const captureHandlerMock = mock(() => Promise.resolve());
             processor.captureRegistrationCallback(
                 {
+                    kind: 'captureReplies',
                     action: createMockAction('parent-action'),
                     handler: captureHandlerMock,
                     trigger: ['reply text'],
@@ -668,6 +675,7 @@ describe('CommandActionProcessor', () => {
             const traceId = 'trace:test' as TraceId;
             processor.captureRegistrationCallback(
                 {
+                    kind: 'captureReplies',
                     action: captureAction,
                     handler: captureHandlerFn,
                     trigger: ['reply text'],

@@ -16,15 +16,15 @@ describe('ResponseProcessingQueue', () => {
 
     describe('constructor', () => {
         test('should initialize with empty items array', () => {
-            expect(queue.items).toEqual([]);
+            expect(queue['items']).toEqual([]);
         });
 
         test('should initialize with isFlushing as false', () => {
-            expect(queue.isFlushing).toBe(false);
+            expect(queue['isFlushing']).toBe(false);
         });
 
         test('should have rateLimiter defined', () => {
-            expect(queue.rateLimiter).toBeDefined();
+            expect(queue['rateLimiter']).toBeDefined();
         });
     });
 
@@ -37,8 +37,8 @@ describe('ResponseProcessingQueue', () => {
 
             queue.enqueue(item);
 
-            expect(queue.items.length).toBe(1);
-            expect(queue.items[0]).toBe(item);
+            expect(queue['items'].length).toBe(1);
+            expect(queue['items'][0]).toBe(item);
         });
 
         test('should maintain priority order (lower priority first)', () => {
@@ -46,7 +46,7 @@ describe('ResponseProcessingQueue', () => {
             queue.enqueue({ priority: 100, callback: noopCallback });
             queue.enqueue({ priority: 200, callback: noopCallback });
 
-            expect(queue.items.map((i) => i.priority)).toEqual([100, 200, 300]);
+            expect(queue['items'].map((i) => i.priority)).toEqual([100, 200, 300]);
         });
 
         test('should append item with equal priority to end', () => {
@@ -54,8 +54,8 @@ describe('ResponseProcessingQueue', () => {
             queue.enqueue({ priority: 100, callback: noopCallback });
             queue.enqueue({ priority: 100, callback: noopCallback });
 
-            expect(queue.items.length).toBe(3);
-            expect(queue.items.every((i) => i.priority === 100)).toBe(true);
+            expect(queue['items'].length).toBe(3);
+            expect(queue['items'].every((i) => i.priority === 100)).toBe(true);
         });
 
         test('should insert at correct position for mixed priorities', () => {
@@ -65,7 +65,7 @@ describe('ResponseProcessingQueue', () => {
             queue.enqueue({ priority: 150, callback: noopCallback });
             queue.enqueue({ priority: 250, callback: noopCallback });
 
-            expect(queue.items.map((i) => i.priority)).toEqual([
+            expect(queue['items'].map((i) => i.priority)).toEqual([
                 100, 150, 200, 250, 300
             ]);
         });
@@ -75,7 +75,7 @@ describe('ResponseProcessingQueue', () => {
             queue.enqueue({ priority: 300, callback: noopCallback });
             queue.enqueue({ priority: 100, callback: noopCallback }); // Lowest
 
-            expect(queue.items.map((i) => i.priority)).toEqual([100, 200, 300]);
+            expect(queue['items'].map((i) => i.priority)).toEqual([100, 200, 300]);
         });
 
         test('should handle inserting highest priority item', () => {
@@ -83,7 +83,7 @@ describe('ResponseProcessingQueue', () => {
             queue.enqueue({ priority: 200, callback: noopCallback });
             queue.enqueue({ priority: 300, callback: noopCallback }); // Highest, appended
 
-            expect(queue.items.map((i) => i.priority)).toEqual([100, 200, 300]);
+            expect(queue['items'].map((i) => i.priority)).toEqual([100, 200, 300]);
         });
     });
 
@@ -110,7 +110,7 @@ describe('ResponseProcessingQueue', () => {
             await queue.flushReadyItems();
 
             expect(processed).toEqual([1, 2]);
-            expect(queue.items.length).toBe(0);
+            expect(queue['items'].length).toBe(0);
         });
 
         test('should set isFlushing during processing', async () => {
@@ -120,7 +120,7 @@ describe('ResponseProcessingQueue', () => {
             queue.enqueue({
                 priority: now - 100,
                 callback: () => {
-                    wasFlushing = queue.isFlushing;
+                    wasFlushing = queue['isFlushing'];
                     return Promise.resolve();
                 }
             });
@@ -128,7 +128,7 @@ describe('ResponseProcessingQueue', () => {
             await queue.flushReadyItems();
 
             expect(wasFlushing).toBe(true);
-            expect(queue.isFlushing).toBe(false); // Reset after
+            expect(queue['isFlushing']).toBe(false); // Reset after
         });
 
         test('should not start new flush if already flushing', async () => {
@@ -183,7 +183,7 @@ describe('ResponseProcessingQueue', () => {
 
         test('should handle empty queue', async () => {
             await queue.flushReadyItems();
-            expect(queue.isFlushing).toBe(false);
+            expect(queue['isFlushing']).toBe(false);
         });
     });
 
@@ -343,12 +343,12 @@ describe('ResponseProcessingQueue', () => {
                 });
             }
 
-            expect(queue.items.length).toBe(itemCount);
+            expect(queue['items'].length).toBe(itemCount);
 
             await queue.flushReadyItems();
 
             expect(processedCount).toBe(itemCount);
-            expect(queue.items.length).toBe(0);
+            expect(queue['items'].length).toBe(0);
         });
     });
 });

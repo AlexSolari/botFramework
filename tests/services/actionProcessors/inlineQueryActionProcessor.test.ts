@@ -2,7 +2,6 @@ import { describe, test, expect, beforeEach, mock, type Mock } from 'bun:test';
 import { BotEventType, TypedEventEmitter } from '../../../src/types/events';
 import { IStorageClient } from '../../../src/types/storage';
 import { ActionKey } from '../../../src/types/action';
-import { Milliseconds } from '../../../src/types/timeValues';
 import { InlineQueryActionProcessor } from '../../../src/services/actionProcessors/inlineQueryActionProcessor';
 import { InlineQueryAction } from '../../../src/entities/actions/inlineQueryAction';
 import { BotResponse } from '../../../src/types/response';
@@ -231,8 +230,7 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram as unknown as Parameters<
                     typeof localProcessor.initialize
                 >[1],
-                [], // No inline actions
-                100 as Milliseconds
+                [] // No inline actions
             );
 
             // Should not register any handlers
@@ -272,8 +270,7 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram as unknown as Parameters<
                     typeof localProcessor.initialize
                 >[1],
-                [mockInlineAction as unknown as InlineQueryAction],
-                50 as Milliseconds
+                [mockInlineAction as unknown as InlineQueryAction]
             );
 
             const inlineQueryHandler =
@@ -325,8 +322,7 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram as unknown as Parameters<
                     typeof localProcessor.initialize
                 >[1],
-                [mockInlineAction as unknown as InlineQueryAction],
-                50 as Milliseconds
+                [mockInlineAction as unknown as InlineQueryAction]
             );
 
             const inlineQueryHandler =
@@ -388,8 +384,7 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram as unknown as Parameters<
                     typeof localProcessor.initialize
                 >[1],
-                [mockInlineAction as unknown as InlineQueryAction],
-                50 as Milliseconds
+                [mockInlineAction as unknown as InlineQueryAction]
             );
 
             const inlineQueryHandler =
@@ -457,8 +452,7 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram as unknown as Parameters<
                     typeof localProcessor.initialize
                 >[1],
-                [mockInlineAction as unknown as InlineQueryAction],
-                50 as Milliseconds
+                [mockInlineAction as unknown as InlineQueryAction]
             );
 
             const inlineQueryHandler =
@@ -503,8 +497,7 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram as unknown as Parameters<
                     typeof localProcessor.initialize
                 >[1],
-                [mockInlineAction as unknown as InlineQueryAction],
-                50 as Milliseconds
+                [mockInlineAction as unknown as InlineQueryAction]
             );
 
             const inlineQueryHandler =
@@ -561,8 +554,7 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram as unknown as Parameters<
                     typeof localProcessor.initialize
                 >[1],
-                [mockInlineAction as unknown as InlineQueryAction],
-                50 as Milliseconds
+                [mockInlineAction as unknown as InlineQueryAction]
             );
 
             const inlineQueryHandler =
@@ -614,8 +606,7 @@ describe('InlineQueryActionProcessor', () => {
                 mockTelegram as unknown as Parameters<
                     typeof localProcessor.initialize
                 >[1],
-                [mockInlineAction as unknown as InlineQueryAction],
-                50 as Milliseconds
+                [mockInlineAction as unknown as InlineQueryAction]
             );
 
             // Verify that inlineProcessingFinished would be emitted

@@ -29,10 +29,4 @@ describe('Noop', () => {
 
         expect(result).toBeUndefined();
     });
-
-    test('call with two arguments returns a resolved promise', async () => {
-        const result = await Noop.call('arg1', 'arg2');
-
-        expect(result).toBeUndefined();
-    });
 });

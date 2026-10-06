@@ -303,10 +303,10 @@ describe('ReplyContextInternal', () => {
         test('should set the correct emoji', () => {
             const ctx = createReplyContext();
 
-            ctx.reply.withReaction('❤️');
+            ctx.reply.withReaction('❤');
 
             const response = ctx.responses[0] as Reaction;
-            expect(response.emoji).toBe('❤️');
+            expect(response.emoji).toBe('❤');
         });
 
         test('should set the correct message id', () => {

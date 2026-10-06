@@ -13,6 +13,7 @@ import { Seconds } from '../../../src/types/timeValues';
 import { ScheduledActionProcessor } from '../../../src/services/actionProcessors/scheduledActionProcessor';
 import { ActionKey } from '../../../src/types/action';
 import type { ScheduledAction } from '../../../src/entities/actions/scheduledAction';
+import type { IActionState } from '../../../src/types/actionState';
 import {
     createMockStorage,
     createMockScheduler,
@@ -20,11 +21,11 @@ import {
     type MockScheduler
 } from './processorTestHelpers';
 
-function createMockScheduledAction(): ScheduledAction<never> {
+function createMockScheduledAction(): ScheduledAction<IActionState> {
     return {
         key: 'scheduled:test-action' as ActionKey,
         exec: mock(() => Promise.resolve([]))
-    } as unknown as ScheduledAction<never>;
+    } as unknown as ScheduledAction<IActionState>;
 }
 
 function createImmediateOnetimeScheduler(): MockScheduler {
@@ -263,7 +264,7 @@ describe('ScheduledActionProcessor', () => {
             const action = {
                 key: 'scheduled:multi-action' as ActionKey,
                 exec: execMock
-            } as unknown as ScheduledAction<never>;
+            } as unknown as ScheduledAction<IActionState>;
 
             localProcessor.initialize(mockApi, [action], 3600 as Seconds);
 

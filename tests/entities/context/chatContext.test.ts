@@ -451,7 +451,7 @@ describe('ChatContextInternal', () => {
 
             const response = ctx.responses[0] as TextMessage;
             const op = response.postSendOperations[0] as DeleteAfterTimeout;
-            expect(op.timeout).toBe(30000);
+            expect(op.timeout).toBe(30000 as Milliseconds);
         });
 
         test('deleteAfter should work on image response', () => {
@@ -463,7 +463,7 @@ describe('ChatContextInternal', () => {
             const response = ctx.responses[0] as ImageMessage;
             const op = response.postSendOperations[0] as DeleteAfterTimeout;
             expect(op.kind).toBe('deleteAfterTimeout');
-            expect(op.timeout).toBe(1000);
+            expect(op.timeout).toBe(1000 as Milliseconds);
         });
 
         test('multiple operations can be stacked on a single response', () => {
