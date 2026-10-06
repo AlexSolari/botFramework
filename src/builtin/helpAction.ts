@@ -7,6 +7,7 @@ export function buildHelpCommand(readmes: string[], botUsername: string) {
         .do((ctx) => {
             ctx.reply.withText(readmes.join('\n\n'));
         })
+        .withRatelimit(1)
         .withCooldown({
             cooldown: 60 as Seconds
         });

@@ -175,6 +175,8 @@ A string trigger matches the whole message exactly, a `RegExp` triggers on a mat
 
 For each incoming message, the framework first checks every command's triggers. Only commands whose triggers match get a context, so their providers, state and conditions are never evaluated for other messages. For a matching command, the checks then run in this order: rate limit, active flag and chat/user restrictions, cooldown, `when` condition. Commands triggered by `MessageType.Any` or `MessageType.Text` match every message, so keep their providers and conditions cheap.
 
+By default (`withRatelimit(0)`), a command can run several times at once in the same chat, because each incoming message is processed independently. The cooldown starts only after the handler finishes, so messages that arrive close together can all pass the cooldown check and run the handler. Each execution also works on its own copy of the state, and the one that finishes last overwrites the others' changes. Use `withRatelimit(1)` when a command must run one at a time per chat, for example when it relies on its cooldown or updates its state.
+
 Message types can also trigger commands:
 
 ```typescript
@@ -294,7 +296,7 @@ const counterCommand = new CommandActionBuilderWithState<MyCustomState>(
     .build();
 ```
 
-State is mutable and all changes to it will be saved after execution of action is finished.
+State is mutable and all changes to it will be saved after execution of action is finished. If the same command can run concurrently in one chat, the last execution to finish overwrites the others' changes; use `withRatelimit(1)` to prevent that (see [Command Actions](#command-actions)).
 
 ### Inline Queries
 
