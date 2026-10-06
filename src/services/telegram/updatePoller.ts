@@ -70,7 +70,6 @@ export class UpdatePoller {
         this.abortController = abortController;
 
         try {
-            await this.client.call('deleteWebhook', {}, abortController.signal);
             await this.poll(abortController.signal);
         } catch (error) {
             if (!abortController.signal.aborted) {
@@ -91,9 +90,16 @@ export class UpdatePoller {
     private async poll(signal: AbortSignal) {
         const allowedUpdates = [...this.handlers.keys()];
         let failedAttempts = 0;
+        let isWebhookDeleted = false;
 
         while (!signal.aborted) {
             try {
+                // Retried like getUpdates, so a network error at startup doesn't stop polling
+                if (!isWebhookDeleted) {
+                    await this.client.call('deleteWebhook', {}, signal);
+                    isWebhookDeleted = true;
+                }
+
                 const updates = await this.client.call(
                     'getUpdates',
                     {

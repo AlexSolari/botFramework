@@ -22,7 +22,10 @@ type ScriptedResult = Update[] | Error;
  * Fake client: `getUpdates` answers from the script, then hangs until aborted,
  * like a long poll with no new updates.
  */
-function createFakeClient(script: ScriptedResult[] = []) {
+function createFakeClient(
+    script: ScriptedResult[] = [],
+    deleteWebhookErrors: Error[] = []
+) {
     const calls: RecordedCall[] = [];
     let onIdle: () => void = () => undefined;
     const idle = new Promise<void>((resolve) => {
@@ -36,6 +39,8 @@ function createFakeClient(script: ScriptedResult[] = []) {
             signal?: AbortSignal
         ) => {
             calls.push({ method, params });
+            const webhookError = method == 'deleteWebhook' && deleteWebhookErrors.shift();
+            if (webhookError) return Promise.reject(webhookError);
             if (method != 'getUpdates' || !signal) return Promise.resolve(true);
 
             const next = script.shift();
@@ -377,6 +382,61 @@ describe('UpdatePoller', () => {
         await running;
 
         expect(calls.filter((x) => x.method == 'deleteWebhook').length).toBe(1);
+    });
+
+    test('should retry deleting the webhook, then start polling', async () => {
+        const { client, calls, idle } = createFakeClient(
+            [],
+            [new Error('network failure')]
+        );
+        const errors: string[] = [];
+        const poller = new UpdatePoller(
+            client,
+            (error) => {
+                errors.push(error.message);
+            },
+            [0 as Milliseconds]
+        );
+        poller.on('message', () => undefined);
+
+        const running = poller.start();
+        await idle;
+        poller.stop();
+        await running;
+
+        expect(errors).toEqual(['network failure']);
+        expect(calls.map((x) => x.method)).toEqual([
+            'deleteWebhook',
+            'deleteWebhook',
+            'getUpdates'
+        ]);
+    });
+
+    test('should stop and report fatal webhook errors once every retry failed', async () => {
+        const unauthorized = () =>
+            new TelegramApiError('deleteWebhook', 401, 'Unauthorized');
+        const { client, calls } = createFakeClient(
+            [],
+            [unauthorized(), unauthorized(), unauthorized()]
+        );
+        const errors: Error[] = [];
+        const poller = new UpdatePoller(
+            client,
+            (error) => {
+                errors.push(error);
+            },
+            [0 as Milliseconds, 0 as Milliseconds]
+        );
+        poller.on('message', () => undefined);
+
+        await poller.start();
+
+        expect(errors.length).toBe(3);
+        expect(calls.map((x) => x.method)).toEqual([
+            'deleteWebhook',
+            'deleteWebhook',
+            'deleteWebhook'
+        ]);
     });
 
     test('should allow stop before start', () => {
