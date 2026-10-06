@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 This file was reconstructed from the git history and `package.json` version bumps. The repository has no git tags, so dates are the dates of the commit that bumped the version, and patch releases are grouped by minor version. While the major version is `0`, minor releases may contain breaking changes.
 
+## [Unreleased]
+
+### Removed
+
+- **Breaking:** The `pin` option of `send.text()`, `reply.withText()` and `reply.andQuote.withText()`. It was accepted but had no effect: messages sent with `{ pin: true }` were never pinned. Use the post-send controller instead: `ctx.send.text('...').pin()`. Code that still passes `pin` now fails to compile.
+
 ## [0.8.2] - 2026-10-05
 
 ### Fixed

@@ -182,10 +182,10 @@ describe('ChatContextInternal', () => {
         test('should support sending options', () => {
             const ctx = createChatContext();
 
-            ctx.send.text('Test', { pin: true });
+            ctx.send.text('Test', { disableWebPreview: true });
 
             const response = ctx.responses[0] as TextMessage;
-            expect(response.shouldPin).toBe(true);
+            expect(response.disableWebPreview).toBe(true);
         });
 
         test('should return capture controller', () => {

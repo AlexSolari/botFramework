@@ -20,7 +20,6 @@ export class TextMessage implements IReplyResponseWithContent<string> {
     readonly replyInfo: ReplyInfo | undefined;
     readonly traceId: TraceId;
     readonly disableWebPreview: boolean;
-    readonly shouldPin: boolean;
     readonly action: IAction;
     readonly keyboard?: InlineKeyboardButton[][];
 
@@ -37,7 +36,6 @@ export class TextMessage implements IReplyResponseWithContent<string> {
         this.replyInfo = replyInfo;
         this.traceId = traceId;
         this.disableWebPreview = options?.disableWebPreview ?? false;
-        this.shouldPin = options?.pin ?? false;
         this.action = action;
         this.keyboard = options?.keyboard;
     }
@@ -50,7 +48,6 @@ export class TextMessage implements IReplyResponseWithContent<string> {
             this.action,
             undefined,
             {
-                pin: this.shouldPin,
                 disableWebPreview: this.disableWebPreview,
                 keyboard: this.keyboard
             }

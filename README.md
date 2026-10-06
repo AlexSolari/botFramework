@@ -229,7 +229,7 @@ Depending on the type of action, you will have access to the following interacti
 | `reply.withReaction` | Command     | Sets an emoji reaction to a message that triggered an action    |
 | `reply.andQuote.*`   | Command     | `withText`, `withImage`, `withVideo` that also quote the trigger text (or a given quote) |
 
-`send.*` and `reply.with*` (except `withReaction`) return a controller with post-send operations: `pin()`, `deleteAfter(ms)` and `captureReplies(triggers, handler)` (handle replies to the sent message; triggers work like command triggers, including message types such as `MessageType.Any`). Text messages accept options such as `pin`, `disableWebPreview` and an inline `keyboard`.
+`send.*` and `reply.with*` (except `withReaction`) return a controller with post-send operations: `pin()`, `deleteAfter(ms)` and `captureReplies(triggers, handler)` (handle replies to the sent message; triggers work like command triggers, including message types such as `MessageType.Any`). Text messages accept `disableWebPreview` and an inline `keyboard` as options.
 
 Keep in mind that reply sending is deferred until action execution finishes and is queued in the order it was added. Telegram rate limits still apply between queued sends, so the framework inserts spacing between responses rather than promising strict real-time ordering.
 

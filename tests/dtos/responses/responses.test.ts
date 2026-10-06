@@ -169,24 +169,26 @@ describe('TextMessage', () => {
             expect(quoteless.replyInfo).toBeUndefined();
         });
 
-        test('should preserve content and pin option', () => {
+        test('should preserve content and sending options', () => {
             const chatInfo = createMockChatInfo();
             const traceId = createMockTraceId();
             const action = createMockAction();
+            const keyboard = [[{ text: 'Button', callback_data: 'data' }]];
 
             const msg = new TextMessage(
-                'pinned message',
+                'message',
                 chatInfo,
                 traceId,
                 action,
                 new ReplyInfo(1, undefined),
-                { pin: true }
+                { disableWebPreview: true, keyboard }
             );
 
             const quoteless = msg.messageWithoutReplyInfo;
 
-            expect(quoteless.content).toBe('pinned message');
-            expect(quoteless.shouldPin).toBe(true);
+            expect(quoteless.content).toBe('message');
+            expect(quoteless.disableWebPreview).toBe(true);
+            expect(quoteless.keyboard).toBe(keyboard);
         });
 
         test('should preserve chatInfo, traceId and action', () => {
