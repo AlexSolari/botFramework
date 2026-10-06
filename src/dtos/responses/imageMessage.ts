@@ -36,12 +36,15 @@ export class ImageMessage implements IReplyResponseWithContent<InputFile> {
     }
 
     get messageWithoutReplyInfo() {
-        return new ImageMessage(
+        const message = new ImageMessage(
             this.content,
             this.chatInfo,
             this.traceId,
             this.action,
             undefined
         );
+        message.postSendOperations.push(...this.postSendOperations);
+
+        return message;
     }
 }

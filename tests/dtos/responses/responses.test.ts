@@ -8,6 +8,8 @@ import { ReplyInfo } from '../../../src/dtos/replyInfo';
 import { TraceId } from '../../../src/types/trace';
 import { ActionKey, IAction } from '../../../src/types/action';
 import { BotResponseTypes } from '../../../src/types/response';
+import { PostSendOperation } from '../../../src/types/postSendOperations';
+import { Milliseconds } from '../../../src/types/timeValues';
 import { mock } from 'bun:test';
 
 function createMockAction(): IAction {
@@ -256,5 +258,55 @@ describe('VideoMessage', () => {
             expect(quoteless.traceId).toBe(traceId);
             expect(quoteless.action).toBe(action);
         });
+    });
+});
+
+describe.each([
+    {
+        name: 'TextMessage',
+        create: (replyInfo: ReplyInfo) =>
+            new TextMessage(
+                'text',
+                createMockChatInfo(),
+                createMockTraceId(),
+                createMockAction(),
+                replyInfo
+            )
+    },
+    {
+        name: 'ImageMessage',
+        create: (replyInfo: ReplyInfo) =>
+            new ImageMessage(
+                { source: './test.png' },
+                createMockChatInfo(),
+                createMockTraceId(),
+                createMockAction(),
+                replyInfo
+            )
+    },
+    {
+        name: 'VideoMessage',
+        create: (replyInfo: ReplyInfo) =>
+            new VideoMessage(
+                { source: './test.mp4' },
+                createMockChatInfo(),
+                createMockTraceId(),
+                createMockAction(),
+                replyInfo
+            )
+    }
+])('$name messageWithoutReplyInfo', ({ create }) => {
+    test('should preserve post-send operations', () => {
+        const msg = create(new ReplyInfo(1, 'quote'));
+        const operations: PostSendOperation[] = [
+            { kind: 'pin' },
+            { kind: 'deleteAfterTimeout', timeout: 1000 as Milliseconds }
+        ];
+        msg.postSendOperations.push(...operations);
+
+        const quoteless = msg.messageWithoutReplyInfo;
+
+        expect(quoteless.postSendOperations).toEqual(operations);
+        expect(quoteless.postSendOperations).not.toBe(msg.postSendOperations);
     });
 });

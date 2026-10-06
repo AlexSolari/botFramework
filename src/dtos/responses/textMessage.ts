@@ -41,7 +41,7 @@ export class TextMessage implements IReplyResponseWithContent<string> {
     }
 
     get messageWithoutReplyInfo() {
-        return new TextMessage(
+        const message = new TextMessage(
             this.content,
             this.chatInfo,
             this.traceId,
@@ -52,5 +52,8 @@ export class TextMessage implements IReplyResponseWithContent<string> {
                 keyboard: this.keyboard
             }
         );
+        message.postSendOperations.push(...this.postSendOperations);
+
+        return message;
     }
 }

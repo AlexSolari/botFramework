@@ -36,12 +36,15 @@ export class VideoMessage implements IReplyResponseWithContent<InputFile> {
     }
 
     get messageWithoutReplyInfo() {
-        return new VideoMessage(
+        const message = new VideoMessage(
             this.content,
             this.chatInfo,
             this.traceId,
             this.action,
             undefined
         );
+        message.postSendOperations.push(...this.postSendOperations);
+
+        return message;
     }
 }

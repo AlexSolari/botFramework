@@ -17,6 +17,7 @@ This file was reconstructed from the git history and `package.json` version bump
 - An inline query is now answered once, with the results of all matching inline actions combined in the order the actions were registered. Previously each matching action sent its own answer; Telegram accepted only the first, so results from the other actions were lost and could be replaced by an empty list. Result IDs must now be unique across all inline actions, because Telegram rejects an answer that contains duplicate IDs. If the combined results exceed Telegram's limit of 50, only the first 50 are sent and an `error` event is emitted.
 - A new inline query from a user now always aborts that user's previous query that is still being processed. Previously, when a query was replaced and then finished, it removed the tracking entry of the query that replaced it, so the next query from that user did not abort it.
 - The built-in `/help` command now runs one at a time per chat, so its 60-second cooldown holds. Previously, several `/help` messages sent in quick succession could all pass the cooldown check and each get a reply.
+- When a reply fails because the quoted text or the replied-to message is invalid, the message is resent without the reply, and its `pin()`, `deleteAfter()` and `captureReplies()` operations now run on the resent message. Previously they were silently dropped.
 
 ## [0.8.2] - 2026-10-05
 
