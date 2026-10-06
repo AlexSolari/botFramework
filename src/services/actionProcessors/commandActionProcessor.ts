@@ -205,7 +205,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         const { proxy, revoke } = Proxy.revocable(ctx, {});
 
         try {
-            await this.executeAction(command, proxy);
+            await this.executeActionAndQueueResponses(command, proxy);
         } finally {
             this.api.flushResponses();
             revoke();
@@ -230,7 +230,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
         const { proxy, revoke } = Proxy.revocable(ctx, {});
 
         try {
-            await this.executeAction(capture, proxy);
+            await this.executeActionAndQueueResponses(capture, proxy);
         } finally {
             this.api.flushResponses();
             revoke();

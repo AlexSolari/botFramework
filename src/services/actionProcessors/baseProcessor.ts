@@ -4,6 +4,7 @@ import { TelegramApiService } from '../telegramApi';
 import { IAction } from '../../types/action';
 import { BaseContextInternal } from '../../entities/context/baseContext';
 import { BotEventType, TypedEventEmitter } from '../../types/events';
+import { BotResponse } from '../../types/response';
 
 export abstract class BaseActionProcessor {
     protected readonly storage: IStorageClient;
@@ -42,7 +43,7 @@ export abstract class BaseActionProcessor {
         this.api = api;
     }
 
-    async executeAction<
+    async executeActionAndQueueResponses<
         TAction extends IAction,
         TActionContext extends BaseContextInternal<TAction>
     >(
@@ -50,12 +51,23 @@ export abstract class BaseActionProcessor {
         ctx: TActionContext,
         errorHandler?: (error: Error, ctx: TActionContext) => void
     ) {
+        const responses = await this.runAction(action, ctx, errorHandler);
+
+        this.api.enqueueBatchedResponses(responses);
+
+        return responses;
+    }
+
+    protected async runAction<
+        TAction extends IAction,
+        TActionContext extends BaseContextInternal<TAction>
+    >(
+        action: TAction,
+        ctx: TActionContext,
+        errorHandler?: (error: Error, ctx: TActionContext) => void
+    ): Promise<BotResponse[]> {
         try {
-            const responses = await action.exec(ctx);
-
-            this.api.enqueueBatchedResponses(responses);
-
-            return responses;
+            return await action.exec(ctx);
         } catch (e) {
             const error = e as Error;
 

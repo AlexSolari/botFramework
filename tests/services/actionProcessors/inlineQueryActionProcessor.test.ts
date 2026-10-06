@@ -13,6 +13,9 @@ import {
     type MockScheduler
 } from './processorTestHelpers';
 import { IncomingInlineQuery } from '../../../src/dtos/incomingQuery';
+import { InlineQueryResponse } from '../../../src/dtos/responses/inlineQueryResponse';
+import { InlineQueryResult } from '../../../src/types/botApi.generated';
+import { TraceId } from '../../../src/types/trace';
 
 // =============================================================================
 // Mock Types for InlineQueryActionProcessor Tests
@@ -728,6 +731,134 @@ describe('InlineQueryActionProcessor', () => {
             await new Promise((resolve) => setTimeout(resolve, 30));
 
             expect(errorEvents.length).toBeGreaterThanOrEqual(1);
+        });
+    });
+
+    describe('answering', () => {
+        function createArticle(id: string): InlineQueryResult {
+            return {
+                type: 'article',
+                id,
+                title: id,
+                input_message_content: { message_text: id }
+            };
+        }
+
+        function createAnswer(
+            action: MockInlineQueryAction,
+            ...ids: string[]
+        ): InlineQueryResponse {
+            return new InlineQueryResponse(
+                ids.map(createArticle),
+                'answer-q1',
+                'trace-answer' as TraceId,
+                action as unknown as InlineQueryAction
+            );
+        }
+
+        async function sendQuery(actions: MockInlineQueryAction[]) {
+            const mockApi = createMockTelegramApi();
+            const mockTelegram = createMockTelegramBot();
+
+            processor.initialize(
+                mockApi,
+                mockTelegram as unknown as Parameters<
+                    typeof processor.initialize
+                >[1],
+                actions as unknown as InlineQueryAction[]
+            );
+
+            mockTelegram.getEventHandler('inline_query')?.({
+                inlineQuery: {
+                    id: 'answer-q1',
+                    query: 'test',
+                    from: { id: 33333 }
+                }
+            });
+
+            await new Promise((resolve) => setTimeout(resolve, 30));
+
+            return mockApi;
+        }
+
+        test('should answer once with results of all matched actions in order', async () => {
+            const first = createMockInlineQueryAction('first');
+            first.exec = mock(() =>
+                Promise.resolve([createAnswer(first, 'a', 'b')])
+            );
+            const second = createMockInlineQueryAction('second');
+            second.exec = mock(() =>
+                Promise.resolve([createAnswer(second, 'c')])
+            );
+
+            const mockApi = await sendQuery([first, second]);
+
+            expect(mockApi.getEnqueueCallCount()).toBe(1);
+            const enqueued = mockApi.getEnqueueLastArgs() ?? [];
+            expect(enqueued).toHaveLength(1);
+            const answer = enqueued[0] as InlineQueryResponse;
+            expect(answer.queryId).toBe('answer-q1');
+            expect(answer.queryResults.map((r) => r.id)).toEqual([
+                'a',
+                'b',
+                'c'
+            ]);
+        });
+
+        test('should skip actions that did not match or threw', async () => {
+            const matched = createMockInlineQueryAction('matched');
+            matched.exec = mock(() =>
+                Promise.resolve([createAnswer(matched, 'a')])
+            );
+            const unmatched = createMockInlineQueryAction('unmatched');
+            const throwing = createMockInlineQueryAction('throwing');
+            throwing.exec = mock(() => Promise.reject(new Error('boom')));
+
+            const mockApi = await sendQuery([unmatched, throwing, matched]);
+
+            expect(mockApi.getEnqueueCallCount()).toBe(1);
+            const answer = mockApi.getEnqueueLastArgs()?.[0] as
+                | InlineQueryResponse
+                | undefined;
+            expect(answer?.queryResults.map((r) => r.id)).toEqual(['a']);
+        });
+
+        test('should send only the first 50 results and emit an error when the limit is exceeded', async () => {
+            const errorEvents: unknown[] = [];
+            eventEmitter.on(BotEventType.error, (_ts, data) => {
+                errorEvents.push(data);
+            });
+
+            const idsFrom = (prefix: string) =>
+                Array.from({ length: 30 }, (_, i) => `${prefix}${i}`);
+            const first = createMockInlineQueryAction('first');
+            first.exec = mock(() =>
+                Promise.resolve([createAnswer(first, ...idsFrom('a'))])
+            );
+            const second = createMockInlineQueryAction('second');
+            second.exec = mock(() =>
+                Promise.resolve([createAnswer(second, ...idsFrom('b'))])
+            );
+
+            const mockApi = await sendQuery([first, second]);
+
+            const answer = mockApi.getEnqueueLastArgs()?.[0] as
+                | InlineQueryResponse
+                | undefined;
+            expect(answer?.queryResults.map((r) => r.id)).toEqual([
+                ...idsFrom('a'),
+                ...idsFrom('b').slice(0, 20)
+            ]);
+            expect(errorEvents).toHaveLength(1);
+        });
+
+        test('should not answer when no action matched', async () => {
+            const mockApi = await sendQuery([
+                createMockInlineQueryAction('one'),
+                createMockInlineQueryAction('two')
+            ]);
+
+            expect(mockApi.getEnqueueCallCount()).toBe(0);
         });
     });
 });

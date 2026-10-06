@@ -12,6 +12,10 @@ This file was reconstructed from the git history and `package.json` version bump
 
 - **Breaking:** The `pin` option of `send.text()`, `reply.withText()` and `reply.andQuote.withText()`. It was accepted but had no effect: messages sent with `{ pin: true }` were never pinned. Use the post-send controller instead: `ctx.send.text('...').pin()`. Code that still passes `pin` now fails to compile.
 
+### Fixed
+
+- An inline query is now answered once, with the results of all matching inline actions combined in the order the actions were registered. Previously each matching action sent its own answer; Telegram accepted only the first, so results from the other actions were lost and could be replaced by an empty list. Result IDs must now be unique across all inline actions, because Telegram rejects an answer that contains duplicate IDs. If the combined results exceed Telegram's limit of 50, only the first 50 are sent and an `error` event is emitted.
+
 ## [0.8.2] - 2026-10-05
 
 ### Fixed

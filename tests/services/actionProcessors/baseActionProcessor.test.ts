@@ -76,7 +76,7 @@ class TestableBaseActionProcessor extends BaseActionProcessor {
         ctx: MockBaseContext,
         errorHandler?: (error: Error, ctx: MockBaseContext) => void
     ) {
-        return this.executeAction(action, ctx, errorHandler);
+        return this.executeActionAndQueueResponses(action, ctx, errorHandler);
     }
 }
 

@@ -11,3 +11,4 @@ export const TELEGRAM_RATELIMIT_DELAY = 35 as Milliseconds;
 export const TELEGRAM_ERROR_QUOTE_INVALID = 'QUOTE_TEXT_INVALID';
 export const TELEGRAM_ERROR_REPLY_NOT_FOUND = 'message to be replied not found';
 export const INLINE_QUERY_FAKE_CHAT_ID = -1;
+export const INLINE_QUERY_RESULTS_LIMIT = 50;

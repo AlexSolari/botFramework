@@ -3,8 +3,13 @@ import { IncomingInlineQuery } from '../../dtos/incomingQuery';
 import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
 import { InlineQueryContextInternal } from '../../entities/context/inlineQueryContext';
 import { createTrace } from '../../helpers/traceFactory';
-import { INLINE_QUERY_FAKE_CHAT_ID } from '../../helpers/constants';
+import {
+    INLINE_QUERY_FAKE_CHAT_ID,
+    INLINE_QUERY_RESULTS_LIMIT
+} from '../../helpers/constants';
 import { BotEventType } from '../../types/events';
+import { BotResponse, BotResponseTypes } from '../../types/response';
+import { InlineQueryResponse } from '../../dtos/responses/inlineQueryResponse';
 import { UpdatePoller } from '../telegram/updatePoller';
 import { TelegramApiService } from '../telegramApi';
 import { BaseActionProcessor } from './baseProcessor';
@@ -92,7 +97,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                         const { proxy, revoke } = Proxy.revocable(ctx, {});
 
                         try {
-                            await this.executeAction(
+                            return await this.runAction(
                                 inlineQueryAction,
                                 proxy,
                                 (error, _) => {
@@ -117,13 +122,22 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                             );
                         } finally {
                             revoke();
-                            this.api.flushResponses();
                         }
                     }
                 );
 
                 try {
-                    await Promise.allSettled(actionPromises);
+                    const responses = (
+                        await Promise.allSettled(actionPromises)
+                    ).flatMap((result) =>
+                        result.status == 'fulfilled' ? result.value : []
+                    );
+                    const answer = this.mergeInlineAnswers(responses);
+
+                    if (answer) {
+                        this.api.enqueueBatchedResponses([answer]);
+                        this.api.flushResponses();
+                    }
                 } finally {
                     queriesInProcessing.delete(query.userId);
                     this.eventEmitter.emit(
@@ -136,5 +150,32 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                 }
             });
         }
+    }
+
+    private mergeInlineAnswers(responses: BotResponse[]) {
+        const answers = responses.filter(
+            (response): response is InlineQueryResponse =>
+                response.kind == BotResponseTypes.inlineQuery
+        );
+        if (answers.length == 0) return undefined;
+
+        const [first] = answers;
+        const results = answers.flatMap((answer) => answer.queryResults);
+
+        if (results.length > INLINE_QUERY_RESULTS_LIMIT) {
+            this.eventEmitter.emit(BotEventType.error, {
+                error: new Error(
+                    `Inline query produced ${results.length} results, but Telegram accepts at most ${INLINE_QUERY_RESULTS_LIMIT}. Only the first ${INLINE_QUERY_RESULTS_LIMIT} were sent.`
+                ),
+                traceId: first.traceId
+            });
+        }
+
+        return new InlineQueryResponse(
+            results.slice(0, INLINE_QUERY_RESULTS_LIMIT),
+            first.queryId,
+            first.traceId,
+            first.action
+        );
     }
 }
