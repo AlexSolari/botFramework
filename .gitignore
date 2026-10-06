@@ -14,3 +14,4 @@ types/creds.ts
 dist/
 bun.lockb
 bun.lock
+docs/
