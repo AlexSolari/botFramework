@@ -88,7 +88,7 @@ export class BotInstance {
             traceId: createTrace(this, this.name, 'stop')
         });
 
-        this.actionProcessingService.stop();
+        await this.actionProcessingService.stop();
         this.scheduler.stopAll();
         await this.storage.close();
     }

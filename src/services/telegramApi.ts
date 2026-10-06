@@ -21,6 +21,7 @@ import { Milliseconds } from '../types/timeValues';
 
 export class TelegramApiService {
     private readonly queue = new ResponseProcessingQueue();
+    private readonly deleteTimersController = new AbortController();
     private readonly storage: IStorageClient;
     private readonly eventEmitter: TypedEventEmitter;
     private readonly captureRegistrationCallback: (
@@ -120,6 +121,11 @@ export class TelegramApiService {
         }
     }
 
+    async stop() {
+        this.deleteTimersController.abort();
+        await this.queue.finish();
+    }
+
     flushResponses() {
         void this.queue.flushReadyItems().catch((reason: unknown) => {
             this.eventEmitter.emit(BotEventType.error, {
@@ -199,9 +205,13 @@ export class TelegramApiService {
         timeout: Milliseconds
     ) {
         try {
-            await setTimeout(timeout);
+            await setTimeout(timeout, undefined, {
+                signal: this.deleteTimersController.signal
+            });
             await this.sendApiRequest(deleteResponse);
         } catch (reason) {
+            if (reason instanceof Error && reason.name == 'AbortError') return;
+
             this.eventEmitter.emit(BotEventType.error, {
                 error:
                     reason instanceof Error

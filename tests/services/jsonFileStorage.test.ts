@@ -473,6 +473,59 @@ describe('JsonFileStorage', () => {
             // Calling close should complete without throwing
             await expect(localStorage.close()).resolves.toBeUndefined();
         });
+
+        test('should reject saves after close instead of waiting forever', async () => {
+            const localStorage = new JsonFileStorage(
+                TEST_BOT_NAME,
+                [testAction],
+                TEST_STORAGE_PATH
+            );
+            await localStorage.close();
+
+            await expect(
+                localStorage.saveActionExecutionResult(
+                    testAction,
+                    1,
+                    testAction.stateConstructor()
+                )
+            ).rejects.toThrow('Storage is closed');
+            await expect(
+                localStorage.updateStateFor(testAction, 1, () => {})
+            ).rejects.toThrow('Storage is closed');
+        });
+
+        test('should finish saves that were already waiting for the lock', async () => {
+            const localStorage = new JsonFileStorage(
+                TEST_BOT_NAME,
+                [testAction],
+                TEST_STORAGE_PATH
+            );
+            const first = localStorage.updateStateFor(
+                testAction,
+                1,
+                async (state) => {
+                    await new Promise((resolve) => setTimeout(resolve, 20));
+                    state.customField = 'first';
+                }
+            );
+            const second = localStorage.saveActionExecutionResult(
+                testAction,
+                2,
+                { ...testAction.stateConstructor(), customField: 'second' }
+            );
+
+            await localStorage.close();
+            await Promise.all([first, second]);
+
+            const saved = JSON.parse(
+                readFileSync(
+                    buildPath(TEST_STORAGE_PATH, TEST_BOT_NAME, 'test:action'),
+                    'utf-8'
+                )
+            ) as Record<number, TestActionState>;
+            expect(saved[1].customField).toBe('first');
+            expect(saved[2].customField).toBe('second');
+        });
     });
 
     describe('locking behavior', () => {

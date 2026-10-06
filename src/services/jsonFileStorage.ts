@@ -131,6 +131,7 @@ export class JsonFileStorage implements IStorageClient {
 
     private readonly locks = new Map<ActionKey, Semaphore>();
     private readonly semaphoreFactory = () => new Semaphore(1);
+    private isClosed = false;
 
     constructor(
         botName: string,
@@ -149,6 +150,12 @@ export class JsonFileStorage implements IStorageClient {
     }
 
     private async lock<TType>(key: ActionKey, action: () => Promise<TType>) {
+        if (this.isClosed) {
+            throw new Error(
+                `Storage is closed, the state of action ${key} was not saved.`
+            );
+        }
+
         const lock = getOrCreateIfNotExists(
             this.locks,
             key,
@@ -194,6 +201,8 @@ export class JsonFileStorage implements IStorageClient {
     }
 
     async close(): Promise<void> {
+        this.isClosed = true;
+
         for (const lock of this.locks.values()) {
             await lock.acquire();
         }

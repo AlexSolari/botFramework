@@ -70,6 +70,10 @@ class TestableBaseActionProcessor extends BaseActionProcessor {
         return this.api;
     }
 
+    testTrack<T>(processing: Promise<T>) {
+        return this.track(processing);
+    }
+
     // Public wrapper for executeAction
     testExecuteAction(
         action: IAction,
@@ -240,6 +244,40 @@ describe('BaseActionProcessor', () => {
 
             expect(consoleErrors.length).toBe(1);
             expect(consoleErrors[0]).toBe(testError);
+        });
+    });
+
+    describe('waitForProcessing', () => {
+        test('should resolve right away when nothing is tracked', async () => {
+            await expect(processor.waitForProcessing()).resolves.toBeUndefined();
+        });
+
+        test('should wait for tracked processing, including processing started while waiting', async () => {
+            const finished: string[] = [];
+
+            void processor.testTrack(
+                delay(20).then(() => {
+                    finished.push('first');
+                    void processor.testTrack(
+                        delay(20).then(() => {
+                            finished.push('second');
+                        })
+                    );
+                })
+            );
+
+            await processor.waitForProcessing();
+
+            expect(finished).toEqual(['first', 'second']);
+        });
+
+        test('should pass errors of tracked processing to the caller', async () => {
+            const error = new Error('processing failed');
+
+            await expect(
+                processor.testTrack(Promise.reject(error))
+            ).rejects.toBe(error);
+            await expect(processor.waitForProcessing()).resolves.toBeUndefined();
         });
     });
 

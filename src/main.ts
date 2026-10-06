@@ -67,7 +67,9 @@ class BotOrchestrator {
     }
 
     /**
-     * Terminates all scheduled tasks, closes storage connections and stops all bots.
+     * Stops all bots: stops polling and scheduled tasks, waits for processing in progress,
+     * sends the responses that are due and closes storage.
+     * Responses waiting on `ctx.wait()` are dropped and pending `deleteAfter()` timers are cancelled.
      */
     async stopBots() {
         for (const bot of this.bots) {

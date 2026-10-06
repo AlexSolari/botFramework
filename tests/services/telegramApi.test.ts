@@ -60,7 +60,7 @@ function createCapture(): ReplyCapture {
 
 async function process(api: TelegramApiService, message: TextMessage) {
     api.enqueueBatchedResponses([message]);
-    await api['queue']['items'][0].callback();
+    await api['queue']['items'].shift()!.callback();
 }
 
 describe('TelegramApiService', () => {
@@ -154,6 +154,51 @@ describe('TelegramApiService', () => {
             await setTimeout(20);
 
             expect(errors).toEqual([deleteError]);
+        });
+    });
+
+    describe('stop', () => {
+        test('should cancel pending deleteAfter timers and leave the messages', async () => {
+            const call = mock((method: string, _params: CallParams) =>
+                Promise.resolve(
+                    method == 'sendMessage' ? { message_id: 42 } : true
+                )
+            );
+            const { api, eventEmitter } = createApi(call);
+            const errors: Error[] = [];
+            eventEmitter.on(BotEventType.error, (_timestamp, { error }) => {
+                errors.push(error);
+            });
+            const message = createMessage();
+            message.postSendOperations.push({
+                kind: 'deleteAfterTimeout',
+                timeout: 20 as Milliseconds
+            });
+
+            await process(api, message);
+            await api.stop();
+            await setTimeout(40);
+
+            expect(call.mock.calls.map(([method]) => method)).toEqual([
+                'sendMessage'
+            ]);
+            expect(errors).toEqual([]);
+        });
+
+        test('should send the queued responses that are due', async () => {
+            const call = mock((method: string, _params: CallParams) =>
+                Promise.resolve(
+                    method == 'sendMessage' ? { message_id: 42 } : true
+                )
+            );
+            const { api } = createApi(call);
+
+            api.enqueueBatchedResponses([createMessage()]);
+            await api.stop();
+
+            expect(call.mock.calls.map(([method]) => method)).toEqual([
+                'sendMessage'
+            ]);
         });
     });
 });

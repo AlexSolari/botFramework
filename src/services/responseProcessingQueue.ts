@@ -13,6 +13,8 @@ export class ResponseProcessingQueue {
     });
     private readonly items: QueueItem[] = [];
     private isFlushing = false;
+    private currentFlush = Promise.resolve();
+    private readonly itemsInProgress = new Set<Promise<void>>();
     private wakeUp = Noop.void;
 
     enqueue(item: QueueItem) {
@@ -42,22 +44,44 @@ export class ResponseProcessingQueue {
         if (this.isFlushing) return;
 
         this.isFlushing = true;
+        this.currentFlush = this.sendItems();
 
         try {
-            while (this.items.length > 0) {
-                const delay = this.items[0].priority - Date.now();
-                if (delay > 0) {
-                    await this.sleep(delay);
-                    continue;
-                }
-
-                await this.rateLimiter();
-                const item = this.items.shift();
-
-                void item?.callback();
-            }
+            await this.currentFlush;
         } finally {
             this.isFlushing = false;
+        }
+    }
+
+    async finish() {
+        const now = Date.now();
+        const firstNotDue = this.items.findIndex((item) => item.priority > now);
+        if (firstNotDue != -1) {
+            this.items.length = firstNotDue;
+        }
+        this.wakeUp();
+
+        await this.flushReadyItems();
+        await this.currentFlush;
+        await Promise.allSettled(this.itemsInProgress);
+    }
+
+    private async sendItems() {
+        while (this.items.length > 0) {
+            const delay = this.items[0].priority - Date.now();
+            if (delay > 0) {
+                await this.sleep(delay);
+                continue;
+            }
+
+            await this.rateLimiter();
+            const item = this.items.shift();
+            if (!item) continue;
+
+            const sending = item.callback().finally(() => {
+                this.itemsInProgress.delete(sending);
+            });
+            this.itemsInProgress.add(sending);
         }
     }
 

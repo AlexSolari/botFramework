@@ -101,7 +101,7 @@ export class CommandActionProcessor extends BaseActionProcessor {
                     traceId: internalMessage.traceId
                 });
 
-                void this.startMessageProcessing(internalMessage);
+                void this.track(this.startMessageProcessing(internalMessage));
             });
         }
     }

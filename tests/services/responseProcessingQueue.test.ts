@@ -352,6 +352,56 @@ describe('ResponseProcessingQueue', () => {
         });
     });
 
+    describe('finish', () => {
+        test('should send due items, drop the rest and wait for the sent ones', async () => {
+            const sent: string[] = [];
+            let isFirstDone = false;
+            const now = Date.now();
+
+            queue.enqueue({
+                priority: now,
+                callback: async () => {
+                    sent.push('due');
+                    await new Promise((resolve) => setTimeout(resolve, 30));
+                    isFirstDone = true;
+                }
+            });
+            queue.enqueue({
+                priority: now + 10_000,
+                callback: () => {
+                    sent.push('delayed');
+                    return Promise.resolve();
+                }
+            });
+
+            await queue.finish();
+
+            expect(sent).toEqual(['due']);
+            expect(isFirstDone).toBe(true);
+            expect(queue['items'].length).toBe(0);
+        });
+
+        test('should wake a flush that waits for a delayed item', async () => {
+            const sent: string[] = [];
+            const start = Date.now();
+
+            queue.enqueue({
+                priority: start + 10_000,
+                callback: () => {
+                    sent.push('delayed');
+                    return Promise.resolve();
+                }
+            });
+            const flush = queue.flushReadyItems();
+
+            await queue.finish();
+            await flush;
+
+            expect(sent).toEqual([]);
+            expect(Date.now() - start).toBeLessThan(1000);
+        });
+    });
+
     describe('delayed items', () => {
         const record = (sent: string[], name: string) => () => {
             sent.push(name);

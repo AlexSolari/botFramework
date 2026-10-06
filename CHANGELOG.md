@@ -8,6 +8,10 @@ This file was reconstructed from the git history and `package.json` version bump
 
 ## [Unreleased]
 
+### Changed
+
+- `stopBots()` now waits for messages, inline queries and scheduled actions that are already being processed, and sends the responses that are due before closing storage. Responses still waiting on `ctx.wait()` are dropped, and pending `deleteAfter()` timers are cancelled, leaving those messages in the chat. Previously processing was cut off, and these timers kept the process running and fired after shutdown.
+
 ### Removed
 
 - **Breaking:** The `pin` option of `send.text()`, `reply.withText()` and `reply.andQuote.withText()`. It was accepted but had no effect: messages sent with `{ pin: true }` were never pinned. Use the post-send controller instead: `ctx.send.text('...').pin()`. Code that still passes `pin` now fails to compile.
@@ -24,6 +28,8 @@ This file was reconstructed from the git history and `package.json` version bump
 - While a response delayed with `ctx.wait()` is waiting to be sent, the response queue now sleeps until it is due. Previously it checked about 28 times a second for the whole delay, wasting CPU on slow hardware.
 - Scheduled actions run once a day on days when the clocks change for daylight saving time. Previously the start of the day was off by an hour on those days: when clocks moved forward, an action scheduled for 23:00 was skipped, and when they moved back, an action scheduled between 00:00 and 02:00 ran twice. An action scheduled in the hour that is skipped when clocks move forward runs once the clocks have moved forward.
 - An error in a scheduler task no longer crashes the process. Errors thrown by a task, including a rejected promise, are reported as `error` events and the task keeps its schedule. Previously such an error escaped the timer and terminated the bot.
+- `JsonFileStorage` rejects saves after `close()` with a "Storage is closed" error. Previously they waited forever, for example when a pin was processed during shutdown.
+- `stopBots()` waits until the last received updates are confirmed to Telegram. Previously, exiting right after `stopBots()` could cut that request off, and those updates were delivered and processed again after a restart.
 - Polling now retries when removing the webhook fails at startup, with the same delays as other polling errors. Previously a single failure, such as a network error, stopped the bot from ever receiving updates.
 
 ## [0.8.2] - 2026-10-05

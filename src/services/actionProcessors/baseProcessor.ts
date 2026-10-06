@@ -15,6 +15,8 @@ export abstract class BaseActionProcessor {
 
     protected api!: TelegramApiService;
 
+    private readonly processingInProgress = new Set<Promise<unknown>>();
+
     constructor(
         botName: string,
         storage: IStorageClient,
@@ -41,6 +43,21 @@ export abstract class BaseActionProcessor {
 
     initializeDependencies(api: TelegramApiService) {
         this.api = api;
+    }
+
+    protected track<T>(processing: Promise<T>) {
+        const tracked = processing.finally(() => {
+            this.processingInProgress.delete(tracked);
+        });
+        this.processingInProgress.add(tracked);
+
+        return tracked;
+    }
+
+    async waitForProcessing() {
+        while (this.processingInProgress.size > 0) {
+            await Promise.allSettled(this.processingInProgress);
+        }
     }
 
     async executeActionAndQueueResponses<

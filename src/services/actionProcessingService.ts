@@ -28,6 +28,8 @@ export class ActionProcessingService {
     private readonly botName: string;
 
     private telegramBot!: UpdatePoller;
+    private api!: TelegramApiService;
+    private polling: Promise<void> = Promise.resolve();
 
     constructor(
         botName: string,
@@ -80,7 +82,7 @@ export class ActionProcessingService {
                 traceId: createTrace(this, this.botName, 'Polling')
             });
         });
-        const api = new TelegramApiService(
+        this.api = new TelegramApiService(
             this.botName,
             client,
             this.storage,
@@ -114,27 +116,39 @@ export class ActionProcessingService {
                 : [];
 
         this.commandProcessor.initialize(
-            api,
+            this.api,
             this.telegramBot,
             commandActions,
             botInfo,
             actions.messageFilter
         );
         this.inlineQueryProcessor.initialize(
-            api,
+            this.api,
             this.telegramBot,
             actions.inlineQueries
         );
         this.scheduledProcessor.initialize(
-            api,
+            this.api,
             actions.scheduled,
             scheduledPeriod ?? DEFAULT_SCHEDULED_ACTION_PERIOD_SECONDS
         );
 
-        void this.telegramBot.start();
+        this.polling = this.telegramBot.start();
     }
 
-    stop() {
+    /**
+     * Stops receiving updates and waits until the last received one is confirmed to Telegram.
+     * Waits for the processing in progress, then sends the responses that are due.
+     */
+    async stop() {
         this.telegramBot.stop();
+        await this.polling;
+
+        await Promise.all([
+            this.commandProcessor.waitForProcessing(),
+            this.inlineQueryProcessor.waitForProcessing(),
+            this.scheduledProcessor.waitForProcessing()
+        ]);
+        await this.api.stop();
     }
 }

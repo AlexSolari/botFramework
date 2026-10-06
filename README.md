@@ -375,3 +375,12 @@ import { botOrchestrator } from 'chz-telegram-bot';
 // Call when your application is shutting down
 await botOrchestrator.stopBots();
 ```
+
+`stopBots()` shuts each bot down in this order:
+
+1. Stops receiving updates and running scheduled actions.
+2. Waits for messages, inline queries and scheduled actions that are already being processed.
+3. Sends the responses that are due. Responses still waiting on `ctx.wait()` are dropped, and messages with a pending `deleteAfter()` are left in the chat.
+4. Closes the storage. Any later attempt to save state is rejected.
+
+A handler that never finishes keeps `stopBots()` waiting too.

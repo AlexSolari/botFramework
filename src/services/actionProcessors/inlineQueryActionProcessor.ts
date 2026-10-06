@@ -13,6 +13,7 @@ import { InlineQueryResponse } from '../../dtos/responses/inlineQueryResponse';
 import { UpdatePoller } from '../telegram/updatePoller';
 import { TelegramApiService } from '../telegramApi';
 import { BaseActionProcessor } from './baseProcessor';
+import { InlineQuery } from '../../types/botApi.generated';
 
 export class InlineQueryActionProcessor extends BaseActionProcessor {
     private inlineQueries!: InlineQueryAction[];
@@ -34,7 +35,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
         const queriesInProcessing = new Map<number, IncomingInlineQuery>();
 
         if (this.inlineQueries.length > 0) {
-            telegram.on('inline_query', async (inlineQuery) => {
+            const processQuery = async (inlineQuery: InlineQuery) => {
                 const query = new IncomingInlineQuery(
                     inlineQuery.id,
                     inlineQuery.query,
@@ -151,7 +152,11 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                         }
                     );
                 }
-            });
+            };
+
+            telegram.on('inline_query', (inlineQuery) =>
+                this.track(processQuery(inlineQuery))
+            );
         }
     }
 
