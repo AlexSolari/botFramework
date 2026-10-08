@@ -1,5 +1,5 @@
 import { describe, test, expect, mock } from 'bun:test';
-import { InlineQueryAction } from '../../../src/entities/actions/inlineQueryAction';
+import { InlineQueryActionInternal } from '../../../src/entities/actions/inlineQueryAction';
 import {
     InlineQueryContextInternal,
     InlineQueryContext
@@ -23,7 +23,7 @@ function createMockInlineContext(
     const storage = createMockStorage();
     const scheduler = createMockScheduler();
     const eventEmitter = new TypedEventEmitter();
-    const action = new InlineQueryAction(
+    const action = new InlineQueryActionInternal(
         mock(() => Promise.resolve()),
         'test.action',
         () => true,
@@ -51,10 +51,10 @@ function createMockInlineContext(
     return ctx;
 }
 
-describe('InlineQueryAction', () => {
+describe('InlineQueryActionInternal', () => {
     describe('constructor', () => {
         test('should set name correctly', () => {
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'test.action',
                 () => true,
@@ -66,7 +66,7 @@ describe('InlineQueryAction', () => {
 
         test('should set pattern correctly', () => {
             const pattern = /search (.*)/gi;
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'search-action',
                 () => true,
@@ -77,7 +77,7 @@ describe('InlineQueryAction', () => {
         });
 
         test('should generate key with inline prefix', () => {
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'test.action',
                 () => true,
@@ -88,7 +88,7 @@ describe('InlineQueryAction', () => {
         });
 
         test('should replace dots with dashes in key', () => {
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'my.action.name',
                 () => true,
@@ -101,7 +101,7 @@ describe('InlineQueryAction', () => {
 
         test('should store handler', () => {
             const handler = mock(() => Promise.resolve());
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 handler,
                 'test',
                 () => true,
@@ -113,7 +113,7 @@ describe('InlineQueryAction', () => {
 
         test('should store isActiveProvider', () => {
             const provider = () => true;
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'test',
                 provider,
@@ -136,7 +136,7 @@ describe('InlineQueryAction', () => {
         });
 
         test('should return NoResponse if action is not active', async () => {
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'test',
                 () => false,
@@ -151,7 +151,7 @@ describe('InlineQueryAction', () => {
 
         test('should return NoResponse if pattern does not match', async () => {
             const handler = mock(() => Promise.resolve());
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 handler,
                 'test',
                 () => true,
@@ -167,7 +167,7 @@ describe('InlineQueryAction', () => {
 
         test('should execute handler when pattern matches', async () => {
             const handler = mock(() => Promise.resolve());
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 handler,
                 'test',
                 () => true,
@@ -182,7 +182,7 @@ describe('InlineQueryAction', () => {
         });
 
         test('should set matchResults on context when pattern matches', async () => {
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'test',
                 () => true,
@@ -198,7 +198,7 @@ describe('InlineQueryAction', () => {
         });
 
         test('should handle global regex with multiple matches', async () => {
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'test',
                 () => true,
@@ -217,7 +217,7 @@ describe('InlineQueryAction', () => {
         test('should limit regex matches to 100', async () => {
             // Create a query that would match many times
             const longQuery = 'a '.repeat(150);
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'test',
                 () => true,
@@ -237,7 +237,7 @@ describe('InlineQueryAction', () => {
                 events.push('handler');
                 return Promise.resolve();
             });
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 handler,
                 'test',
                 () => true,
@@ -263,7 +263,7 @@ describe('InlineQueryAction', () => {
                 events.push('handler');
                 return Promise.resolve();
             });
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 handler,
                 'test',
                 () => true,
@@ -284,7 +284,7 @@ describe('InlineQueryAction', () => {
         });
 
         test('should return context responses after execution', async () => {
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock((ctx: InlineQueryContext) => {
                     ctx.showInlineQueryResult({
                         type: 'article',
@@ -309,7 +309,7 @@ describe('InlineQueryAction', () => {
             const pattern = /test/g;
             pattern.lastIndex = 100; // Simulate a previously used regex
 
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'test',
                 () => true,
@@ -326,7 +326,7 @@ describe('InlineQueryAction', () => {
     describe('isActiveProvider integration', () => {
         test('should receive context in isActiveProvider', async () => {
             const providerMock = mock(() => true);
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'test',
                 providerMock,
@@ -341,7 +341,7 @@ describe('InlineQueryAction', () => {
 
         test('should evaluate isActiveProvider on each exec', async () => {
             let isActive = true;
-            const action = new InlineQueryAction(
+            const action = new InlineQueryActionInternal(
                 mock(() => Promise.resolve()),
                 'test',
                 () => isActive,

@@ -1,7 +1,7 @@
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { TelegramApiService } from '../telegramApi';
-import { IAction } from '../../types/action';
+import { IAction, IExecutableAction } from '../../types/action';
 import { BaseContextInternal } from '../../entities/context/baseContext';
 import { BotEventType, TypedEventEmitter } from '../../types/events';
 import { BotResponse } from '../../types/response';
@@ -61,7 +61,7 @@ export abstract class BaseActionProcessor {
     }
 
     async executeActionAndQueueResponses<
-        TAction extends IAction,
+        TAction extends IExecutableAction,
         TActionContext extends BaseContextInternal<TAction>
     >(
         action: TAction,
@@ -76,7 +76,7 @@ export abstract class BaseActionProcessor {
     }
 
     protected async runAction<
-        TAction extends IAction,
+        TAction extends IExecutableAction,
         TActionContext extends BaseContextInternal<TAction>
     >(
         action: TAction,

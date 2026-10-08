@@ -11,5 +11,8 @@ export interface IActionWithState<TActionState extends IActionState>
 
 export interface IAction {
     readonly key: ActionKey;
+}
+
+export interface IExecutableAction extends IAction {
     exec(ctx: BaseContextInternal<IAction>): Promise<BotResponse[]>;
 }

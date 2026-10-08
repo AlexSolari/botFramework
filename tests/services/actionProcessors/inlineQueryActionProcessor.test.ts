@@ -3,7 +3,10 @@ import { BotEventType, TypedEventEmitter } from '../../../src/types/events';
 import { IStorageClient } from '../../../src/types/storage';
 import { ActionKey } from '../../../src/types/action';
 import { InlineQueryActionProcessor } from '../../../src/services/actionProcessors/inlineQueryActionProcessor';
-import { InlineQueryAction } from '../../../src/entities/actions/inlineQueryAction';
+import {
+    InlineQueryAction,
+    InlineQueryActionInternal
+} from '../../../src/entities/actions/inlineQueryAction';
 import { BotResponse } from '../../../src/types/response';
 import {
     createMockStorage,
@@ -787,7 +790,7 @@ describe('InlineQueryActionProcessor', () => {
                 ids.map(createArticle),
                 'answer-q1',
                 'trace-answer' as TraceId,
-                action as unknown as InlineQueryAction
+                action as unknown as InlineQueryActionInternal
             );
         }
 

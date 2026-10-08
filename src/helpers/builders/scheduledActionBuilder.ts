@@ -1,4 +1,7 @@
-import { ScheduledAction } from '../../entities/actions/scheduledAction';
+import {
+    ScheduledAction,
+    ScheduledActionInternal
+} from '../../entities/actions/scheduledAction';
 import { CachedStateFactory } from '../../entities/cachedStateFactory';
 import { ActionStateBase } from '../../entities/states/actionStateBase';
 import { IActionState } from '../../types/actionState';
@@ -115,8 +118,8 @@ export class ScheduledActionBuilderWithState<
     }
 
     /** Builds action */
-    build() {
-        return new ScheduledAction<TActionState>(
+    build(): ScheduledAction<TActionState> {
+        return new ScheduledActionInternal<TActionState>(
             this.name,
             this.handler,
             {

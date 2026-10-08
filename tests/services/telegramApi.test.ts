@@ -9,15 +9,20 @@ import { ReplyInfo } from '../../src/dtos/replyInfo';
 import { ActionKey, IAction } from '../../src/types/action';
 import { TraceId } from '../../src/types/trace';
 import { Milliseconds } from '../../src/types/timeValues';
-import { ReplyCapture } from '../../src/types/postSendOperations';
+import {
+    ContinuePersistentReplyCaptureOperation,
+    PersistentReplyCaptureOperation,
+    ReplyCapture
+} from '../../src/types/postSendOperations';
+import { PersistentReplyCaptureActionInternal } from '../../src/entities/actions/persistentReplyCaptureAction';
 import { TELEGRAM_ERROR_QUOTE_INVALID } from '../../src/helpers/constants';
 import { createMockStorage } from './actionProcessors/processorTestHelpers';
+import { PersistentReplyCaptureBuilder } from '../../src/helpers/builders/persistentReplyCaptureBuilder';
 
 type CallParams = { reply_parameters?: unknown; message_id?: number };
 
 const action: IAction = {
-    key: 'test:action' as ActionKey,
-    exec: () => Promise.resolve([])
+    key: 'test:action' as ActionKey
 };
 
 function createApi(
@@ -27,15 +32,37 @@ function createApi(
     const registerCapture = mock(
         (_capture: ReplyCapture, _parentMessageId: number) => {}
     );
+    const registerPersistentCapture = mock(
+        (_capture: PersistentReplyCaptureOperation, _parentMessageId: number) => {}
+    );
+    const continuePersistentCapture = mock(
+        (
+            _operation: ContinuePersistentReplyCaptureOperation,
+            _parentMessageId: number
+        ) => {}
+    );
+    const messageDeleted = mock((_chatInfo: ChatInfo, _messageId: number) => {});
     const api = new TelegramApiService(
         'TestBot',
         { call } as unknown as BotApiClient,
         createMockStorage(),
         eventEmitter,
-        registerCapture
+        {
+            registerCapture,
+            registerPersistentCapture,
+            continuePersistentCapture,
+            messageDeleted
+        }
     );
 
-    return { api, eventEmitter, registerCapture };
+    return {
+        api,
+        eventEmitter,
+        registerCapture,
+        registerPersistentCapture,
+        continuePersistentCapture,
+        messageDeleted
+    };
 }
 
 function createMessage(replyInfo?: ReplyInfo) {
@@ -93,6 +120,132 @@ describe('TelegramApiService', () => {
             expect(registerCapture).toHaveBeenCalledTimes(1);
             expect(registerCapture.mock.calls[0][0]).toBe(capture);
             expect(registerCapture.mock.calls[0][1]).toBe(42);
+        });
+    });
+
+    describe('persistent captures', () => {
+        test('should register a persistent capture for the sent message before the next operation', async () => {
+            const call = mock((method: string, _params: CallParams) =>
+                Promise.resolve(
+                    method == 'sendMessage' ? { message_id: 42 } : true
+                )
+            );
+            const { api, registerPersistentCapture } = createApi(call);
+            let registered = false;
+            registerPersistentCapture.mockImplementation(() => {
+                registered = true;
+            });
+            const message = createMessage();
+            const capture: PersistentReplyCaptureOperation = {
+                kind: 'capturePersistentReplies',
+                definition: new PersistentReplyCaptureBuilder('guess').build(),
+                data: { secret: 5 }
+            };
+            let registeredBeforePin = false;
+            call.mockImplementation((method: string) => {
+                if (method == 'pinChatMessage') registeredBeforePin = registered;
+
+                return Promise.resolve(
+                    method == 'sendMessage' ? { message_id: 42 } : true
+                );
+            });
+            message.postSendOperations.push(capture, { kind: 'pin' });
+
+            await process(api, message);
+
+            expect(registerPersistentCapture).toHaveBeenCalledTimes(1);
+            expect(registerPersistentCapture.mock.calls[0][0]).toBe(capture);
+            expect(registerPersistentCapture.mock.calls[0][1]).toBe(42);
+            expect(registeredBeforePin).toBe(true);
+        });
+    });
+
+    describe('continued persistent captures', () => {
+        test('should add the sent message to the capture', async () => {
+            const call = mock((method: string, _params: CallParams) =>
+                Promise.resolve(
+                    method == 'sendMessage' ? { message_id: 43 } : true
+                )
+            );
+            const { api, continuePersistentCapture } = createApi(call);
+            const message = createMessage();
+            const operation: ContinuePersistentReplyCaptureOperation = {
+                kind: 'continuePersistentReplies',
+                capture: new PersistentReplyCaptureActionInternal(
+                    42,
+                    new PersistentReplyCaptureBuilder('guess').build(),
+                    { parentMessageIds: [42], data: {}, chatName: '', createdAt: 0 }
+                )
+            };
+            message.postSendOperations.push(operation);
+
+            await process(api, message);
+
+            expect(continuePersistentCapture).toHaveBeenCalledTimes(1);
+            expect(continuePersistentCapture.mock.calls[0][0]).toBe(operation);
+            expect(continuePersistentCapture.mock.calls[0][1]).toBe(43);
+        });
+    });
+
+    describe('message deletion', () => {
+        test('should report the deleted message after deleteAfter', async () => {
+            const call = mock((method: string, _params: CallParams) =>
+                Promise.resolve(
+                    method == 'sendMessage' ? { message_id: 42 } : true
+                )
+            );
+            const { api, messageDeleted } = createApi(call);
+            const message = createMessage();
+            message.postSendOperations.push({
+                kind: 'deleteAfterTimeout',
+                timeout: 0 as Milliseconds
+            });
+
+            await process(api, message);
+            await setTimeout(20);
+
+            expect(messageDeleted).toHaveBeenCalledTimes(1);
+            expect(messageDeleted.mock.calls[0][0]).toBe(message.chatInfo);
+            expect(messageDeleted.mock.calls[0][1]).toBe(42);
+        });
+
+        test('should not report a message that failed to delete', async () => {
+            const call = mock((method: string, _params: CallParams) =>
+                method == 'deleteMessage'
+                    ? Promise.reject(new Error('Bad Request'))
+                    : Promise.resolve({ message_id: 42 })
+            );
+            const { api, messageDeleted } = createApi(call);
+            const message = createMessage();
+            message.postSendOperations.push({
+                kind: 'deleteAfterTimeout',
+                timeout: 0 as Milliseconds
+            });
+
+            await process(api, message);
+            await setTimeout(20);
+
+            expect(messageDeleted).not.toHaveBeenCalled();
+        });
+
+        test('should report a message that was already deleted', async () => {
+            const call = mock((method: string, _params: CallParams) =>
+                method == 'deleteMessage'
+                    ? Promise.reject(new Error('400: Bad Request: message to delete not found'))
+                    : Promise.resolve({ message_id: 42 })
+            );
+            const { api, messageDeleted } = createApi(call);
+            const message = createMessage();
+            message.postSendOperations.push({
+                kind: 'deleteAfterTimeout',
+                timeout: 0 as Milliseconds
+            });
+
+            await process(api, message);
+            await setTimeout(20);
+
+            expect(messageDeleted).toHaveBeenCalledTimes(1);
+            expect(messageDeleted.mock.calls[0][1]).toBe(42);
         });
     });
 

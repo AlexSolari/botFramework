@@ -5,7 +5,7 @@ import { TextMessage } from '../../dtos/responses/textMessage';
 import { VideoMessage } from '../../dtos/responses/videoMessage';
 import { IActionState } from '../../types/actionState';
 import { TextMessageSendingOptions } from '../../types/messageSendingOptions';
-import { ReplyCaptureAction } from '../actions/replyCaptureAction';
+import { ReplyCaptureActionInternal } from '../actions/replyCaptureAction';
 import { resolve } from 'path';
 import {
     BaseContextInternal,
@@ -32,7 +32,7 @@ export type ReplyContext<TActionState extends IActionState> = Omit<
 
 export class ReplyContextInternal<
     TParentActionState extends IActionState
-> extends BaseContextInternal<ReplyCaptureAction<TParentActionState>> {
+> extends BaseContextInternal<ReplyCaptureActionInternal<TParentActionState>> {
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
     matchResults: RegExpExecArray[] = [];
     /** Id of a message that triggered this action. */
@@ -49,7 +49,7 @@ export class ReplyContextInternal<
         scheduler: IScheduler,
         eventEmitter: TypedEventEmitter,
         telegramApiClient: BotApiClient,
-        action: ReplyCaptureAction<TParentActionState>,
+        action: ReplyCaptureActionInternal<TParentActionState>,
         message: IncomingMessage,
         botName: string,
         botInfo: BotInfo

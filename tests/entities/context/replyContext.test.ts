@@ -1,6 +1,6 @@
 import { describe, test, expect, mock } from 'bun:test';
 import { ReplyContextInternal } from '../../../src/entities/context/replyContext';
-import { ReplyCaptureAction } from '../../../src/entities/actions/replyCaptureAction';
+import { ReplyCaptureActionInternal } from '../../../src/entities/actions/replyCaptureAction';
 import { ActionStateBase } from '../../../src/entities/states/actionStateBase';
 import { TypedEventEmitter } from '../../../src/types/events';
 import { TextMessage } from '../../../src/dtos/responses/textMessage';
@@ -20,8 +20,7 @@ import {
 
 function createMockParentAction(): IAction {
     return {
-        key: 'command:parent' as ActionKey,
-        exec: mock(() => Promise.resolve([]))
+        key: 'command:parent' as ActionKey
     };
 }
 
@@ -76,7 +75,7 @@ function createReplyContext(
     const incomingMessage = new IncomingMessage(telegramMessage, 'TestBot', []);
 
     const abortController = new AbortController();
-    const action = new ReplyCaptureAction<ActionStateBase>(
+    const action = new ReplyCaptureActionInternal<ActionStateBase>(
         100,
         parentAction,
         mock(() => Promise.resolve()),
@@ -454,7 +453,7 @@ describe('ReplyContextInternal', () => {
                 []
             );
 
-            const action = new ReplyCaptureAction<ActionStateBase>(
+            const action = new ReplyCaptureActionInternal<ActionStateBase>(
                 1,
                 parentAction,
                 mock(() => Promise.resolve()),

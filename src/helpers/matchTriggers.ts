@@ -3,38 +3,47 @@ import { MessageType, MessageTypeValue } from '../types/messageTypes';
 import { REGEX_MATCH_LIMIT } from './constants';
 
 /**
- * Checks message against command triggers.
- * Does not depend on action context, so it can be used to filter out commands before context is created.
- * @returns Regex match results (empty if only non-regex triggers matched), or `null` if no trigger matched.
+ * Checks whether any trigger matches the message, stopping at the first match.
+ * Does not depend on action context, so it can be used to filter out actions before context is created.
  */
-export function matchTriggers(
+export function checkTriggers(
     triggers: CommandTrigger[],
     text: string,
     type: MessageTypeValue
-): RegExpExecArray[] | null {
-    let matched = false;
+) {
     let lowerCaseText: string | undefined;
-    const matchResults: RegExpExecArray[] = [];
 
     for (const trigger of triggers) {
-        if (trigger == MessageType.Any || trigger == type) {
-            matched = true;
-            continue;
-        }
+        if (trigger == MessageType.Any || trigger == type) return true;
 
         if (typeof trigger == 'string') {
             lowerCaseText ??= text.toLowerCase();
-            if (lowerCaseText == trigger.toLowerCase()) matched = true;
+            if (lowerCaseText == trigger.toLowerCase()) return true;
 
             continue;
         }
+
+        trigger.lastIndex = 0;
+        if (trigger.test(text)) return true;
+    }
+
+    return false;
+}
+
+/**
+ * Collects matches of every regex trigger. Call it after `checkTriggers` confirmed the match.
+ */
+export function getMatchResults(triggers: CommandTrigger[], text: string) {
+    const matchResults: RegExpExecArray[] = [];
+
+    for (const trigger of triggers) {
+        if (typeof trigger == 'string') continue;
 
         trigger.lastIndex = 0;
 
         const execResult = trigger.exec(text);
         if (execResult == null) continue;
 
-        matched = true;
         matchResults.push(execResult);
 
         if (trigger.global) {
@@ -51,5 +60,5 @@ export function matchTriggers(
         }
     }
 
-    return matched ? matchResults : null;
+    return matchResults;
 }

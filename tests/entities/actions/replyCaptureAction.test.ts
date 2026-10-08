@@ -1,9 +1,8 @@
 import { describe, test, expect, mock } from 'bun:test';
-import { ReplyCaptureAction } from '../../../src/entities/actions/replyCaptureAction';
+import { ReplyCaptureActionInternal } from '../../../src/entities/actions/replyCaptureAction';
 import { ReplyContextInternal } from '../../../src/entities/context/replyContext';
 import { ActionKey, IAction } from '../../../src/types/action';
 import { TypedEventEmitter, BotEventType } from '../../../src/types/events';
-import { Noop } from '../../../src/helpers/noop';
 import { ActionStateBase } from '../../../src/entities/states/actionStateBase';
 import { MessageType, MessageTypeValue } from '../../../src/types/messageTypes';
 import { Message } from '../../../src/types/botApi.generated';
@@ -16,8 +15,7 @@ import { IncomingMessage } from '../../../src/dtos/incomingMessage';
 
 function createMockParentAction(): IAction {
     return {
-        key: 'command:parent-action' as ActionKey,
-        exec: mock(() => Promise.resolve([]))
+        key: 'command:parent-action' as ActionKey
     };
 }
 
@@ -29,7 +27,7 @@ function createMockReplyContext(
     const storage = createMockStorage();
     const scheduler = createMockScheduler();
     const eventEmitter = new TypedEventEmitter();
-    const action = new ReplyCaptureAction(
+    const action = new ReplyCaptureActionInternal(
         123,
         createMockParentAction(),
         mock(() => Promise.resolve()),
@@ -100,10 +98,10 @@ function createMockReplyContext(
     return ctx;
 }
 
-describe('ReplyCaptureAction', () => {
+describe('ReplyCaptureActionInternal', () => {
     describe('constructor', () => {
         test('should set parentMessageId', () => {
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 mock(() => Promise.resolve()),
@@ -116,7 +114,7 @@ describe('ReplyCaptureAction', () => {
 
         test('should set triggers', () => {
             const triggers = ['yes', 'no', /maybe/];
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 mock(() => Promise.resolve()),
@@ -129,7 +127,7 @@ describe('ReplyCaptureAction', () => {
 
         test('should set handler', () => {
             const handler = mock(() => Promise.resolve());
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 handler,
@@ -142,7 +140,7 @@ describe('ReplyCaptureAction', () => {
 
         test('should set abortController', () => {
             const abortController = new AbortController();
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 mock(() => Promise.resolve()),
@@ -155,7 +153,7 @@ describe('ReplyCaptureAction', () => {
 
         test('should generate key with capture prefix and parent action key', () => {
             const parentAction = createMockParentAction();
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 parentAction,
                 mock(() => Promise.resolve()),
@@ -171,7 +169,7 @@ describe('ReplyCaptureAction', () => {
         test('should derive the key from the parent action', () => {
             const parentAction = createMockParentAction();
 
-            const action1 = new ReplyCaptureAction(
+            const action1 = new ReplyCaptureActionInternal(
                 123,
                 parentAction,
                 mock(() => Promise.resolve()),
@@ -179,7 +177,7 @@ describe('ReplyCaptureAction', () => {
                 new AbortController()
             );
 
-            const action2 = new ReplyCaptureAction(
+            const action2 = new ReplyCaptureActionInternal(
                 123,
                 parentAction,
                 mock(() => Promise.resolve()),
@@ -202,56 +200,9 @@ describe('ReplyCaptureAction', () => {
             expect(ctx.action).toBeDefined();
         });
 
-        test('should return NoResponse if reply is not to parent message', async () => {
-            const action = new ReplyCaptureAction(
-                123,
-                createMockParentAction(),
-                mock(() => Promise.resolve()),
-                ['yes'],
-                new AbortController()
-            );
-
-            const ctx = createMockReplyContext(999, 'yes'); // Different message id
-            const result = await action.exec(ctx);
-
-            expect(result).toBe(Noop.NoResponse);
-        });
-
-        test('should return NoResponse if reply message id is undefined', async () => {
-            const action = new ReplyCaptureAction(
-                123,
-                createMockParentAction(),
-                mock(() => Promise.resolve()),
-                ['yes'],
-                new AbortController()
-            );
-
-            const ctx = createMockReplyContext(undefined, 'yes');
-            const result = await action.exec(ctx);
-
-            expect(result).toBe(Noop.NoResponse);
-        });
-
-        test('should return NoResponse if no trigger matches', async () => {
-            const handler = mock(() => Promise.resolve());
-            const action = new ReplyCaptureAction(
-                123,
-                createMockParentAction(),
-                handler,
-                ['yes', 'no'],
-                new AbortController()
-            );
-
-            const ctx = createMockReplyContext(123, 'maybe');
-            const result = await action.exec(ctx);
-
-            expect(result).toBe(Noop.NoResponse);
-            expect(handler).not.toHaveBeenCalled();
-        });
-
         test('should execute handler when string trigger matches (case-insensitive)', async () => {
             const handler = mock(() => Promise.resolve());
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 handler,
@@ -267,7 +218,7 @@ describe('ReplyCaptureAction', () => {
 
         test('should execute handler when regex trigger matches', async () => {
             const handler = mock(() => Promise.resolve());
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 handler,
@@ -283,7 +234,7 @@ describe('ReplyCaptureAction', () => {
 
         test('should execute handler when MessageType trigger matches', async () => {
             const handler = mock(() => Promise.resolve());
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 handler,
@@ -299,7 +250,7 @@ describe('ReplyCaptureAction', () => {
 
         test('should execute handler when Any trigger is used', async () => {
             const handler = mock(() => Promise.resolve());
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 handler,
@@ -314,7 +265,7 @@ describe('ReplyCaptureAction', () => {
         });
 
         test('should set matchResults on context for regex trigger', async () => {
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 mock(() => Promise.resolve()),
@@ -331,7 +282,7 @@ describe('ReplyCaptureAction', () => {
         });
 
         test('should handle global regex with multiple matches', async () => {
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 mock(() => Promise.resolve()),
@@ -351,7 +302,7 @@ describe('ReplyCaptureAction', () => {
                 events.push('handler');
                 return Promise.resolve();
             });
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 handler,
@@ -378,7 +329,7 @@ describe('ReplyCaptureAction', () => {
                 events.push('handler');
                 return Promise.resolve();
             });
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 handler,
@@ -400,7 +351,7 @@ describe('ReplyCaptureAction', () => {
         });
 
         test('should return context responses after execution', async () => {
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 mock(() => Promise.resolve()),
@@ -416,7 +367,7 @@ describe('ReplyCaptureAction', () => {
 
         test('should try all triggers until one matches', async () => {
             const handler = mock(() => Promise.resolve());
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 handler,
@@ -431,7 +382,7 @@ describe('ReplyCaptureAction', () => {
         });
 
         test('should collect results from multiple matching regex triggers', async () => {
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 mock(() => Promise.resolve()),
@@ -449,7 +400,7 @@ describe('ReplyCaptureAction', () => {
     describe('trigger matching', () => {
         test('should match string trigger exactly (case-insensitive)', async () => {
             const handler = mock(() => Promise.resolve());
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 handler,
@@ -463,28 +414,12 @@ describe('ReplyCaptureAction', () => {
             expect(handler).toHaveBeenCalled();
         });
 
-        test('should not match partial string trigger', async () => {
-            const handler = mock(() => Promise.resolve());
-            const action = new ReplyCaptureAction(
-                123,
-                createMockParentAction(),
-                handler,
-                ['yes'],
-                new AbortController()
-            );
-
-            const ctx = createMockReplyContext(123, 'yes please');
-            await action.exec(ctx);
-
-            expect(handler).not.toHaveBeenCalled();
-        });
-
         test('should reset regex lastIndex before matching', async () => {
             const pattern = /test/g;
             pattern.lastIndex = 100;
 
             const handler = mock(() => Promise.resolve());
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 handler,
@@ -500,7 +435,7 @@ describe('ReplyCaptureAction', () => {
 
         test('should limit regex matches to 100', async () => {
             const longText = 'a '.repeat(150);
-            const action = new ReplyCaptureAction(
+            const action = new ReplyCaptureActionInternal(
                 123,
                 createMockParentAction(),
                 mock(() => Promise.resolve()),

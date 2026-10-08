@@ -12,13 +12,13 @@ import {
     BaseContextInternal,
     BaseContextPropertiesToOmit
 } from './baseContext';
-import { ScheduledAction } from '../actions/scheduledAction';
+import { ScheduledActionInternal } from '../actions/scheduledAction';
 import { PinResponse } from '../../dtos/responses/pin';
 
 export type ChatContext<
     TActionState extends IActionState,
     TAction extends IActionWithState<TActionState> =
-        ScheduledAction<TActionState>
+        ScheduledActionInternal<TActionState>
 > = Omit<
     ChatContextInternal<TActionState, TAction>,
     BaseContextPropertiesToOmit
@@ -30,7 +30,7 @@ export type ChatContext<
 export class ChatContextInternal<
     TActionState extends IActionState,
     TAction extends IActionWithState<TActionState> =
-        ScheduledAction<TActionState>
+        ScheduledActionInternal<TActionState>
 > extends BaseContextInternal<TAction> {
     /**
      * Collection of actions that send something to chat as a standalone message.

@@ -1,16 +1,21 @@
 import { ChatInfo } from '../../dtos/chatInfo';
+import { copyPersistentData } from '../../helpers/copyPersistentData';
 import { BotApiClient } from '../../services/telegram/botApiClient';
 import { IAction, IActionWithState } from '../../types/action';
 import { IActionState } from '../../types/actionState';
-import { CommandTrigger } from '../../types/commandTrigger';
 import { TypedEventEmitter } from '../../types/events';
-import { IPostSendOperationController } from '../../types/postSendOperations';
+import {
+    ContinueReplyCaptureOptions,
+    IPostSendOperationController,
+    PersistentReplyCaptureOptions,
+    ReplyCaptureOptions
+} from '../../types/postSendOperations';
+import { PersistentReplyCaptureActionInternal } from '../actions/persistentReplyCaptureAction';
 import { BotResponse, IReplyResponse } from '../../types/response';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
 import { Milliseconds } from '../../types/timeValues';
 import { TraceId } from '../../types/trace';
-import { ReplyContext } from './replyContext';
 
 export type BaseContextPropertiesToOmit =
     | 'action'
@@ -72,17 +77,50 @@ export abstract class BaseContextInternal<TAction extends IAction> {
     ): IPostSendOperationController {
         return {
             captureReplies: (
-                trigger: CommandTrigger[],
-                handler: (
-                    replyContext: ReplyContext<IActionState>
-                ) => Promise<void>,
-                abortController?: AbortController
+                options:
+                    | ReplyCaptureOptions<IActionState>
+                    | PersistentReplyCaptureOptions<object>
+                    | ContinueReplyCaptureOptions
             ) => {
+                if ('continueCapture' in options) {
+                    if (
+                        !(
+                            this.action instanceof
+                            PersistentReplyCaptureActionInternal
+                        )
+                    ) {
+                        throw new Error(
+                            'continueCapture can only be used in a persistent capture handler.'
+                        );
+                    }
+
+                    response.postSendOperations.push({
+                        kind: 'continuePersistentReplies',
+                        capture: this.action
+                    });
+
+                    return;
+                }
+
+                if ('persistent' in options) {
+                    response.postSendOperations.push({
+                        kind: 'capturePersistentReplies',
+                        definition: options.persistent,
+                        data: copyPersistentData(
+                            options.data,
+                            options.persistent.name
+                        )
+                    });
+
+                    return;
+                }
+
                 response.postSendOperations.push({
                     kind: 'captureReplies',
-                    trigger,
-                    handler,
-                    abortController: abortController ?? new AbortController(),
+                    trigger: options.trigger,
+                    handler: options.handler,
+                    abortController:
+                        options.abortController ?? new AbortController(),
                     action: this.action
                 });
             },

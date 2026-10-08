@@ -11,13 +11,15 @@ import { Milliseconds } from '../../../src/types/timeValues';
 import { ActionKey } from '../../../src/types/action';
 import { ChatInfo } from '../../../src/dtos/chatInfo';
 import { TraceId } from '../../../src/types/trace';
-import { ScheduledAction } from '../../../src/entities/actions/scheduledAction';
+import { ScheduledActionInternal } from '../../../src/entities/actions/scheduledAction';
 import { createMockScheduler, createMockBotApiClient } from '../../services/actionProcessors/processorTestHelpers';
 import { IStorageClient } from '../../../src/types/storage';
 import {
     DeleteAfterTimeout,
+    PersistentReplyCaptureOperation,
     ReplyCapture
 } from '../../../src/types/postSendOperations';
+import { PersistentReplyCaptureBuilder } from '../../../src/helpers/builders/persistentReplyCaptureBuilder';
 import { DeleteMessageResponse } from '../../../src/dtos/responses/deleteMessage';
 
 // Create a mock storage with configurable load response
@@ -35,26 +37,26 @@ function createMockStorage(
     } as unknown as IStorageClient;
 }
 
-function createMockAction(): ScheduledAction<ActionStateBase> {
-    // Create a minimal mock that satisfies ScheduledAction interface
+function createMockAction(): ScheduledActionInternal<ActionStateBase> {
+    // Create a minimal mock that satisfies ScheduledActionInternal interface
     return {
         key: 'scheduled:test-action' as ActionKey,
         name: 'test-action',
         stateConstructor: () => new ActionStateBase(),
         exec: mock(() => Promise.resolve([])),
-        // These properties are required by ScheduledAction but we mock them
+        // These properties are required by ScheduledActionInternal but we mock them
         timeinHoursProvider: () => 12,
         activeProvider: () => true,
         chatsWhitelistProvider: () => [],
         cachedState: new Map(),
         cachedStateFactories: new Map(),
         handler: mock(() => Promise.resolve())
-    } as unknown as ScheduledAction<ActionStateBase>;
+    } as unknown as ScheduledActionInternal<ActionStateBase>;
 }
 
 function createChatContext(): ChatContextInternal<
     ActionStateBase,
-    ScheduledAction<ActionStateBase>
+    ScheduledActionInternal<ActionStateBase>
 > {
     const storage = createMockStorage();
     const scheduler = createMockScheduler();
@@ -64,7 +66,7 @@ function createChatContext(): ChatContextInternal<
 
     const ctx = new ChatContextInternal<
         ActionStateBase,
-        ScheduledAction<ActionStateBase>
+        ScheduledActionInternal<ActionStateBase>
     >(
         storage,
         scheduler,
@@ -328,7 +330,10 @@ describe('ChatContextInternal', () => {
             const ctx = createChatContext();
 
             const controller = ctx.send.text('Choose an option');
-            controller.captureReplies(['yes', 'no'], async () => {});
+            controller.captureReplies({
+                trigger: ['yes', 'no'],
+                handler: async () => {}
+            });
 
             const response = ctx.responses[0] as TextMessage;
             expect(response.postSendOperations.length).toBe(1);
@@ -339,7 +344,7 @@ describe('ChatContextInternal', () => {
             const triggers = ['yes', 'no', /maybe/];
 
             const controller = ctx.send.text('Choose');
-            controller.captureReplies(triggers, async () => {});
+            controller.captureReplies({ trigger: triggers, handler: async () => {} });
 
             const response = ctx.responses[0] as TextMessage;
             expect(
@@ -352,7 +357,7 @@ describe('ChatContextInternal', () => {
             const handler = async () => {};
 
             const controller = ctx.send.text('Choose');
-            controller.captureReplies(['yes'], handler);
+            controller.captureReplies({ trigger: ['yes'], handler });
 
             const response = ctx.responses[0] as TextMessage;
             expect(
@@ -364,7 +369,7 @@ describe('ChatContextInternal', () => {
             const ctx = createChatContext();
 
             const controller = ctx.send.text('Choose');
-            controller.captureReplies(['yes'], async () => {});
+            controller.captureReplies({ trigger: ['yes'], handler: async () => {} });
 
             const response = ctx.responses[0] as TextMessage;
             expect(
@@ -377,7 +382,11 @@ describe('ChatContextInternal', () => {
             const abortController = new AbortController();
 
             const controller = ctx.send.text('Choose');
-            controller.captureReplies(['yes'], async () => {}, abortController);
+            controller.captureReplies({
+                trigger: ['yes'],
+                handler: async () => {},
+                abortController
+            });
 
             const response = ctx.responses[0] as TextMessage;
             expect(
@@ -389,12 +398,57 @@ describe('ChatContextInternal', () => {
             const ctx = createChatContext();
 
             const controller = ctx.send.text('Choose');
-            controller.captureReplies(['yes'], async () => {});
+            controller.captureReplies({ trigger: ['yes'], handler: async () => {} });
 
             const response = ctx.responses[0] as TextMessage;
             expect(
                 (response.postSendOperations[0] as ReplyCapture).action
             ).toBe(ctx.action);
+        });
+
+        test('captureReplies with a persistent capture should add a persistent operation', () => {
+            const ctx = createChatContext();
+            const definition = new PersistentReplyCaptureBuilder<{
+                answers: string[];
+            }>('poll').build();
+            const data = { answers: ['yes'] };
+
+            ctx.send
+                .text('Vote')
+                .captureReplies({ persistent: definition, data });
+            data.answers.push('changed after start');
+
+            const op = (ctx.responses[0] as TextMessage)
+                .postSendOperations[0] as PersistentReplyCaptureOperation;
+            expect(op.kind).toBe('capturePersistentReplies');
+            expect(op.definition).toBe(definition);
+            expect(op.data).toEqual({ answers: ['yes'] });
+        });
+
+        test('captureReplies with a persistent capture should throw when data is not JSON-serializable', () => {
+            const ctx = createChatContext();
+            const definition = new PersistentReplyCaptureBuilder<object>('poll').build();
+
+            expect(() =>
+                ctx.send
+                    .text('Vote')
+                    .captureReplies({ persistent: definition, data: { votes: 1n } })
+            ).toThrow('Data of persistent capture poll must be JSON-serializable.');
+            expect(() =>
+                ctx.send
+                    .text('Vote')
+                    .captureReplies({ persistent: definition, data: undefined as unknown as object })
+            ).toThrow('Data of persistent capture poll must be JSON-serializable.');
+        });
+
+        test('captureReplies with continueCapture should throw outside a persistent capture handler', () => {
+            const ctx = createChatContext();
+
+            expect(() =>
+                ctx.send.text('Vote').captureReplies({ continueCapture: true })
+            ).toThrow(
+                'continueCapture can only be used in a persistent capture handler.'
+            );
         });
 
         test('pin should add a pin operation to postSendOperations', () => {
@@ -471,7 +525,11 @@ describe('ChatContextInternal', () => {
             const abortController = new AbortController();
 
             const controller = ctx.send.text('Multi-op message');
-            controller.captureReplies(['yes'], async () => {}, abortController);
+            controller.captureReplies({
+                trigger: ['yes'],
+                handler: async () => {},
+                abortController
+            });
             controller.pin();
             controller.deleteAfter(10000);
 
@@ -588,7 +646,7 @@ describe('ChatContextInternal', () => {
 
             const ctx = new ChatContextInternal<
                 ActionStateBase,
-                ScheduledAction<ActionStateBase>
+                ScheduledActionInternal<ActionStateBase>
             >(
                 storage,
                 scheduler,
@@ -607,7 +665,7 @@ describe('ChatContextInternal', () => {
                 {
                     key: 'scheduled:other-action' as ActionKey
                 }
-            ) as ScheduledAction<ActionStateBase>;
+            ) as ScheduledActionInternal<ActionStateBase>;
 
             ctx.loadStateOf(otherAction);
 
@@ -627,7 +685,7 @@ describe('ChatContextInternal', () => {
 
             const ctx = new ChatContextInternal<
                 ActionStateBase,
-                ScheduledAction<ActionStateBase>
+                ScheduledActionInternal<ActionStateBase>
             >(
                 storage,
                 scheduler,
@@ -655,7 +713,7 @@ describe('ChatContextInternal', () => {
 
             const ctx = new ChatContextInternal<
                 ActionStateBase,
-                ScheduledAction<ActionStateBase>
+                ScheduledActionInternal<ActionStateBase>
             >(
                 storage,
                 scheduler,
@@ -686,7 +744,7 @@ describe('ChatContextInternal', () => {
 
             const ctx = new ChatContextInternal<
                 ActionStateBase,
-                ScheduledAction<ActionStateBase>
+                ScheduledActionInternal<ActionStateBase>
             >(
                 storage,
                 scheduler,
@@ -764,7 +822,7 @@ describe('ChatContextInternal', () => {
 
             const ctx = new ChatContextInternal<
                 ActionStateBase,
-                ScheduledAction<ActionStateBase>
+                ScheduledActionInternal<ActionStateBase>
             >(
                 storage,
                 scheduler,

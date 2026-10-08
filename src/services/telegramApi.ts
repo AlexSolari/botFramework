@@ -1,6 +1,10 @@
 import { IStorageClient } from '../types/storage';
 import { BotResponse, BotResponseTypes } from '../types/response';
-import { ReplyCapture } from '../types/postSendOperations';
+import {
+    ContinuePersistentReplyCaptureOperation,
+    PersistentReplyCaptureOperation,
+    ReplyCapture
+} from '../types/postSendOperations';
 import { QueueItem, ResponseProcessingQueue } from './responseProcessingQueue';
 import { TraceId } from '../types/trace';
 import { ChatInfo } from '../dtos/chatInfo';
@@ -8,6 +12,7 @@ import { Message } from '../types/botApi.generated';
 import { BotEventType, TypedEventEmitter } from '../types/events';
 import { createTrace } from '../helpers/traceFactory';
 import {
+    TELEGRAM_ERROR_MESSAGE_TO_DELETE_NOT_FOUND,
     TELEGRAM_ERROR_QUOTE_INVALID,
     TELEGRAM_ERROR_REPLY_NOT_FOUND
 } from '../helpers/constants';
@@ -19,17 +24,38 @@ import { IActionWithState } from '../types/action';
 import { BotApiClient, BotApiMethod } from './telegram/botApiClient';
 import { Milliseconds } from '../types/timeValues';
 
-export class TelegramApiService {
-    private readonly queue = new ResponseProcessingQueue();
-    private readonly deleteTimersController = new AbortController();
-    private readonly storage: IStorageClient;
-    private readonly eventEmitter: TypedEventEmitter;
-    private readonly captureRegistrationCallback: (
+export type TelegramApiCallbacks = {
+    registerCapture: (
         capture: ReplyCapture,
         parentMessageId: number,
         chatInfo: ChatInfo,
         traceId: TraceId
     ) => void;
+    registerPersistentCapture: (
+        capture: PersistentReplyCaptureOperation,
+        parentMessageId: number,
+        chatInfo: ChatInfo,
+        traceId: TraceId
+    ) => void;
+    continuePersistentCapture: (
+        operation: ContinuePersistentReplyCaptureOperation,
+        parentMessageId: number,
+        chatInfo: ChatInfo,
+        traceId: TraceId
+    ) => void;
+    messageDeleted: (
+        chatInfo: ChatInfo,
+        messageId: number,
+        traceId: TraceId
+    ) => void;
+};
+
+export class TelegramApiService {
+    private readonly queue = new ResponseProcessingQueue();
+    private readonly deleteTimersController = new AbortController();
+    private readonly storage: IStorageClient;
+    private readonly eventEmitter: TypedEventEmitter;
+    private readonly callbacks: TelegramApiCallbacks;
 
     private readonly TELEGRAM_API_SERVICE_ERROR_TRACEID: TraceId;
 
@@ -55,17 +81,12 @@ export class TelegramApiService {
         client: BotApiClient,
         storage: IStorageClient,
         eventEmitter: TypedEventEmitter,
-        captureRegistrationCallback: (
-            capture: ReplyCapture,
-            parentMessageId: number,
-            chatInfo: ChatInfo,
-            traceId: TraceId
-        ) => void
+        callbacks: TelegramApiCallbacks
     ) {
         this.client = client;
         this.storage = storage;
         this.eventEmitter = eventEmitter;
-        this.captureRegistrationCallback = captureRegistrationCallback;
+        this.callbacks = callbacks;
 
         this.TELEGRAM_API_SERVICE_ERROR_TRACEID = createTrace(
             this,
@@ -167,7 +188,23 @@ export class TelegramApiService {
             for (const operation of response.postSendOperations) {
                 switch (operation.kind) {
                     case 'captureReplies':
-                        this.captureRegistrationCallback(
+                        this.callbacks.registerCapture(
+                            operation,
+                            sentMessage.message_id,
+                            response.chatInfo,
+                            response.traceId
+                        );
+                        break;
+                    case 'capturePersistentReplies':
+                        this.callbacks.registerPersistentCapture(
+                            operation,
+                            sentMessage.message_id,
+                            response.chatInfo,
+                            response.traceId
+                        );
+                        break;
+                    case 'continuePersistentReplies':
+                        this.callbacks.continuePersistentCapture(
                             operation,
                             sentMessage.message_id,
                             response.chatInfo,
@@ -324,10 +361,33 @@ export class TelegramApiService {
 
                     return null;
                 case 'deleteMessage':
-                    await this.client.call('deleteMessage', {
-                        chat_id: response.chatInfo.id,
-                        message_id: response.messageId
-                    });
+                    try {
+                        await this.client.call('deleteMessage', {
+                            chat_id: response.chatInfo.id,
+                            message_id: response.messageId
+                        });
+                    } catch (error) {
+                        if (
+                            error instanceof Error &&
+                            error.message.includes(
+                                TELEGRAM_ERROR_MESSAGE_TO_DELETE_NOT_FOUND
+                            )
+                        ) {
+                            this.callbacks.messageDeleted(
+                                response.chatInfo,
+                                response.messageId,
+                                response.traceId
+                            );
+                        }
+
+                        throw error;
+                    }
+
+                    this.callbacks.messageDeleted(
+                        response.chatInfo,
+                        response.messageId,
+                        response.traceId
+                    );
 
                     return null;
                 case 'delay':

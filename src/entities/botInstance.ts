@@ -11,6 +11,7 @@ import { ActionProcessingService } from '../services/actionProcessingService';
 import { BotEventType, TypedEventEmitter } from '../types/events';
 import { createTrace } from '../helpers/traceFactory';
 import { IncomingMessage } from '../dtos/incomingMessage';
+import { PersistentReplyCapture } from './persistentReplyCapture';
 
 export class BotInstance {
     private readonly storage: IStorageClient;
@@ -26,6 +27,7 @@ export class BotInstance {
             commands: CommandAction<IActionState>[];
             scheduled: ScheduledAction<IActionState>[];
             inlineQueries: InlineQueryAction[];
+            persistentCaptures?: PersistentReplyCapture<object>[];
         };
         chats: Record<string, number>;
         storagePath?: string;
@@ -37,7 +39,10 @@ export class BotInstance {
     }) {
         const actions = [
             ...options.actions.commands,
-            ...options.actions.scheduled
+            ...options.actions.scheduled,
+            ...(options.actions.persistentCaptures ?? []).map(
+                (x) => x.storageKey
+            )
         ];
 
         this.name = options.name;
@@ -65,6 +70,7 @@ export class BotInstance {
             commands: CommandAction<IActionState>[];
             scheduled: ScheduledAction<IActionState>[];
             inlineQueries: InlineQueryAction[];
+            persistentCaptures?: PersistentReplyCapture<object>[];
 
             messageFilter?: (message: IncomingMessage) => boolean;
         },

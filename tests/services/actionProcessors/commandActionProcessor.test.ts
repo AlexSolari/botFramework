@@ -15,12 +15,14 @@ import {
 } from './processorTestHelpers';
 import { ActionKey } from '../../../src/types/action';
 import { MessageType } from '../../../src/types/messageTypes';
-import type { CommandAction } from '../../../src/entities/actions/commandAction';
+import type { CommandActionInternal } from '../../../src/entities/actions/commandAction';
 import type { IActionState } from '../../../src/types/actionState';
 import type { BotInfo } from '../../../src/types/botInfo';
 import type { Message } from '../../../src/types/botApi.generated';
 import type { CommandTrigger } from '../../../src/types/commandTrigger';
-import { ReplyCaptureAction } from '../../../src/entities/actions/replyCaptureAction';
+import { ReplyCaptureActionInternal } from '../../../src/entities/actions/replyCaptureAction';
+import type { ReplyContext } from '../../../src/entities/context/replyContext';
+import type { IncomingMessage } from '../../../src/dtos/incomingMessage';
 
 // ---- Mock helpers for initialize() tests ----
 
@@ -54,12 +56,12 @@ function createMockTelegramBot(): MockTelegramBot {
 
 function createMockCommandAction(
     triggers: CommandTrigger[] = ['/test']
-): CommandAction<IActionState> {
+): CommandActionInternal<IActionState> {
     return {
         key: 'command:test' as ActionKey,
         exec: mock(() => Promise.resolve([])),
         triggers
-    } as unknown as CommandAction<IActionState>;
+    } as unknown as CommandActionInternal<IActionState>;
 }
 
 function createMockBotInfo(): BotInfo {
@@ -120,7 +122,7 @@ describe('CommandActionProcessor', () => {
         });
     });
 
-    describe('captureRegistrationCallback', () => {
+    describe('captures.registerCapture', () => {
         test('should emit captureStarted event', () => {
             const mockApi = createMockTelegramApi();
             processor.initializeDependencies(mockApi);
@@ -144,7 +146,7 @@ describe('CommandActionProcessor', () => {
                 abortController
             };
 
-            processor.captureRegistrationCallback(
+            processor.captures.registerCapture(
                 mockCapture,
                 123,
                 chatInfo,
@@ -182,7 +184,7 @@ describe('CommandActionProcessor', () => {
                 abortController
             };
 
-            processor.captureRegistrationCallback(
+            processor.captures.registerCapture(
                 mockCapture,
                 456,
                 chatInfo,
@@ -226,7 +228,7 @@ describe('CommandActionProcessor', () => {
                     trigger: [],
                     abortController: new AbortController()
                 };
-                processor.captureRegistrationCallback(
+                processor.captures.registerCapture(
                     mockCapture,
                     100 + i,
                     chatInfo,
@@ -235,6 +237,64 @@ describe('CommandActionProcessor', () => {
             }
 
             expect(captureEvents.length).toBe(3);
+        });
+
+        test('should not register a capture whose abort controller is already aborted', () => {
+            processor.initializeDependencies(createMockTelegramApi());
+            const captureEvents: unknown[] = [];
+            eventEmitter.on(BotEventType.commandActionCaptureStarted, (_ts, data) => {
+                captureEvents.push(data);
+            });
+            const abortController = new AbortController();
+            abortController.abort();
+
+            processor.captures.registerCapture(
+                {
+                    kind: 'captureReplies' as const,
+                    action: createMockAction('parent-action'),
+                    handler: async () => {},
+                    trigger: [],
+                    abortController
+                },
+                123,
+                createMockChatInfo(),
+                createMockTraceId()
+            );
+
+            expect(captureEvents).toHaveLength(0);
+            expect(
+                processor.captures.getCapturesFor({
+                    chatInfo: createMockChatInfo(),
+                    replyToMessageId: 123,
+                    text: 'x',
+                    type: MessageType.Text
+                } as unknown as IncomingMessage)
+            ).toHaveLength(0);
+        });
+
+        test('should remove the abort listener of a capture stopped by deleting its message', () => {
+            processor.initializeDependencies(createMockTelegramApi());
+            const abortController = new AbortController();
+            const removeListener = spyOn(abortController.signal, 'removeEventListener');
+            const chatInfo = createMockChatInfo();
+            const traceId = createMockTraceId();
+
+            processor.captures.registerCapture(
+                {
+                    kind: 'captureReplies' as const,
+                    action: createMockAction('parent-action'),
+                    handler: async () => {},
+                    trigger: [],
+                    abortController
+                },
+                123,
+                chatInfo,
+                traceId
+            );
+            processor.captures.messageDeleted(chatInfo, 123, traceId);
+
+            expect(removeListener).toHaveBeenCalledTimes(1);
+            expect(removeListener.mock.calls[0][0]).toBe('abort');
         });
     });
 
@@ -279,7 +339,7 @@ describe('CommandActionProcessor', () => {
             };
 
             // Register capture
-            localProcessor.captureRegistrationCallback(
+            localProcessor.captures.registerCapture(
                 mockCapture,
                 789,
                 chatInfo,
@@ -331,7 +391,7 @@ describe('CommandActionProcessor', () => {
                 abortController
             };
 
-            localProcessor.captureRegistrationCallback(
+            localProcessor.captures.registerCapture(
                 mockCapture,
                 111,
                 chatInfo,
@@ -362,6 +422,24 @@ describe('CommandActionProcessor', () => {
             );
 
             expect(mockTelegram.getOnCallCount()).toBe(0);
+        });
+
+        test('should register telegram message handler when only scheduled actions are provided', () => {
+            const mockTelegram = createMockTelegramBot();
+
+            processor.initialize(
+                createMockTelegramApi(),
+                mockTelegram as unknown as Parameters<
+                    typeof processor.initialize
+                >[1],
+                [],
+                createMockBotInfo(),
+                undefined,
+                [],
+                true
+            );
+
+            expect(mockTelegram.hasRegisteredEvent('message')).toBe(true);
         });
 
         test('should register telegram message handler when commands provided', () => {
@@ -555,7 +633,7 @@ describe('CommandActionProcessor', () => {
             // Register a capture for chatId 12345 with parentMessageId = 42
             const chatInfo = new ChatInfo(12345, 'Test Chat', []);
             const captureHandlerMock = mock(() => Promise.resolve());
-            processor.captureRegistrationCallback(
+            processor.captures.registerCapture(
                 {
                     kind: 'captureReplies',
                     action: createMockAction('parent-action'),
@@ -588,7 +666,7 @@ describe('CommandActionProcessor', () => {
         test('should execute only captures for the replied message with matching triggers', async () => {
             const mockApi = createMockTelegramApi();
             const mockTelegram = createMockTelegramBot();
-            const execSpy = spyOn(ReplyCaptureAction.prototype, 'exec');
+            const execSpy = spyOn(ReplyCaptureActionInternal.prototype, 'exec');
 
             processor.initialize(
                 mockApi,
@@ -605,7 +683,7 @@ describe('CommandActionProcessor', () => {
                 trigger: CommandTrigger[]
             ) => {
                 const handler = mock(() => Promise.resolve());
-                processor.captureRegistrationCallback(
+                processor.captures.registerCapture(
                     {
                         kind: 'captureReplies',
                         action: createMockAction('parent-action'),
@@ -643,6 +721,89 @@ describe('CommandActionProcessor', () => {
             execSpy.mockRestore();
         });
 
+        test('should execute every matching capture when an earlier one stops itself', async () => {
+            const mockApi = createMockTelegramApi();
+            const mockTelegram = createMockTelegramBot();
+
+            processor.initialize(
+                mockApi,
+                mockTelegram as unknown as Parameters<
+                    typeof processor.initialize
+                >[1],
+                [createMockCommandAction(['/start'])],
+                createMockBotInfo()
+            );
+
+            const chatInfo = new ChatInfo(12345, 'Test Chat', []);
+            const stoppingHandler = mock((ctx: ReplyContext<IActionState>) => {
+                ctx.stopCapture();
+                return Promise.resolve();
+            });
+            const laterHandler = mock(() => Promise.resolve());
+            for (const handler of [stoppingHandler, laterHandler]) {
+                processor.captures.registerCapture(
+                    {
+                        kind: 'captureReplies',
+                        action: createMockAction('parent-action'),
+                        handler,
+                        trigger: ['reply text'],
+                        abortController: new AbortController()
+                    },
+                    42,
+                    chatInfo,
+                    'trace:capture' as TraceId
+                );
+            }
+
+            await mockTelegram.triggerMessage({
+                message_id: 100,
+                date: Math.floor(Date.now() / 1000),
+                chat: { id: 12345, type: 'private' as const },
+                from: { id: 1, is_bot: false, first_name: 'User' },
+                text: 'reply text',
+                reply_to_message: { message_id: 42 }
+            } as unknown as Message);
+            await new Promise((resolve) => setTimeout(resolve, 20));
+
+            expect(stoppingHandler).toHaveBeenCalledTimes(1);
+            expect(laterHandler).toHaveBeenCalledTimes(1);
+        });
+
+        test('should not execute captures for a message that is not a reply', async () => {
+            const mockApi = createMockTelegramApi();
+            const mockTelegram = createMockTelegramBot();
+
+            processor.initialize(
+                mockApi,
+                mockTelegram as unknown as Parameters<
+                    typeof processor.initialize
+                >[1],
+                [createMockCommandAction(['/start'])],
+                createMockBotInfo()
+            );
+
+            const handler = mock(() => Promise.resolve());
+            processor.captures.registerCapture(
+                {
+                    kind: 'captureReplies',
+                    action: createMockAction('parent-action'),
+                    handler,
+                    trigger: ['reply text'],
+                    abortController: new AbortController()
+                },
+                42,
+                new ChatInfo(12345, 'Test Chat', []),
+                'trace:capture' as TraceId
+            );
+
+            await mockTelegram.triggerMessage(
+                createTelegramMessage('reply text')
+            );
+            await new Promise((resolve) => setTimeout(resolve, 20));
+
+            expect(handler).not.toHaveBeenCalled();
+        });
+
         test('should process captures registered before message arrives', async () => {
             const mockApi = createMockTelegramApi();
             const mockTelegram = createMockTelegramBot();
@@ -673,7 +834,7 @@ describe('CommandActionProcessor', () => {
             // Register a capture
             const chatInfo = createMockChatInfo();
             const traceId = 'trace:test' as TraceId;
-            processor.captureRegistrationCallback(
+            processor.captures.registerCapture(
                 {
                     kind: 'captureReplies',
                     action: captureAction,

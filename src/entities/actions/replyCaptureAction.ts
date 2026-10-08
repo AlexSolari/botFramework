@@ -1,14 +1,17 @@
 import { Noop } from '../../helpers/noop';
 import { IActionState } from '../../types/actionState';
 import { CommandTrigger } from '../../types/commandTrigger';
-import { ActionKey, IAction } from '../../types/action';
+import { ActionKey, IAction, IExecutableAction } from '../../types/action';
 import { ReplyContextInternal } from '../context/replyContext';
 import { BotEventType } from '../../types/events';
-import { matchTriggers } from '../../helpers/matchTriggers';
+import { getMatchResults } from '../../helpers/matchTriggers';
 
-export class ReplyCaptureAction<
+export type ReplyCaptureAction<TParentActionState extends IActionState> =
+    Omit<ReplyCaptureActionInternal<TParentActionState>, 'exec'>;
+
+export class ReplyCaptureActionInternal<
     TParentActionState extends IActionState
-> implements IAction {
+> implements IExecutableAction {
     readonly parentMessageId: number;
     readonly key: ActionKey;
     readonly handler: (
@@ -35,16 +38,12 @@ export class ReplyCaptureAction<
     }
 
     async exec(ctx: ReplyContextInternal<TParentActionState>) {
-        if (!this.isReplyToParentMessage(ctx)) return Noop.NoResponse;
+        if (this.abortController.signal.aborted) return Noop.NoResponse;
 
-        const matchResults = matchTriggers(
-            this.triggers,
-            ctx.messageInfo.text,
-            ctx.messageInfo.type
+        return await this.executeHandler(
+            ctx,
+            getMatchResults(this.triggers, ctx.messageInfo.text)
         );
-        if (matchResults == null) return Noop.NoResponse;
-
-        return await this.executeHandler(ctx, matchResults);
     }
 
     private async executeHandler(
@@ -69,9 +68,7 @@ export class ReplyCaptureAction<
         return ctx.responses;
     }
 
-    private isReplyToParentMessage(
-        ctx: ReplyContextInternal<TParentActionState>
-    ) {
-        return ctx.replyMessageId == this.parentMessageId;
+    tracksMessage(messageId: number | undefined) {
+        return messageId == this.parentMessageId;
     }
 }

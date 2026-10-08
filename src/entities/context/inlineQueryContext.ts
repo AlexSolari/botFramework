@@ -1,4 +1,4 @@
-import { InlineQueryAction } from '../actions/inlineQueryAction';
+import { InlineQueryActionInternal } from '../actions/inlineQueryAction';
 import {
     BaseContextInternal,
     BaseContextPropertiesToOmit
@@ -16,7 +16,7 @@ export type InlineQueryContext = Omit<
     BaseContextPropertiesToOmit | 'queryResults' | 'queryId'
 >;
 
-export class InlineQueryContextInternal extends BaseContextInternal<InlineQueryAction> {
+export class InlineQueryContextInternal extends BaseContextInternal<InlineQueryActionInternal> {
     readonly queryResults: InlineQueryResult[] = [];
     /**
      * Abort signal to be utilized in query handler.
@@ -35,7 +35,7 @@ export class InlineQueryContextInternal extends BaseContextInternal<InlineQueryA
         scheduler: IScheduler,
         eventEmitter: TypedEventEmitter,
         telegramApiClient: BotApiClient,
-        action: InlineQueryAction,
+        action: InlineQueryActionInternal,
         query: IncomingInlineQuery,
         chatInfo: ChatInfo,
         botName: string

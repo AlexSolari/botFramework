@@ -1,6 +1,9 @@
 import { InlineQueryHandler } from '../../types/handlers';
 import { Noop } from '../noop';
-import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
+import {
+    InlineQueryAction,
+    InlineQueryActionInternal
+} from '../../entities/actions/inlineQueryAction';
 import { InlineActionPropertyProvider } from '../../types/propertyProvider';
 
 /**
@@ -60,8 +63,8 @@ export class InlineQueryActionBuilder {
     }
 
     /** Builds action */
-    build() {
-        return new InlineQueryAction(
+    build(): InlineQueryAction {
+        return new InlineQueryActionInternal(
             this.handler,
             this.name,
             this.activeProvider,

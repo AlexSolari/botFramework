@@ -1,7 +1,11 @@
 import { mock, type Mock } from 'bun:test';
 import { IScheduler } from '../../../src/types/scheduler';
 import { IStorageClient } from '../../../src/types/storage';
-import { ActionKey, IAction } from '../../../src/types/action';
+import {
+    ActionKey,
+    IAction,
+    IExecutableAction
+} from '../../../src/types/action';
 import { BotResponse } from '../../../src/types/response';
 import { ChatInfo } from '../../../src/dtos/chatInfo';
 import { TextMessage } from '../../../src/dtos/responses/textMessage';
@@ -85,7 +89,7 @@ export function createMockScheduler(): MockScheduler {
 }
 
 // Extended action type that exposes mock call tracking
-export interface MockAction extends IAction {
+export interface MockAction extends IExecutableAction {
     getExecCallCount: () => number;
     getExecLastArgs: () => unknown[] | undefined;
 }

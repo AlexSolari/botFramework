@@ -1,3 +1,5 @@
+import { CommandActionInternal } from '../entities/actions/commandAction';
+import { ActionStateBase } from '../entities/states/actionStateBase';
 import { CommandActionBuilder } from '../helpers/builders/commandActionBuilder';
 import { Seconds } from '../types/timeValues';
 
@@ -14,5 +16,5 @@ export function buildHelpCommand(readmes: string[], botUsername: string) {
 
     if (readmes.length == 0) helpCommandBuilder.disabled();
 
-    return helpCommandBuilder.build();
+    return helpCommandBuilder.build() as CommandActionInternal<ActionStateBase>;
 }

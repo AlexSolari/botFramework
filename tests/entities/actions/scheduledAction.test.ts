@@ -8,7 +8,7 @@ import {
     beforeAll,
     afterAll
 } from 'bun:test';
-import { ScheduledAction } from '../../../src/entities/actions/scheduledAction';
+import { ScheduledActionInternal } from '../../../src/entities/actions/scheduledAction';
 import { CachedStateFactory } from '../../../src/entities/cachedStateFactory';
 import { ChatContextInternal } from '../../../src/entities/context/chatContext';
 import { ActionStateBase } from '../../../src/entities/states/actionStateBase';
@@ -51,7 +51,7 @@ function buildScheduledAction(
         ...overrides.providers
     };
 
-    return new ScheduledAction<ActionStateBase>(
+    return new ScheduledActionInternal<ActionStateBase>(
         overrides.name ?? 'TestScheduled',
         overrides.handler ?? (async () => {}),
         providers,
@@ -61,7 +61,7 @@ function buildScheduledAction(
 }
 
 function createContext(
-    action: ScheduledAction<ActionStateBase>,
+    action: ScheduledActionInternal<ActionStateBase>,
     options: { state?: IActionState; chatId?: number } = {}
 ) {
     const storage = createMockStorage(options.state);
@@ -83,7 +83,7 @@ function createContext(
     return { ctx, storage };
 }
 
-describe('ScheduledAction', () => {
+describe('ScheduledActionInternal', () => {
     describe('constructor', () => {
         test('should generate key with scheduled prefix and dots replaced with dashes', () => {
             const action = buildScheduledAction({ name: 'my.scheduled.job' });
@@ -285,7 +285,7 @@ describe('ScheduledAction', () => {
             expect(seen).toEqual(['value', 'value']);
         });
 
-        test('should share the cached value across different ScheduledAction instances with the same name', async () => {
+        test('should share the cached value across different ScheduledActionInternal instances with the same name', async () => {
             const sharedName = 'ScheduledActionTest.SharedAcrossInstances';
             const factory = mock(() => Promise.resolve('shared-value'));
 

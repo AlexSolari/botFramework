@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, mock } from 'bun:test';
 import { BotEventType, TypedEventEmitter } from '../../../src/types/events';
 import { IScheduler } from '../../../src/types/scheduler';
 import { IStorageClient } from '../../../src/types/storage';
-import { ActionKey, IAction } from '../../../src/types/action';
+import { ActionKey, IExecutableAction } from '../../../src/types/action';
 import { BaseActionProcessor } from '../../../src/services/actionProcessors/baseProcessor';
 import { BaseContextInternal } from '../../../src/entities/context/baseContext';
 import { ChatInfo } from '../../../src/dtos/chatInfo';
@@ -29,12 +29,12 @@ const delay = (ms: number): Promise<void> =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
 // A minimal mock context that satisfies BaseContextInternal interface
-class MockBaseContext extends BaseContextInternal<IAction> {
+class MockBaseContext extends BaseContextInternal<IExecutableAction> {
     constructor(
         storage: IStorageClient,
         scheduler: IScheduler,
         eventEmitter: TypedEventEmitter,
-        action: IAction = createMockAction('default-action'),
+        action: IExecutableAction = createMockAction('default-action'),
         chatInfo: ChatInfo = new ChatInfo(12345, 'Test Chat', []),
         traceId: TraceId = 'test-trace' as TraceId,
         botName: string = 'TestBot'
@@ -76,7 +76,7 @@ class TestableBaseActionProcessor extends BaseActionProcessor {
 
     // Public wrapper for executeAction
     testExecuteAction(
-        action: IAction,
+        action: IExecutableAction,
         ctx: MockBaseContext,
         errorHandler?: (error: Error, ctx: MockBaseContext) => void
     ) {
@@ -299,7 +299,7 @@ describe('BaseActionProcessor', () => {
             const asyncError = new Error('Async failure');
             asyncError.name = 'AsyncError';
 
-            const action: IAction = {
+            const action: IExecutableAction = {
                 key: 'error-action' as ActionKey,
                 exec: mock(async () => {
                     await delay(10);

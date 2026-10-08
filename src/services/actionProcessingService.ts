@@ -17,6 +17,7 @@ import { IncomingMessage } from '../dtos/incomingMessage';
 import { BotApiClient } from './telegram/botApiClient';
 import { UpdatePoller } from './telegram/updatePoller';
 import { createTrace } from '../helpers/traceFactory';
+import { PersistentReplyCapture } from '../entities/persistentReplyCapture';
 
 export class ActionProcessingService {
     private readonly eventEmitter: TypedEventEmitter;
@@ -70,6 +71,7 @@ export class ActionProcessingService {
             commands: CommandAction<IActionState>[];
             scheduled: ScheduledAction<IActionState>[];
             inlineQueries: InlineQueryAction[];
+            persistentCaptures?: PersistentReplyCapture<object>[];
 
             messageFilter?: (message: IncomingMessage) => boolean;
         },
@@ -87,14 +89,7 @@ export class ActionProcessingService {
             client,
             this.storage,
             this.eventEmitter,
-            (capture, id, chatInfo, traceId) => {
-                this.commandProcessor.captureRegistrationCallback(
-                    capture,
-                    id,
-                    chatInfo,
-                    traceId
-                );
-            }
+            this.commandProcessor.captures
         );
 
         const botUser = await client.call('getMe', {});
@@ -120,7 +115,9 @@ export class ActionProcessingService {
             this.telegramBot,
             commandActions,
             botInfo,
-            actions.messageFilter
+            actions.messageFilter,
+            actions.persistentCaptures,
+            actions.scheduled.length > 0
         );
         this.inlineQueryProcessor.initialize(
             this.api,
@@ -144,11 +141,19 @@ export class ActionProcessingService {
         this.telegramBot.stop();
         await this.polling;
 
+        // Handlers only enqueue responses, so they must finish before the queue is drained.
         await Promise.all([
             this.commandProcessor.waitForProcessing(),
             this.inlineQueryProcessor.waitForProcessing(),
             this.scheduledProcessor.waitForProcessing()
         ]);
         await this.api.stop();
+
+        // Sending responses registers, updates and deletes reply captures,
+        // and their storage writes are tracked by the command processor.
+        await this.commandProcessor.waitForProcessing();
+
+        // Nothing can register a capture past this point, so no new expiry timers can appear.
+        this.commandProcessor.captures.stop();
     }
 }

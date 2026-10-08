@@ -2,11 +2,12 @@ export * from './main';
 export * from './helpers/builders/inlineQueryActionBuilder';
 export * from './helpers/builders/commandActionBuilder';
 export * from './helpers/builders/scheduledActionBuilder';
+export * from './helpers/builders/persistentReplyCaptureBuilder';
 export * from './types/actionState';
 export * from './entities/states/actionStateBase';
 export * from './types/messageTypes';
 export * from './helpers/timeConvertions';
-export * from './types/action';
+export { ActionKey, IAction, IActionWithState } from './types/action';
 export * from './types/botInfo';
 export * as BotApi from './types/botApi.generated';
 export * from './types/storage';
@@ -15,6 +16,11 @@ export * from './types/postSendOperations';
 export { CommandAction } from './entities/actions/commandAction';
 export { InlineQueryAction } from './entities/actions/inlineQueryAction';
 export { ReplyCaptureAction } from './entities/actions/replyCaptureAction';
+export {
+    PersistentReplyCapture,
+    PersistentReplyCaptureState
+} from './entities/persistentReplyCapture';
+export { PersistentReplyCaptureAction } from './entities/actions/persistentReplyCaptureAction';
 export { ScheduledAction } from './entities/actions/scheduledAction';
 export { Hours, Milliseconds, Seconds } from './types/timeValues';
 export { ChatContext } from './entities/context/chatContext';

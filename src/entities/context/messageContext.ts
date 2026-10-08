@@ -7,7 +7,7 @@ import { VideoMessage } from '../../dtos/responses/videoMessage';
 import { ChatContextInternal } from './chatContext';
 import { TextMessageSendingOptions } from '../../types/messageSendingOptions';
 import { ReplyInfo } from '../../dtos/replyInfo';
-import { CommandAction } from '../actions/commandAction';
+import { CommandActionInternal } from '../actions/commandAction';
 import { Seconds } from '../../types/timeValues';
 import { BaseContextPropertiesToOmit } from './baseContext';
 import { MessageInfo } from '../../dtos/messageInfo';
@@ -31,7 +31,7 @@ export type MessageContext<TActionState extends IActionState> = Omit<
  */
 export class MessageContextInternal<
     TActionState extends IActionState
-> extends ChatContextInternal<TActionState, CommandAction<TActionState>> {
+> extends ChatContextInternal<TActionState, CommandActionInternal<TActionState>> {
     /** Information about the user that triggered this action */
     readonly userInfo: UserInfo;
     /** Information about the message that triggered this action */
@@ -50,7 +50,7 @@ export class MessageContextInternal<
         scheduler: IScheduler,
         eventEmitter: TypedEventEmitter,
         telegramApiClient: BotApiClient,
-        action: CommandAction<TActionState>,
+        action: CommandActionInternal<TActionState>,
         message: IncomingMessage,
         botName: string,
         botInfo: BotInfo

@@ -31,7 +31,6 @@ function createTestAction(
             customField: 'default',
             ...defaultState
         }),
-        exec: () => Promise.resolve([])
     };
 }
 

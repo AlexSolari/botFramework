@@ -1,13 +1,15 @@
 import { Noop } from '../../helpers/noop';
-import { ActionKey, IAction } from '../../types/action';
+import { ActionKey, IExecutableAction } from '../../types/action';
 import { InlineQueryContextInternal } from '../context/inlineQueryContext';
 import { InlineQueryHandler } from '../../types/handlers';
 import { InlineActionPropertyProvider } from '../../types/propertyProvider';
 import { BotEventType } from '../../types/events';
 import { InlineQueryResponse } from '../../dtos/responses/inlineQueryResponse';
-import { REGEX_MATCH_LIMIT } from '../../helpers/constants';
+import { getMatchResults } from '../../helpers/matchTriggers';
 
-export class InlineQueryAction implements IAction {
+export type InlineQueryAction = Omit<InlineQueryActionInternal, 'exec'>;
+
+export class InlineQueryActionInternal implements IExecutableAction {
     readonly key: ActionKey;
     readonly isActiveProvider: InlineActionPropertyProvider<boolean>;
     readonly handler: InlineQueryHandler;
@@ -31,30 +33,9 @@ export class InlineQueryAction implements IAction {
     async exec(ctx: InlineQueryContextInternal) {
         if (!this.isActiveProvider(ctx)) return Noop.NoResponse;
 
-        const matchResults: RegExpExecArray[] = [];
+        ctx.matchResults = getMatchResults([this.pattern], ctx.queryText);
 
-        this.pattern.lastIndex = 0;
-
-        const execResult = this.pattern.exec(ctx.queryText);
-        if (execResult != null) {
-            let regexMatchLimit = REGEX_MATCH_LIMIT;
-            matchResults.push(execResult);
-
-            if (this.pattern.global) {
-                while (regexMatchLimit > 0) {
-                    const nextResult = this.pattern.exec(ctx.queryText);
-
-                    if (nextResult == null) break;
-
-                    matchResults.push(nextResult);
-                    regexMatchLimit -= 1;
-                }
-            }
-        }
-
-        if (matchResults.length == 0) return Noop.NoResponse;
-
-        ctx.matchResults = matchResults;
+        if (ctx.matchResults.length == 0) return Noop.NoResponse;
 
         ctx.observability.eventEmitter.emit(
             BotEventType.inlineActionExecuting,
@@ -64,22 +45,26 @@ export class InlineQueryAction implements IAction {
                 traceId: ctx.observability.traceId
             }
         );
+        try {
+            await this.handler(ctx);
 
-        await this.handler(ctx);
-
-        ctx.observability.eventEmitter.emit(BotEventType.inlineActionExecuted, {
-            action: this,
-            ctx,
-            traceId: ctx.observability.traceId
-        });
-
-        return [
-            new InlineQueryResponse(
-                ctx.queryResults,
-                ctx.queryId,
-                ctx.observability.traceId,
-                ctx.action
-            )
-        ];
+            return [
+                new InlineQueryResponse(
+                    ctx.queryResults,
+                    ctx.queryId,
+                    ctx.observability.traceId,
+                    ctx.action
+                )
+            ];
+        } finally {
+            ctx.observability.eventEmitter.emit(
+                BotEventType.inlineActionExecuted,
+                {
+                    action: this,
+                    ctx,
+                    traceId: ctx.observability.traceId
+                }
+            );
+        }
     }
 }

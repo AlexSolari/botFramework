@@ -10,12 +10,10 @@ import { ActionKey, IAction } from '../../../src/types/action';
 import { BotResponseTypes } from '../../../src/types/response';
 import { PostSendOperation } from '../../../src/types/postSendOperations';
 import { Milliseconds } from '../../../src/types/timeValues';
-import { mock } from 'bun:test';
 
 function createMockAction(): IAction {
     return {
-        key: 'test:action' as ActionKey,
-        exec: mock(() => Promise.resolve([]))
+        key: 'test:action' as ActionKey
     };
 }
 

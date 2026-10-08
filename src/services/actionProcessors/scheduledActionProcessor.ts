@@ -1,5 +1,8 @@
 import { ChatInfo } from '../../dtos/chatInfo';
-import { ScheduledAction } from '../../entities/actions/scheduledAction';
+import {
+    ScheduledAction,
+    ScheduledActionInternal
+} from '../../entities/actions/scheduledAction';
 import { ChatContextInternal } from '../../entities/context/chatContext';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { createTrace } from '../../helpers/traceFactory';
@@ -19,7 +22,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
         'ScheduledActionsTaskRun'
     );
 
-    private scheduled!: ScheduledAction<IActionState>[];
+    private scheduled!: ScheduledActionInternal<IActionState>[];
 
     constructor(
         botName: string,
@@ -38,7 +41,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
         period: Seconds
     ) {
         this.initializeDependencies(api);
-        this.scheduled = scheduled;
+        this.scheduled = scheduled as ScheduledActionInternal<IActionState>[];
 
         if (this.scheduled.length > 0) {
             const now = new Date();

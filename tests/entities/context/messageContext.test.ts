@@ -8,7 +8,7 @@ import { VideoMessage } from '../../../src/dtos/responses/videoMessage';
 import { Reaction } from '../../../src/dtos/responses/reaction';
 import { ActionKey } from '../../../src/types/action';
 import { Seconds } from '../../../src/types/timeValues';
-import { CommandAction } from '../../../src/entities/actions/commandAction';
+import { CommandActionInternal } from '../../../src/entities/actions/commandAction';
 import { BotInfo } from '../../../src/types/botInfo';
 import { Message } from '../../../src/types/botApi.generated';
 import {
@@ -18,7 +18,7 @@ import {
 } from '../../services/actionProcessors/processorTestHelpers';
 import { IncomingMessage } from '../../../src/dtos/incomingMessage';
 
-function createMockCommandAction(): CommandAction<ActionStateBase> {
+function createMockCommandAction(): CommandActionInternal<ActionStateBase> {
     return {
         key: 'command:test-action' as ActionKey,
         name: 'test-action',
@@ -30,7 +30,7 @@ function createMockCommandAction(): CommandAction<ActionStateBase> {
         ratelimitSemaphores: new Map(),
         maxAllowedSimultaniousExecutions: 1,
         readmeFactory: () => ''
-    } as unknown as CommandAction<ActionStateBase>;
+    } as unknown as CommandActionInternal<ActionStateBase>;
 }
 
 function createMessageContext(

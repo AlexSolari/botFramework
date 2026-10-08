@@ -1,6 +1,9 @@
 import { ChatInfo } from '../../dtos/chatInfo';
 import { IncomingInlineQuery } from '../../dtos/incomingQuery';
-import { InlineQueryAction } from '../../entities/actions/inlineQueryAction';
+import {
+    InlineQueryAction,
+    InlineQueryActionInternal
+} from '../../entities/actions/inlineQueryAction';
 import { InlineQueryContextInternal } from '../../entities/context/inlineQueryContext';
 import { createTrace } from '../../helpers/traceFactory';
 import {
@@ -16,7 +19,7 @@ import { BaseActionProcessor } from './baseProcessor';
 import { InlineQuery } from '../../types/botApi.generated';
 
 export class InlineQueryActionProcessor extends BaseActionProcessor {
-    private inlineQueries!: InlineQueryAction[];
+    private inlineQueries!: InlineQueryActionInternal[];
     /** Fake chat info, since inline queries are chat-less */
     private readonly fakeChatInfo = new ChatInfo(
         INLINE_QUERY_FAKE_CHAT_ID,
@@ -30,7 +33,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
         inlineQueries: InlineQueryAction[]
     ) {
         this.initializeDependencies(api);
-        this.inlineQueries = inlineQueries;
+        this.inlineQueries = inlineQueries as InlineQueryActionInternal[];
 
         const queriesInProcessing = new Map<number, IncomingInlineQuery>();
 

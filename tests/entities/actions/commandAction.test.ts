@@ -1,5 +1,5 @@
 import { describe, test, expect, mock } from 'bun:test';
-import { CommandAction } from '../../../src/entities/actions/commandAction';
+import { CommandActionInternal } from '../../../src/entities/actions/commandAction';
 import { MessageContextInternal } from '../../../src/entities/context/messageContext';
 import { ActionStateBase } from '../../../src/entities/states/actionStateBase';
 import { IncomingMessage } from '../../../src/dtos/incomingMessage';
@@ -50,7 +50,7 @@ function buildAction(
         ...overrides.providers
     };
 
-    return new CommandAction<ActionStateBase>(
+    return new CommandActionInternal<ActionStateBase>(
         overrides.trigger ?? '/test',
         overrides.handler ?? (() => {}),
         overrides.name ?? 'TestCommand',
@@ -63,7 +63,7 @@ function buildAction(
 }
 
 function createContext(
-    action: CommandAction<ActionStateBase>,
+    action: CommandActionInternal<ActionStateBase>,
     options: {
         text?: string;
         hasUser?: boolean;
@@ -114,7 +114,7 @@ function createContext(
     return { ctx, storage };
 }
 
-describe('CommandAction', () => {
+describe('CommandActionInternal', () => {
     describe('constructor', () => {
         test('should generate key with command prefix and dots replaced with dashes', () => {
             const action = buildAction({ name: 'my.command.name' });
@@ -233,17 +233,6 @@ describe('CommandAction', () => {
     });
 
     describe('exec - trigger matching', () => {
-        test('should return NoResponse when no trigger matches', async () => {
-            const handler = mock(() => {});
-            const action = buildAction({ trigger: '/hello', handler });
-            const { ctx } = createContext(action, { text: '/other' });
-
-            const result = await action.exec(ctx);
-
-            expect(result).toBe(Noop.NoResponse);
-            expect(handler).not.toHaveBeenCalled();
-        });
-
         test('should execute on exact string trigger match, case-insensitively', async () => {
             const handler = mock(() => {});
             const action = buildAction({ trigger: '/Hello', handler });

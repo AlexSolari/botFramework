@@ -8,6 +8,7 @@ import { InlineQueryAction } from './entities/actions/inlineQueryAction';
 import { IActionState } from './types/actionState';
 import { TypedEventEmitter } from './types/events';
 import { IncomingMessage } from './dtos/incomingMessage';
+import { PersistentReplyCapture } from './entities/persistentReplyCapture';
 
 class BotOrchestrator {
     bots: BotInstance[] = [];
@@ -27,6 +28,8 @@ class BotOrchestrator {
             scheduled: ScheduledAction<IActionState>[];
             /** Collection of actions that will handle inline queries */
             inlineQueries: InlineQueryAction[];
+            /** Collection of reply captures that are saved to storage and restored after a restart. Created using `PersistentReplyCaptureBuilder`. */
+            persistentCaptures?: PersistentReplyCapture<object>[];
             /** Function to filter incoming messages. If provided, only messages for which this function returns `true` will be processed. */
             messageFilter?: (message: IncomingMessage) => boolean;
         };

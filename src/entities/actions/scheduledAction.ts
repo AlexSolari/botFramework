@@ -3,7 +3,11 @@ import { ScheduledHandler } from '../../types/handlers';
 import { hoursToMilliseconds } from '../../helpers/timeConvertions';
 import { HoursOfDay } from '../../types/timeValues';
 import { IActionState } from '../../types/actionState';
-import { IActionWithState, ActionKey } from '../../types/action';
+import {
+    IActionWithState,
+    ActionKey,
+    IExecutableAction
+} from '../../types/action';
 import { CachedStateFactory } from '../cachedStateFactory';
 import { ChatContextInternal } from '../context/chatContext';
 import { Noop } from '../../helpers/noop';
@@ -12,9 +16,14 @@ import { ScheduledActionPropertyProvider } from '../../types/propertyProvider';
 import { ScheduledActionProviders } from '../../dtos/propertyProviderSets';
 import { BotEventType } from '../../types/events';
 
-export class ScheduledAction<
+export type ScheduledAction<TActionState extends IActionState> = Omit<
+    ScheduledActionInternal<TActionState>,
+    'exec'
+>;
+
+export class ScheduledActionInternal<
     TActionState extends IActionState
-> implements IActionWithState<TActionState> {
+> implements IActionWithState<TActionState>, IExecutableAction {
     static readonly locks = new Map<string, Semaphore>();
     static readonly sharedCache = new Map<string, unknown>();
     static readonly semaphoreFactory: () => Semaphore = () => new Semaphore(1);
@@ -115,17 +124,17 @@ export class ScheduledAction<
 
         const semaphoreKey = `${this.key}_cached:${key}`;
         const semaphore = getOrCreateIfNotExists(
-            ScheduledAction.locks,
+            ScheduledActionInternal.locks,
             semaphoreKey,
-            ScheduledAction.semaphoreFactory
+            ScheduledActionInternal.semaphoreFactory
         );
 
         await semaphore.acquire();
 
         try {
             const cacheKey = `${this.key}:${key}`;
-            if (ScheduledAction.sharedCache.has(cacheKey)) {
-                return ScheduledAction.sharedCache.get(cacheKey) as TResult;
+            if (ScheduledActionInternal.sharedCache.has(cacheKey)) {
+                return ScheduledActionInternal.sharedCache.get(cacheKey) as TResult;
             }
 
             ctx.observability.eventEmitter.emit(
@@ -139,12 +148,12 @@ export class ScheduledAction<
             );
             const value = await cachedItemFactory.getValue();
 
-            ScheduledAction.sharedCache.set(cacheKey, value);
+            ScheduledActionInternal.sharedCache.set(cacheKey, value);
 
             ctx.scheduler.createOnetimeTask(
                 `Drop cached value [${this.name} : ${key}]`,
                 () => {
-                    ScheduledAction.sharedCache.delete(cacheKey);
+                    ScheduledActionInternal.sharedCache.delete(cacheKey);
                 },
                 hoursToMilliseconds(
                     cachedItemFactory.invalidationTimeoutInHours

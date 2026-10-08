@@ -23,6 +23,7 @@ export const BotEventType = {
     commandActionExecuted: 'command.actionExecuted',
     commandActionCaptureStarted: 'command.captureStarted',
     commandActionCaptureAborted: 'command.captureAborted',
+    commandActionCaptureRestored: 'command.captureRestored',
 
     replyActionExecuting: 'reply.actionExecuting',
     replyActionExecuted: 'reply.actionExecuted',
@@ -90,6 +91,10 @@ export type BotEventMap = {
         chatInfo: ChatInfo;
     };
     [BotEventType.commandActionCaptureAborted]: {
+        parentMessageId: number;
+        chatInfo: ChatInfo;
+    };
+    [BotEventType.commandActionCaptureRestored]: {
         parentMessageId: number;
         chatInfo: ChatInfo;
     };

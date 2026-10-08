@@ -3,7 +3,11 @@ import { CommandCondition } from '../../types/commandCondition';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { toArray } from '../../helpers/toArray';
 import { IActionState } from '../../types/actionState';
-import { IActionWithState, ActionKey } from '../../types/action';
+import {
+    IActionWithState,
+    ActionKey,
+    IExecutableAction
+} from '../../types/action';
 import { MessageContextInternal } from '../context/messageContext';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { Noop } from '../../helpers/noop';
@@ -17,11 +21,16 @@ import { CommandActionPropertyProvider } from '../../types/propertyProvider';
 import { CommandActionProviders } from '../../dtos/propertyProviderSets';
 import { BotResponse } from '../../types/response';
 import { BotEventType } from '../../types/events';
-import { matchTriggers } from '../../helpers/matchTriggers';
+import { getMatchResults } from '../../helpers/matchTriggers';
 
-export class CommandAction<
-    TActionState extends IActionState
-> implements IActionWithState<TActionState> {
+export type CommandAction<TActionState extends IActionState> = Omit<
+    CommandActionInternal<TActionState>,
+    'exec'
+>;
+
+export class CommandActionInternal<TActionState extends IActionState>
+    implements IActionWithState<TActionState>, IExecutableAction
+{
     private readonly cooldownInfoProvider: CommandActionPropertyProvider<CooldownInfo>;
     private readonly isActiveProvider: CommandActionPropertyProvider<boolean>;
     private readonly chatsBlacklistProvider: CommandActionPropertyProvider<
@@ -95,26 +104,23 @@ export class CommandAction<
         }
 
         try {
+            if (!this.canExecuteIn(ctx)) return Noop.NoResponse;
+
             const state = ctx.storage.getActionState<TActionState>(
                 this,
                 ctx.chatInfo.id
             );
-
-            if (!this.canExecuteIn(ctx)) return Noop.NoResponse;
-
-            const matchResults = matchTriggers(
-                this.triggers,
-                ctx.messageInfo.text,
-                ctx.messageInfo.type
-            );
-            if (matchResults == null) return Noop.NoResponse;
 
             const cooldownResponse = this.checkCooldown(ctx, state);
             if (cooldownResponse !== null) return cooldownResponse;
 
             if (!this.condition(ctx, state)) return Noop.NoResponse;
 
-            return await this.executeHandler(ctx, state, matchResults);
+            return await this.executeHandler(
+                ctx,
+                state,
+                getMatchResults(this.triggers, ctx.messageInfo.text)
+            );
         } finally {
             lock?.release();
         }
@@ -183,36 +189,42 @@ export class CommandAction<
                 traceId: ctx.observability.traceId
             }
         );
-        ctx.matchResults = matchResults;
 
-        await this.handler(ctx, state);
+        try {
+            ctx.matchResults = matchResults;
 
-        if (ctx.startCooldown) {
-            if (ctx.customCooldown) {
-                this.customCooldowns.set(ctx.chatInfo.id, ctx.customCooldown);
-            } else {
-                this.customCooldowns.delete(ctx.chatInfo.id);
+            await this.handler(ctx, state);
+
+            if (ctx.startCooldown) {
+                if (ctx.customCooldown) {
+                    this.customCooldowns.set(
+                        ctx.chatInfo.id,
+                        ctx.customCooldown
+                    );
+                } else {
+                    this.customCooldowns.delete(ctx.chatInfo.id);
+                }
+
+                state.lastExecutedDate = Date.now();
             }
 
-            state.lastExecutedDate = Date.now();
+            await ctx.storage.saveActionExecutionResult(
+                this,
+                ctx.chatInfo.id,
+                state
+            );
+
+            return ctx.responses;
+        } finally {
+            ctx.observability.eventEmitter.emit(
+                BotEventType.commandActionExecuted,
+                {
+                    action: this,
+                    ctx,
+                    state,
+                    traceId: ctx.observability.traceId
+                }
+            );
         }
-
-        await ctx.storage.saveActionExecutionResult(
-            this,
-            ctx.chatInfo.id,
-            state
-        );
-
-        ctx.observability.eventEmitter.emit(
-            BotEventType.commandActionExecuted,
-            {
-                action: this,
-                ctx,
-                state,
-                traceId: ctx.observability.traceId
-            }
-        );
-
-        return ctx.responses;
     }
 }

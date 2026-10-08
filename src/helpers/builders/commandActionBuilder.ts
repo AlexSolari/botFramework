@@ -1,7 +1,10 @@
 import { CommandHandler } from '../../types/handlers';
 import { CommandCondition } from '../../types/commandCondition';
 import { Seconds } from '../../types/timeValues';
-import { CommandAction } from '../../entities/actions/commandAction';
+import {
+    CommandAction,
+    CommandActionInternal
+} from '../../entities/actions/commandAction';
 import { ActionStateBase } from '../../entities/states/actionStateBase';
 import { IActionState } from '../../types/actionState';
 import { toArray } from '../toArray';
@@ -172,8 +175,8 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     }
 
     /** Builds action */
-    build() {
-        return new CommandAction(
+    build(): CommandAction<TActionState> {
+        return new CommandActionInternal(
             this.trigger,
             this.handler,
             this.name,
