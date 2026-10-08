@@ -8,6 +8,27 @@ This file was reconstructed from the git history and `package.json` version bump
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-08
+
+### Added
+
+- Persistent reply captures, which are saved to storage and restored after a restart. Define a capture with `PersistentReplyCaptureBuilder`, register it in the new `actions.persistentCaptures` option, and start it with `captureReplies({ persistent, data })`. The handler receives the JSON-serializable `data` (`captureReplies` throws an error naming the capture if it can't be serialized), and its changes are saved after each reply. If the handler throws, its changes to `data` are discarded, unless other replies to the same capture were being handled at the same time. Use `withRatelimit()` to limit how many replies to one capture are handled at the same time. The handler can add the messages it sends to the same capture with `captureReplies({ continueCapture: true })`, so one capture can follow a conversation across several messages. A persistent capture stops only when its handler calls `stopCapture()`, when it is older than the optional `expiresAfter()`, or when the bot deletes all of its messages. A new `commandActionCaptureRestored` event is emitted for each capture restored on startup. Starting the same persistent capture twice for one message emits an error and keeps only the first capture.
+
+### Changed
+
+- **Breaking:** `captureReplies` takes one options object instead of positional arguments. Replace `captureReplies(trigger, handler, abortController)` with `captureReplies({ trigger, handler, abortController })`.
+- **Breaking:** `CommandAction`, `ScheduledAction`, `InlineQueryAction`, `ReplyCaptureAction` and `PersistentReplyCaptureAction` are exported as types without `exec` instead of as classes, and `IAction` no longer has `exec`. Actions are run only by the bot. Create actions with the builders instead of their constructors, and remove `exec` from objects that implement `IAction` or `IActionWithState`.
+- Deleting a message with `deleteAfter()` now stops the reply captures for that message, also when someone else already deleted the message. Previously they stayed active although nobody could reply to the message any more.
+- Bots with scheduled actions now receive messages even when they have no commands, so reply captures started by scheduled actions get replies. A bot with only scheduled actions now polls Telegram for updates.
+
+### Fixed
+
+- A reply capture could be skipped when another capture on the same message called `stopCapture()` before its first `await`.
+- A reply capture whose `abortController` was aborted before the message was sent stayed active. It is now ignored.
+- A reply capture still handled a reply after another capture on the same message aborted their shared `abortController`.
+- Deleting a message with a reply capture left an `abort` listener on the capture's `abortController`. With a long-lived controller shared by many captures, these listeners kept growing.
+- Commands and scheduled actions with custom state can be passed in `actions.commands` and `actions.scheduled` without a cast. Previously, `CommandAction<MyState>` was not assignable to `CommandAction<IActionState>`.
+
 ## [0.8.3] - 2026-10-06
 
 ### Changed

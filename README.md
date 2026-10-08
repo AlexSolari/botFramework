@@ -231,7 +231,7 @@ Depending on the type of action, you will have access to the following interacti
 | `reply.withReaction` | Command     | Sets an emoji reaction to a message that triggered an action    |
 | `reply.andQuote.*`   | Command     | `withText`, `withImage`, `withVideo` that also quote the trigger text (or a given quote) |
 
-`send.*` and `reply.with*` (except `withReaction`) return a controller with post-send operations: `pin()`, `deleteAfter(ms)` and `captureReplies(triggers, handler)` (handle replies to the sent message; triggers work like command triggers, including message types such as `MessageType.Any`). Text messages accept `disableWebPreview` and an inline `keyboard` as options.
+`send.*` and `reply.with*` (except `withReaction`) return a controller with post-send operations: `pin()`, `deleteAfter(ms)` and `captureReplies(options)` (handle replies to the sent message; triggers work like command triggers, including message types such as `MessageType.Any`). Text messages accept `disableWebPreview` and an inline `keyboard` as options.
 
 Keep in mind that reply sending is deferred until action execution finishes and is queued in the order it was added. Telegram rate limits still apply between queued sends, so the framework inserts spacing between responses rather than promising strict real-time ordering.
 
@@ -249,7 +249,14 @@ This will result in `Message 1` being sent, followed by `Message 2` after a 5 se
 
 #### Capture lifetime
 
-Reply captures have no expiry. A capture stays in memory, and every later message in the chat is checked against it, until it is stopped, so stop captures once they are no longer needed:
+`captureReplies` takes one options object, and its shape decides whether the capture survives a restart:
+
+| Shape                                     | Kept in            | Stopped by                                                                     |
+| ----------------------------------------- | ------------------ | ------------------------------------------------------------------------------ |
+| `{ trigger, handler, abortController? }`  | Memory, lost on restart | `stopCapture()` or aborting the abort controller                          |
+| `{ persistent, data }`                    | Storage, restored on startup | `stopCapture()`, expiry, or `deleteAfter()` deleting all of its messages      |
+
+Captures kept in memory have no expiry. A capture stays in memory, and every later message in the chat is checked against it, until it is stopped, so stop captures once they are no longer needed:
 
 - From the reply handler, call `stopCapture()`.
 - From anywhere else, pass your own `AbortController` to `captureReplies` and call `abort()` on it. One controller can be shared by several captures to stop them all at once; `stopCapture()` aborts the capture's controller, so it stops every capture that shares it.
@@ -259,21 +266,70 @@ Reply captures have no expiry. A capture stays in memory, and every later messag
 const controller = new AbortController();
 setTimeout(() => controller.abort(), 10 * 60 * 1000); // stop after 10 minutes
 
-ctx.reply
-    .withText('Guess the number! Reply to this message.')
-    .captureReplies(
-        [/\d+/],
-        async (replyCtx) => {
-            if (replyCtx.messageInfo.text == secret) {
-                replyCtx.reply.withText('Correct!');
-                replyCtx.stopCapture();
-            }
-        },
-        controller
-    );
+ctx.reply.withText('Guess the number! Reply to this message.').captureReplies({
+    trigger: [/\d+/],
+    handler: async (replyCtx) => {
+        if (replyCtx.messageInfo.text == secret) {
+            replyCtx.reply.withText('Correct!');
+            replyCtx.stopCapture();
+        }
+    },
+    abortController: controller
+});
 ```
 
 Each stopped capture emits a `commandActionCaptureAborted` event.
+
+#### Persistent captures
+
+A persistent capture is saved to storage and restored when the bot starts again. Its handler can't be a closure, because a closure can't be saved, so it is defined once with `PersistentReplyCaptureBuilder` and registered when the bot starts. Values the handler needs go in `data` instead of closure variables:
+
+```typescript
+import { PersistentReplyCaptureBuilder, hoursToMilliseconds, Hours } from 'chz-telegram-bot';
+
+const guessCapture = new PersistentReplyCaptureBuilder<{ secret: number; attempts: number }>('guess')
+    .on([/\d+/])
+    .expiresAfter(hoursToMilliseconds(24 as Hours))
+    .do(async (replyCtx, data) => {
+        data.attempts++;
+        if (Number(replyCtx.messageInfo.text) == data.secret) {
+            replyCtx.reply.withText(`Correct in ${data.attempts} attempts!`);
+            replyCtx.stopCapture();
+        }
+    })
+    .build();
+
+await botOrchestrator.startBot({
+    // ...
+    actions: { commands, scheduled, inlineQueries, persistentCaptures: [guessCapture] }
+});
+
+// In a command or scheduled action:
+ctx.reply
+    .withText('Guess the number! Reply to this message.')
+    .captureReplies({ persistent: guessCapture, data: { secret: 42, attempts: 0 } });
+```
+
+- `data` must be JSON-serializable. It is copied through JSON when the capture starts, so it behaves the same before and after a restart: a `Date` becomes a string, and functions and `undefined` values are dropped.
+- Changes the handler makes to `data` are saved after the handler finishes. If the handler throws, its changes are discarded, unless other replies to the same capture were being handled at the same time. Use `withRatelimit(1)` if you rely on this.
+- By default, replies to the same capture can be handled at the same time, and all of them share the same `data` object. Use `withRatelimit(1)` to handle them one at a time. Then `stopCapture()` is final: replies still waiting when the handler stops the capture are skipped, so two people answering at the same moment can't both get a "Correct!". Like `withRatelimit` on commands, `0` (the default) means unlimited.
+- A capture can track several messages. In its handler, pass `{ continueCapture: true }` to `captureReplies` on a message the handler sends, and replies to that message are handled by the same capture, with the same `data`. Using `continueCapture` anywhere else throws an error.
+
+  ```typescript
+  .do(async (replyCtx, data) => {
+      if (Number(replyCtx.messageInfo.text) == data.secret) {
+          replyCtx.reply.withText('Correct!');
+          replyCtx.stopCapture();
+      } else {
+          replyCtx.reply.withText('Wrong, try again').captureReplies({ continueCapture: true });
+      }
+  })
+  ```
+
+- A persistent capture has no abort controller. It stops only when its handler calls `stopCapture()`, when it is older than `expiresAfter()` (if set), or when all of its messages are deleted with `deleteAfter()`. Deleting one of several messages only stops replies to that message. `expiresAfter()` counts from when the capture started, so adding messages doesn't extend it. Without `expiresAfter()`, a capture whose messages never get a matching reply is kept forever, so set an expiry unless the handler is sure to stop it.
+- Every capture definition must be in `persistentCaptures`, and capture names must be unique within a bot. Starting a capture whose definition isn't registered emits an `error` event and captures nothing. A saved capture whose definition was removed is not restored.
+- Captures are saved per definition in `<storagePath>/<botName>/persistentCapture/<name>.json`. Each restored capture emits a `commandActionCaptureRestored` event, and each message added with `continueCapture` emits a `commandActionCaptureStarted` event.
+- Deleting a message with `deleteAfter()` also stops the captures kept in memory for that message. Messages deleted by users can't be detected, because Telegram doesn't report them to bots.
 
 ## Configuration Options
 
@@ -283,7 +339,7 @@ When starting a bot, you can provide the following configuration:
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `name`            | `string`                                                                                                               | Yes                         | Bot name used in logging                                                                                               |
 | `tokenProvider`   | `() => Promise<string>`                                                                                                | Yes                         | Function that returns the Telegram Bot token (e.g., read from a file or secret manager)                                |
-| `actions`         | `{ commands: CommandAction[], scheduled: ScheduledAction[], inlineQueries: InlineQueryAction[], messageFilter?: ... }` | Yes (can be empty)          | Collection of actions grouped under `actions` — `commands`, `scheduled`, `inlineQueries`, and optional `messageFilter` |
+| `actions`         | `{ commands: CommandAction[], scheduled: ScheduledAction[], inlineQueries: InlineQueryAction[], persistentCaptures?: PersistentReplyCapture[], messageFilter?: ... }` | Yes (can be empty)          | Collection of actions grouped under `actions` — `commands`, `scheduled`, `inlineQueries`, and optional `persistentCaptures` and `messageFilter` |
 | `chats`           | `Record<string, number>`                                                                                               | Yes                         | Object containing chat name-id pairs. Used for logging and scheduled execution.                                        |
 | `storagePath`     | `string`                                                                                                               | No (defaults to `./storage`) | Custom storage path for default JsonFileStorage client; ignored if `services.storageClient` is provided               |
 | `scheduledPeriod` | `Seconds`                                                                                                              | No (will default to 1 hour) | Period between scheduled action executions                                                                             |
