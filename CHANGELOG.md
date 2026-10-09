@@ -8,6 +8,8 @@ This file was reconstructed from the git history and `package.json` version bump
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-09
+
 ### Added
 
 - `botOrchestrator.reconnect()`, which makes all bots drop the request for updates in progress and poll again right away on a new connection. Call it after a network change, for example from a signal handler that a network failover script triggers, instead of restarting the bot.
