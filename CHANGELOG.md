@@ -8,6 +8,15 @@ This file was reconstructed from the git history and `package.json` version bump
 
 ## [Unreleased]
 
+### Added
+
+- `botOrchestrator.reconnect()`, which makes all bots drop the request for updates in progress and poll again right away on a new connection. Call it after a network change, for example from a signal handler that a network failover script triggers, instead of restarting the bot.
+
+### Fixed
+
+- A request for updates stuck on a dead connection, for example after the default route switched to another network interface, kept the bot from receiving messages until Bun's idle timeout dropped it, 5 minutes later by default. The request is now dropped after 60 seconds and retried on a new connection instead of a pooled one, which may be dead too.
+- With the network down, `stopBots()` could wait up to 5 minutes for Telegram to confirm the last received update. It now gives up after 60 seconds.
+
 ## [0.9.0] - 2026-10-08
 
 ### Added

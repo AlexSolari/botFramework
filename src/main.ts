@@ -70,6 +70,17 @@ class BotOrchestrator {
     }
 
     /**
+     * Makes all bots drop the request for updates in progress and poll again right away on a new connection.
+     * Call after a network change, e.g. when the default route switches to another interface:
+     * otherwise a request stuck on the old connection is dropped only after it times out, about a minute later.
+     */
+    reconnect() {
+        for (const bot of this.bots) {
+            bot.reconnect();
+        }
+    }
+
+    /**
      * Stops all bots: stops polling and scheduled tasks, waits for processing in progress,
      * sends the responses that are due and closes storage.
      * Responses waiting on `ctx.wait()` are dropped and pending `deleteAfter()` timers are cancelled.

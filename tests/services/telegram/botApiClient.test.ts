@@ -185,9 +185,23 @@ describe('BotApiClient', () => {
         const client = new BotApiClient('TOKEN', { fetch });
         const controller = new AbortController();
 
-        await client.call('getUpdates', {}, controller.signal);
+        await client.call('getUpdates', {}, { signal: controller.signal });
 
         expect(requests[0].init.signal).toBe(controller.signal);
+    });
+
+    test('should reuse pooled connections unless a fresh connection is requested', async () => {
+        const { fetch, requests } = createFetch(
+            json({ ok: true, result: [] }),
+            json({ ok: true, result: [] })
+        );
+        const client = new BotApiClient('TOKEN', { fetch });
+
+        await client.call('getUpdates', {});
+        await client.call('getUpdates', {}, { freshConnection: true });
+
+        expect(requests[0].init.keepalive).toBeUndefined();
+        expect(requests[1].init.keepalive).toBe(false);
     });
 
     describe('token redaction', () => {

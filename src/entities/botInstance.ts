@@ -88,6 +88,10 @@ export class BotInstance {
         );
     }
 
+    reconnect() {
+        this.actionProcessingService.reconnect();
+    }
+
     async stop() {
         this.eventEmitter.emit(BotEventType.botStopping, {
             botName: this.name,

@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'bun:test';
 import {
     BotApiClient,
+    BotApiCallOptions,
     TelegramApiError
 } from '../../../src/services/telegram/botApiClient';
 import { UpdatePoller } from '../../../src/services/telegram/updatePoller';
@@ -27,30 +28,39 @@ function createFakeClient(
     deleteWebhookErrors: Error[] = []
 ) {
     const calls: RecordedCall[] = [];
-    let onIdle: () => void = () => undefined;
-    const idle = new Promise<void>((resolve) => {
-        onIdle = resolve;
-    });
+    const freshConnections: boolean[] = [];
+    let idleListeners: (() => void)[] = [];
+    const nextIdle = () =>
+        new Promise<void>((resolve) => {
+            idleListeners.push(resolve);
+        });
+    const idle = nextIdle();
 
     const client = {
         call: (
             method: string,
             params: Record<string, unknown>,
-            signal?: AbortSignal
+            options: BotApiCallOptions = {}
         ) => {
             calls.push({ method, params });
+            freshConnections.push(options.freshConnection ?? false);
             const webhookError = method == 'deleteWebhook' && deleteWebhookErrors.shift();
             if (webhookError) return Promise.reject(webhookError);
-            if (method != 'getUpdates' || !signal) return Promise.resolve(true);
+            if (method != 'getUpdates' || params.timeout === 0) {
+                return Promise.resolve(true);
+            }
 
             const next = script.shift();
             if (next instanceof Error) return Promise.reject(next);
             if (next) return Promise.resolve(next);
 
-            onIdle();
+            const signal = options.signal;
+            if (!signal) throw new Error('getUpdates called without signal');
+            for (const listener of idleListeners) listener();
+            idleListeners = [];
             return new Promise((_, reject) => {
                 signal.addEventListener('abort', () => {
-                    reject(new Error('aborted'));
+                    reject(signal.reason as Error);
                 });
             });
         }
@@ -59,10 +69,19 @@ function createFakeClient(
     return {
         client: client as unknown as BotApiClient,
         calls,
+        /** `freshConnection` option of every call, in the same order as `calls`. */
+        freshConnections,
         /** Resolves once the script is exhausted and the poller waits for new updates. */
-        idle
+        idle,
+        /** Resolves the next time the poller waits for new updates. */
+        nextIdle
     };
 }
+
+const getUpdatesFreshConnections = (
+    calls: RecordedCall[],
+    freshConnections: boolean[]
+) => freshConnections.filter((_, i) => calls[i].method == 'getUpdates');
 
 const message = (id: number) =>
     ({ message_id: id, date: 0, chat: { id: 1, type: 'private' } }) as Message;
@@ -359,11 +378,11 @@ describe('UpdatePoller', () => {
         (client as { call: unknown }).call = (
             method: string,
             params: Record<string, unknown>,
-            signal?: AbortSignal
+            options?: BotApiCallOptions
         ) =>
-            signal
-                ? originalCall(method as never, params as never, signal)
-                : Promise.reject(new Error('sync failed'));
+            params.timeout === 0
+                ? Promise.reject(new Error('sync failed'))
+                : originalCall(method as never, params as never, options);
         poller.stop();
         await running;
 
@@ -437,6 +456,100 @@ describe('UpdatePoller', () => {
             'deleteWebhook',
             'deleteWebhook'
         ]);
+    });
+
+    test('should drop a request that gets no answer in time and retry on a fresh connection', async () => {
+        const { client, calls, freshConnections, idle, nextIdle } =
+            createFakeClient();
+        const errors: Error[] = [];
+        const poller = new UpdatePoller(
+            client,
+            (error) => {
+                errors.push(error);
+            },
+            [0 as Milliseconds],
+            10 as Milliseconds
+        );
+        poller.on('message', () => undefined);
+
+        const running = poller.start();
+        await idle;
+        await nextIdle();
+        poller.stop();
+        await running;
+
+        expect(errors[0].name).toBe('TimeoutError');
+        expect(getUpdatesFreshConnections(calls, freshConnections)).toEqual([
+            false,
+            true
+        ]);
+    });
+
+    test('should reconnect right away on a fresh connection without reporting an error', async () => {
+        const { client, calls, freshConnections, idle, nextIdle } =
+            createFakeClient([[{ update_id: 1, message: message(1) }]]);
+        const errors: Error[] = [];
+        const poller = new UpdatePoller(client, (error) => {
+            errors.push(error);
+        });
+        poller.on('message', () => undefined);
+
+        const running = poller.start();
+        await idle;
+        const reconnected = nextIdle();
+        poller.reconnect();
+        await reconnected;
+        poller.stop();
+        await running;
+
+        expect(errors).toEqual([]);
+        const getUpdates = calls.filter((x) => x.method == 'getUpdates');
+        expect(getUpdates.map((x) => x.params.offset)).toEqual([0, 2, 2, 2]);
+        expect(getUpdatesFreshConnections(calls, freshConnections)).toEqual([
+            false,
+            false,
+            true,
+            false
+        ]);
+    });
+
+    test('should skip the wait before a retry on reconnect', async () => {
+        const { client, calls, freshConnections, idle } = createFakeClient([
+            new Error('network failure')
+        ]);
+        let onFailure: () => void = () => undefined;
+        const failed = new Promise<void>((resolve) => {
+            onFailure = resolve;
+        });
+        const poller = new UpdatePoller(
+            client,
+            () => {
+                onFailure();
+            },
+            [(10 * 60 * 1000) as Milliseconds]
+        );
+        poller.on('message', () => undefined);
+
+        const running = poller.start();
+        await failed;
+        poller.reconnect();
+        await idle;
+        poller.stop();
+        await running;
+
+        expect(getUpdatesFreshConnections(calls, freshConnections)).toEqual([
+            false,
+            true
+        ]);
+    });
+
+    test('should ignore reconnect when not polling', () => {
+        const { client } = createFakeClient();
+        const poller = new UpdatePoller(client, () => undefined);
+
+        expect(() => {
+            poller.reconnect();
+        }).not.toThrow();
     });
 
     test('should allow stop before start', () => {

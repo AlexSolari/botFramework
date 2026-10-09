@@ -440,3 +440,13 @@ await botOrchestrator.stopBots();
 4. Closes the storage. Any later attempt to save state is rejected.
 
 A handler that never finishes keeps `stopBots()` waiting too.
+
+## Network Changes
+
+A request for updates still waiting on a connection that stopped working, for example after the default route switched to another network interface, is dropped after 60 seconds and retried on a new connection. To recover right away instead, call `reconnect()` after the network changes, for example when a failover script sends the bot a signal:
+
+```typescript
+process.on('SIGUSR2', () => botOrchestrator.reconnect());
+```
+
+`reconnect()` doesn't stop the bot: messages being processed and queued responses are not affected.

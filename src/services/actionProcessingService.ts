@@ -133,6 +133,10 @@ export class ActionProcessingService {
         this.polling = this.telegramBot.start();
     }
 
+    reconnect() {
+        this.telegramBot.reconnect();
+    }
+
     /**
      * Stops receiving updates and waits until the last received one is confirmed to Telegram.
      * Waits for the processing in progress, then sends the responses that are due.

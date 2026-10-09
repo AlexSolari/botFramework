@@ -55,6 +55,12 @@ export class TelegramApiError extends Error {
     }
 }
 
+export interface BotApiCallOptions {
+    signal?: AbortSignal;
+    /** Opens a new connection instead of reusing a pooled one, which may be dead after a network change. */
+    freshConnection?: boolean;
+}
+
 function isInputFile(value: unknown): value is InputFile {
     if (typeof value != 'object' || value == null) return false;
     if (!('source' in value) || typeof value.source != 'string') return false;
@@ -87,10 +93,10 @@ export class BotApiClient {
     async call<M extends BotApiMethod>(
         method: M,
         params: BotApiParams<M>,
-        signal?: AbortSignal
+        options: BotApiCallOptions = {}
     ): Promise<BotApiResult<M>> {
         try {
-            return await this.send(method, params, signal);
+            return await this.send(method, params, options);
         } catch (error) {
             if (
                 error instanceof TelegramApiError &&
@@ -100,9 +106,9 @@ export class BotApiClient {
                 await setTimeout(
                     secondsToMilliseconds(error.retryAfter),
                     undefined,
-                    { signal }
+                    { signal: options.signal }
                 );
-                return await this.send(method, params, signal);
+                return await this.send(method, params, options);
             }
 
             throw error;
@@ -112,7 +118,7 @@ export class BotApiClient {
     private async send<M extends BotApiMethod>(
         method: M,
         params: BotApiParams<M>,
-        signal?: AbortSignal
+        options: BotApiCallOptions
     ): Promise<BotApiResult<M>> {
         const entries = Object.entries(params).filter(
             ([, value]) => value !== undefined
@@ -131,7 +137,9 @@ export class BotApiClient {
             response = await this.fetchImpl(`${this.baseUrl}/${method}`, {
                 ...request,
                 method: 'POST',
-                signal
+                signal: options.signal,
+                // Bun opens a new connection for a request with keepalive disabled
+                ...(options.freshConnection && { keepalive: false })
             });
             text = await response.text();
         } catch (error) {
