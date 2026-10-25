@@ -43,6 +43,22 @@ describe('getMatchResults', () => {
         expect(result.map((x) => x[1])).toEqual(['one', 'two']);
     });
 
+    test('should collect the matches after an empty match of a global regex', () => {
+        const result = getMatchResults([/(\w+)?/g], 'hi there');
+
+        expect(result.map((x) => x[0])).toEqual(['hi', '', 'there', '']);
+    });
+
+    test('should step over a whole character after an empty match of a unicode regex', () => {
+        const result = getMatchResults([/x?/gu], '😀x');
+
+        expect(result.map((x) => [x[0], x.index])).toEqual([
+            ['', 0],
+            ['x', 2],
+            ['', 3]
+        ]);
+    });
+
     test('should not be affected by lastIndex left from a previous match', () => {
         const trigger = /a/g;
         trigger.lastIndex = 5;

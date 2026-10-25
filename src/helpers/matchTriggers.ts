@@ -41,22 +41,20 @@ export function getMatchResults(triggers: CommandTrigger[], text: string) {
 
         trigger.lastIndex = 0;
 
-        const execResult = trigger.exec(text);
-        if (execResult == null) continue;
+        if (!trigger.global) {
+            const execResult = trigger.exec(text);
+            if (execResult != null) matchResults.push(execResult);
 
-        matchResults.push(execResult);
+            continue;
+        }
 
-        if (trigger.global) {
-            let regexMatchLimit = REGEX_MATCH_LIMIT;
+        let regexMatchLimit = REGEX_MATCH_LIMIT;
 
-            while (regexMatchLimit > 0) {
-                const nextResult = trigger.exec(text);
+        for (const match of text.matchAll(trigger)) {
+            matchResults.push(match);
+            regexMatchLimit -= 1;
 
-                if (nextResult == null) break;
-
-                matchResults.push(nextResult);
-                regexMatchLimit -= 1;
-            }
+            if (regexMatchLimit == 0) break;
         }
     }
 

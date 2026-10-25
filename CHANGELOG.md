@@ -19,6 +19,7 @@ This file was reconstructed from the git history and `package.json` version bump
 - A response queued just as the queue finished sending its last item could wait until the next response or scheduled run, which could be hours later in a quiet chat. It is now sent right away.
 - A failed `pin()`, for example in a chat where the bot can't pin messages, skipped the `captureReplies()` and `deleteAfter()` set after it on the same message. The pin error is now reported as an `error` event and the other operations still run.
 - `stopBots()` stopped scheduled actions only after waiting for the processing in progress, which could take a minute with the network down. A scheduled run in that time could queue responses that were never sent and try to save to closed storage. Scheduled actions now stop first, as documented.
+- A global regex trigger that can match an empty string, such as `/(\w+)?/g`, filled `matchResults` with the same empty match up to the limit and lost the matches after it. Each empty match now appears once, as with `String.prototype.matchAll`, and the matches after it are collected.
 
 ## [0.9.1] - 2026-10-09
 
