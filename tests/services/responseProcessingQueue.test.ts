@@ -286,6 +286,35 @@ describe('ResponseProcessingQueue', () => {
             // Item added during flush should also be processed
             expect(processed).toEqual([1, 2]);
         });
+
+        test('should send an item enqueued right after a flush drains the queue', async () => {
+            const processed: number[] = [];
+            const now = Date.now();
+
+            queue.enqueue({
+                priority: now - 100,
+                callback: () => {
+                    processed.push(1);
+                    queueMicrotask(() => {
+                        queue.enqueue({
+                            priority: now - 50,
+                            callback: () => {
+                                processed.push(2);
+                                return Promise.resolve();
+                            }
+                        });
+                        void queue.flushReadyItems();
+                    });
+                    return Promise.resolve();
+                }
+            });
+
+            await queue.flushReadyItems();
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            expect(processed).toEqual([1, 2]);
+            expect(queue['items'].length).toBe(0);
+        });
     });
 
     describe('TelegramApiService usage pattern', () => {

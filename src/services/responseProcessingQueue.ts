@@ -45,12 +45,7 @@ export class ResponseProcessingQueue {
 
         this.isFlushing = true;
         this.currentFlush = this.sendItems();
-
-        try {
-            await this.currentFlush;
-        } finally {
-            this.isFlushing = false;
-        }
+        await this.currentFlush;
     }
 
     async finish() {
@@ -66,22 +61,30 @@ export class ResponseProcessingQueue {
         await Promise.allSettled(this.itemsInProgress);
     }
 
+    /**
+     * Resets `isFlushing` in the same step that finds the queue empty, so an item
+     * enqueued right after the queue drains always starts a new flush.
+     */
     private async sendItems() {
-        while (this.items.length > 0) {
-            const delay = this.items[0].priority - Date.now();
-            if (delay > 0) {
-                await this.sleep(delay);
-                continue;
+        try {
+            while (this.items.length > 0) {
+                const delay = this.items[0].priority - Date.now();
+                if (delay > 0) {
+                    await this.sleep(delay);
+                    continue;
+                }
+
+                await this.rateLimiter();
+                const item = this.items.shift();
+                if (!item) continue;
+
+                const sending = item.callback().finally(() => {
+                    this.itemsInProgress.delete(sending);
+                });
+                this.itemsInProgress.add(sending);
             }
-
-            await this.rateLimiter();
-            const item = this.items.shift();
-            if (!item) continue;
-
-            const sending = item.callback().finally(() => {
-                this.itemsInProgress.delete(sending);
-            });
-            this.itemsInProgress.add(sending);
+        } finally {
+            this.isFlushing = false;
         }
     }
 
