@@ -36,7 +36,7 @@
     "scripts": {
         "build": "tsc -p tsconfig.build.json",
         "test": "bun test",
-        "lint": "tsc -p tsconfig.build.json --noEmit",
+        "lint": "tsc -p tsconfig.build.json --noEmit && bun check",
         "generate:types": "bun scripts/generateBotApiTypes.ts",
         "prep": "bun run generate:types && bun run test && bun run build"
     }
