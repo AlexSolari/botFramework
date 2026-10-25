@@ -98,8 +98,12 @@ export class BotInstance {
             traceId: createTrace(this, this.name, 'stop')
         });
 
+        this.scheduler.cancelAllTasks();
         await this.actionProcessingService.stop();
-        this.scheduler.stopAll();
+
+        // Scheduled actions still running may have created tasks, e.g. to drop a cached value.
+        this.scheduler.cancelAllTasks();
+
         await this.storage.close();
     }
 }

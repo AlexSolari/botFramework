@@ -13,7 +13,7 @@ export class NodeTimeoutScheduler implements IScheduler {
         readonly botName: string
     ) {}
 
-    stopAll() {
+    cancelAllTasks() {
         for (const task of this.activeTasks) {
             clearInterval(task.taskId);
         }

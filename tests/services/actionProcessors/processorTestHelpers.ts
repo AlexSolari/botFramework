@@ -74,14 +74,14 @@ export function createMockScheduler(): MockScheduler {
         }
     );
 
-    const stopAll = mock(() => {
+    const cancelAllTasks = mock(() => {
         /* no-op */
     });
 
     return {
         createTask: createTaskMock,
         createOnetimeTask: createOnetimeTaskMock,
-        stopAll,
+        cancelAllTasks,
         createTaskCallCount: () => createTaskMock.mock.calls.length,
         createOnetimeTaskCallCount: () =>
             createOnetimeTaskMock.mock.calls.length

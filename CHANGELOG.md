@@ -8,12 +8,17 @@ This file was reconstructed from the git history and `package.json` version bump
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `IScheduler.stopAll()` is renamed to `cancelAllTasks()`, as it cancels the tasks created so far but doesn't stop new ones from being scheduled. Custom schedulers passed in `services.scheduler` must rename the method.
+
 ### Fixed
 
 - After a network change, requests went back to pooled connections opened before it, which may be dead. A response sent on one, or `stopBots()` waiting for it, could hang until Bun's idle timeout, 5 minutes later by default, and a request for updates was stuck for 60 seconds once more. Every request to Telegram is now dropped after 60 seconds without an answer, plus the time an uploaded file takes at 100 KB/s, and after `reconnect()`, a dropped request or a network error, all requests open new connections for the next 30 seconds. After a dropped request or a network error, this also lasts until a request gets an answer, so retries after a long wait don't go back to dead connections.
 - A flood-control wait while receiving updates counted against the 60-second limit, so the request could be dropped although Telegram was answering. The limit now applies to each attempt separately.
 - A response queued just as the queue finished sending its last item could wait until the next response or scheduled run, which could be hours later in a quiet chat. It is now sent right away.
 - A failed `pin()`, for example in a chat where the bot can't pin messages, skipped the `captureReplies()` and `deleteAfter()` set after it on the same message. The pin error is now reported as an `error` event and the other operations still run.
+- `stopBots()` stopped scheduled actions only after waiting for the processing in progress, which could take a minute with the network down. A scheduled run in that time could queue responses that were never sent and try to save to closed storage. Scheduled actions now stop first, as documented.
 
 ## [0.9.1] - 2026-10-09
 

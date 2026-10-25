@@ -313,7 +313,7 @@ describe('ScheduledActionProcessor', () => {
                         setImmediate(() => action());
                     }
                 ),
-                stopAll: mock(() => {}),
+                cancelAllTasks: mock(() => {}),
                 createTaskCallCount: () => createTaskMock.mock.calls.length,
                 createOnetimeTaskCallCount: () => 0
             };

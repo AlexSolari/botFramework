@@ -15,7 +15,7 @@ describe('NodeTimeoutScheduler', () => {
     });
 
     afterEach(() => {
-        scheduler.stopAll();
+        scheduler.cancelAllTasks();
     });
 
     describe('constructor', () => {
@@ -348,7 +348,7 @@ describe('NodeTimeoutScheduler', () => {
         });
     });
 
-    describe('stopAll', () => {
+    describe('cancelAllTasks', () => {
         test('should clear all active interval tasks', async () => {
             let task1Count = 0;
             let task2Count = 0;
@@ -378,7 +378,7 @@ describe('NodeTimeoutScheduler', () => {
             const countBeforeStop1 = task1Count;
             const countBeforeStop2 = task2Count;
 
-            scheduler.stopAll();
+            scheduler.cancelAllTasks();
 
             // Wait more time
             await new Promise((resolve) => setTimeout(resolve, 100));
@@ -390,7 +390,7 @@ describe('NodeTimeoutScheduler', () => {
 
         test('should handle being called with no tasks', () => {
             expect(() => {
-                scheduler.stopAll();
+                scheduler.cancelAllTasks();
             }).not.toThrow();
         });
 
@@ -406,15 +406,32 @@ describe('NodeTimeoutScheduler', () => {
             );
 
             expect(() => {
-                scheduler.stopAll();
-                scheduler.stopAll();
+                scheduler.cancelAllTasks();
+                scheduler.cancelAllTasks();
             }).not.toThrow();
+        });
+
+        test('should run the tasks created afterwards', async () => {
+            scheduler.cancelAllTasks();
+            let runCount = 0;
+
+            scheduler.createOnetimeTask(
+                'task',
+                () => {
+                    runCount++;
+                },
+                10 as Milliseconds,
+                'bot'
+            );
+            await new Promise((resolve) => setTimeout(resolve, 30));
+
+            expect(runCount).toBe(1);
         });
     });
 
     describe('IScheduler interface compliance', () => {
-        test('should implement stopAll method', () => {
-            expect(typeof scheduler.stopAll).toBe('function');
+        test('should implement cancelAllTasks method', () => {
+            expect(typeof scheduler.cancelAllTasks).toBe('function');
         });
 
         test('should implement createTask method', () => {
@@ -480,7 +497,7 @@ describe('NodeTimeoutScheduler', () => {
             const countBeforeShutdown = runCount;
 
             // Simulate bot shutdown
-            scheduler.stopAll();
+            scheduler.cancelAllTasks();
 
             await new Promise((resolve) => setTimeout(resolve, 100));
 
