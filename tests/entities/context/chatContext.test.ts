@@ -29,8 +29,11 @@ function createMockStorage(
     return {
         load: mock(() => loadResponse) as IStorageClient['load'],
         close: mock(() => Promise.resolve()),
-        getActionState: mock(() =>
-            Promise.resolve({ lastExecutedDate: 0, pinnedMessages: [] })
+        getActionState: mock(
+            (action: ScheduledActionInternal<ActionStateBase>, chatId: number) => ({
+                ...action.stateConstructor(),
+                ...loadResponse[chatId]
+            })
         ),
         saveActionExecutionResult: mock(() => Promise.resolve()),
         updateStateFor: mock(() => Promise.resolve())
@@ -636,7 +639,7 @@ describe('ChatContextInternal', () => {
     });
 
     describe('loadStateOf', () => {
-        test('should call storage.load with the action', () => {
+        test('should call storage.getActionState with the action and chat', () => {
             const storage = createMockStorage();
 
             const scheduler = createMockScheduler();
@@ -669,7 +672,10 @@ describe('ChatContextInternal', () => {
 
             ctx.loadStateOf(otherAction);
 
-            expect(storage.load).toHaveBeenCalledWith(otherAction);
+            expect(storage.getActionState).toHaveBeenCalledWith(
+                otherAction,
+                12345
+            );
         });
 
         test('should return state for current chat if it exists', () => {

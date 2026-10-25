@@ -146,13 +146,9 @@ export abstract class BaseContextInternal<TAction extends IAction> {
     loadStateOf<TAnotherActionState extends IActionState>(
         action: IActionWithState<TAnotherActionState>
     ) {
-        const allStates = this.storage.load(action);
-        const stateForChat = {
-            ...action.stateConstructor(),
-            ...allStates[this.chatInfo.id]
-        };
-
-        return Object.freeze(structuredClone(stateForChat));
+        return Object.freeze(
+            this.storage.getActionState(action, this.chatInfo.id)
+        );
     }
 
     /**

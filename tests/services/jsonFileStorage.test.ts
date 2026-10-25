@@ -257,6 +257,50 @@ describe('JsonFileStorage', () => {
 
             expect(result).toEqual(existingData[456]);
         });
+
+        test('should not share nested values with the cache', async () => {
+            storage = new JsonFileStorage(
+                TEST_BOT_NAME,
+                [testAction],
+                TEST_STORAGE_PATH
+            );
+            await storage.saveActionExecutionResult(testAction, 123, {
+                lastExecutedDate: 1000,
+                pinnedMessages: [1],
+                customField: 'saved'
+            });
+
+            const state = storage.getActionState(testAction, 123);
+            state.pinnedMessages.push(2);
+            await storage.saveActionExecutionResult(testAction, 456, {
+                lastExecutedDate: 0,
+                pinnedMessages: [],
+                customField: 'other chat'
+            });
+
+            expect(storage.load(testAction)[123].pinnedMessages).toEqual([1]);
+            const filePath = buildPath(
+                TEST_STORAGE_PATH,
+                TEST_BOT_NAME,
+                'test:action'
+            );
+            expect(
+                JSON.parse(readFileSync(filePath, 'utf-8'))[123].pinnedMessages
+            ).toEqual([1]);
+        });
+
+        test('should give each caller its own copy', () => {
+            storage = new JsonFileStorage(
+                TEST_BOT_NAME,
+                [testAction],
+                TEST_STORAGE_PATH
+            );
+
+            const first = storage.getActionState(testAction, 123);
+            const second = storage.getActionState(testAction, 123);
+
+            expect(first.pinnedMessages).not.toBe(second.pinnedMessages);
+        });
     });
 
     describe('saveActionExecutionResult', () => {
@@ -306,6 +350,29 @@ describe('JsonFileStorage', () => {
 
             expect(result1).toEqual(state1);
             expect(result2).toEqual(state2);
+        });
+
+        test('should not keep a reference to the saved state', async () => {
+            storage = new JsonFileStorage(
+                TEST_BOT_NAME,
+                [testAction],
+                TEST_STORAGE_PATH
+            );
+            const state: TestActionState = {
+                lastExecutedDate: 1000,
+                pinnedMessages: [1],
+                customField: 'saved'
+            };
+
+            await storage.saveActionExecutionResult(testAction, 123, state);
+            state.customField = 'changed after save';
+            state.pinnedMessages.push(2);
+
+            expect(storage.getActionState(testAction, 123)).toEqual({
+                lastExecutedDate: 1000,
+                pinnedMessages: [1],
+                customField: 'saved'
+            });
         });
     });
 
@@ -447,6 +514,29 @@ describe('JsonFileStorage', () => {
             const result = storage.getActionState(testAction, 123);
 
             expect(result.customField).toBe('async-updated');
+        });
+
+        test('should leave the cache unchanged when the update throws', async () => {
+            storage = new JsonFileStorage(
+                TEST_BOT_NAME,
+                [testAction],
+                TEST_STORAGE_PATH
+            );
+            await storage.saveActionExecutionResult(testAction, 123, {
+                lastExecutedDate: 1000,
+                pinnedMessages: [1],
+                customField: 'initial'
+            });
+
+            const update = storage.updateStateFor(testAction, 123, (state) => {
+                state.pinnedMessages.push(2);
+                throw new Error('update failed');
+            });
+
+            await expect(update).rejects.toThrow('update failed');
+            expect(storage.getActionState(testAction, 123).pinnedMessages).toEqual([
+                1
+            ]);
         });
     });
 

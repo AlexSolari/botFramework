@@ -171,6 +171,17 @@ export class JsonFileStorage implements IStorageClient {
         }
     }
 
+    private stateFor<TActionState extends IActionState>(
+        action: IActionWithState<TActionState>,
+        data: Record<number, TActionState>,
+        chatId: number
+    ) {
+        return structuredClone({
+            ...action.stateConstructor(),
+            ...data[chatId]
+        });
+    }
+
     load<TActionState extends IActionState>(
         action: IActionWithState<TActionState>
     ) {
@@ -181,9 +192,7 @@ export class JsonFileStorage implements IStorageClient {
         action: IActionWithState<TActionState>,
         chatId: number
     ) {
-        const value = this.data.load<TActionState>(action);
-
-        return { ...action.stateConstructor(), ...value[chatId] };
+        return this.stateFor(action, this.data.load(action), chatId);
     }
 
     async saveActionExecutionResult<TActionState extends IActionState>(
@@ -194,7 +203,7 @@ export class JsonFileStorage implements IStorageClient {
         await this.lock(action.key, async () => {
             const data = this.data.load(action);
 
-            data[chatId] = state;
+            data[chatId] = structuredClone(state);
 
             await this.data.save(data, action);
         });
@@ -215,7 +224,7 @@ export class JsonFileStorage implements IStorageClient {
     ) {
         await this.lock(action.key, async () => {
             const data = this.data.load(action);
-            const state = { ...action.stateConstructor(), ...data[chatId] };
+            const state = this.stateFor(action, data, chatId);
 
             await update(state);
 
