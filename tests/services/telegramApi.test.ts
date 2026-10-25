@@ -697,6 +697,56 @@ describe('TelegramApiService', () => {
         });
     });
 
+    describe('pin', () => {
+        test('should run the operations after a failed pin and report the error', async () => {
+            const pinError = new Error('Bad Request: not enough rights to pin a message');
+            const call = mock((method: string, _params: CallParams) =>
+                method == 'pinChatMessage'
+                    ? Promise.reject(pinError)
+                    : Promise.resolve({ message_id: 42 })
+            );
+            const { api, eventEmitter, registerCapture } = createApi(call);
+            const errors = collectErrors(eventEmitter);
+            const message = createMessage(new ReplyInfo(100));
+            message.postSendOperations.push(
+                { kind: 'pin' },
+                createCapture(),
+                {
+                    kind: 'deleteAfterTimeout',
+                    timeout: 0 as Milliseconds
+                }
+            );
+
+            await process(api, message);
+            await setTimeout(20);
+
+            expect(errors).toEqual([pinError]);
+            expect(registerCapture).toHaveBeenCalledTimes(1);
+            expect(call.mock.calls.map(([method]) => method)).toEqual([
+                'sendMessage',
+                'pinChatMessage',
+                'deleteMessage'
+            ]);
+        });
+
+        test('should wrap a non-Error failure of the pin', async () => {
+            const call = mock((method: string, _params: CallParams) =>
+                method == 'pinChatMessage'
+                    ? // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+                      Promise.reject('not an error')
+                    : Promise.resolve({ message_id: 42 })
+            );
+            const { api, eventEmitter } = createApi(call);
+            const errors = collectErrors(eventEmitter);
+            const message = createMessage();
+            message.postSendOperations.push({ kind: 'pin' });
+
+            await process(api, message);
+
+            expect(errors).toEqual([new Error('Unknown error')]);
+        });
+    });
+
     describe('stop', () => {
         test('should cancel pending deleteAfter timers and leave the messages', async () => {
             const call = mock((method: string, _params: CallParams) =>

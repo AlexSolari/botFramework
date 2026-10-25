@@ -223,7 +223,7 @@ export class TelegramApiService {
                         );
                         break;
                     case 'pin':
-                        await this.sendApiRequest(
+                        await this.pinSentMessage(
                             new PinResponse(
                                 sentMessage.message_id,
                                 response.chatInfo,
@@ -234,6 +234,20 @@ export class TelegramApiService {
                         break;
                 }
             }
+        }
+    }
+
+    private async pinSentMessage(pinResponse: PinResponse) {
+        try {
+            await this.sendApiRequest(pinResponse);
+        } catch (reason) {
+            this.eventEmitter.emit(BotEventType.error, {
+                error:
+                    reason instanceof Error
+                        ? reason
+                        : new Error('Unknown error'),
+                traceId: pinResponse.traceId
+            });
         }
     }
 
