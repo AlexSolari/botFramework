@@ -6,8 +6,9 @@ import {
     ResponseParameters
 } from '../../types/botApi.generated';
 import { InputFile } from '../../types/inputFile';
-import { Seconds } from '../../types/timeValues';
+import { Milliseconds, Seconds } from '../../types/timeValues';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
+import { getAbortControllerWithTimeout } from '../../helpers/getAbortControllerWithTimeout';
 
 export type BotApiMethod = keyof BotApiMethods;
 export type BotApiParams<M extends BotApiMethod> = BotApiMethods[M]['params'];
@@ -24,6 +25,27 @@ interface BotApiResponse<T> {
 const TELEGRAM_API_ROOT = 'https://api.telegram.org';
 const HTTP_TOO_MANY_REQUESTS = 429;
 const REDACTED = '[REDACTED]';
+
+/** A request still waiting past this is most likely stuck on a dead connection. */
+const DEFAULT_REQUEST_TIMEOUT = secondsToMilliseconds(60 as Seconds);
+
+/**
+ * Bun closes pooled connections after about 10 seconds idle,
+ * so the ones opened before a network change are gone once this has passed.
+ */
+const FRESH_CONNECTION_PERIOD = secondsToMilliseconds(30 as Seconds);
+
+/**
+ * Slowest upload, in bytes per second, still expected to finish.
+ * Uploaded files extend the request timeout by the time they take at this speed.
+ */
+const MIN_UPLOAD_SPEED = 100 * 1024;
+
+/**
+ * Fresh connection window: it lasts until `until`, and while `failing`, until a request gets an answer.
+ * Bun pools connections process-wide, so the window is shared by all clients.
+ */
+export const freshConnectionWindow = { until: 0, failing: false };
 
 /**
  * Error returned by the Bot API.
@@ -57,8 +79,11 @@ export class TelegramApiError extends Error {
 
 export interface BotApiCallOptions {
     signal?: AbortSignal;
-    /** Opens a new connection instead of reusing a pooled one, which may be dead after a network change. */
-    freshConnection?: boolean;
+    /**
+     * Overrides the client's request timeout. Applies to each attempt separately
+     * and is extended by the time uploaded files take at the minimum upload speed.
+     */
+    timeout?: Milliseconds;
 }
 
 function isInputFile(value: unknown): value is InputFile {
@@ -70,19 +95,25 @@ function isInputFile(value: unknown): value is InputFile {
 
 export class BotApiClient {
     private readonly baseUrl: string;
-    private readonly fetchImpl: typeof fetch;
     /** Token as it can appear in error details: raw and url-encoded. */
     private readonly secrets: string[];
 
-    constructor(
-        token: string,
-        options?: { apiRoot?: string; fetch?: typeof fetch }
-    ) {
-        this.baseUrl = `${options?.apiRoot ?? TELEGRAM_API_ROOT}/bot${token}`;
-        this.fetchImpl = options?.fetch ?? fetch;
+    constructor(token: string) {
+        this.baseUrl = `${TELEGRAM_API_ROOT}/bot${token}`;
         this.secrets = [...new Set([token, encodeURIComponent(token)])].filter(
             (x) => x.length > 0
         );
+    }
+
+    /**
+     * Makes requests of all clients open new connections instead of reusing pooled ones for a while,
+     * as the pooled ones may be dead after a network change.
+     * After a network error or a timeout, this happens automatically
+     * and lasts until a request gets an answer.
+     */
+    useFreshConnections() {
+        freshConnectionWindow.until =
+            performance.now() + FRESH_CONNECTION_PERIOD;
     }
 
     /**
@@ -120,33 +151,84 @@ export class BotApiClient {
         params: BotApiParams<M>,
         options: BotApiCallOptions
     ): Promise<BotApiResult<M>> {
+        const { request, uploadSize } = await this.buildRequest(params);
+
+        const timeout = ((options.timeout ?? DEFAULT_REQUEST_TIMEOUT) +
+            (1000 * uploadSize) / MIN_UPLOAD_SPEED) as Milliseconds;
+        const { response, text } = await this.post(
+            method,
+            request,
+            timeout,
+            options.signal
+        );
+
+        return this.parseResult(method, response, text);
+    }
+
+    private async buildRequest(
+        params: object
+    ): Promise<{ request: RequestInit; uploadSize: number }> {
         const entries = Object.entries(params).filter(
             ([, value]) => value !== undefined
         );
-        const hasFiles = entries.some(([, value]) => isInputFile(value));
-        const request: RequestInit = hasFiles
-            ? { body: await this.buildFormData(entries) }
-            : {
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(Object.fromEntries(entries))
-              };
-
-        let response: Response;
-        let text: string;
-        try {
-            response = await this.fetchImpl(`${this.baseUrl}/${method}`, {
-                ...request,
-                method: 'POST',
-                signal: options.signal,
-                // Bun opens a new connection for a request with keepalive disabled
-                ...(options.freshConnection && { keepalive: false })
-            });
-            text = await response.text();
-        } catch (error) {
-            // Network errors may carry the request url, which contains the token.
-            throw this.redactToken(error);
+        if (entries.some(([, value]) => isInputFile(value))) {
+            return await this.buildFormData(entries);
         }
 
+        return {
+            request: {
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(Object.fromEntries(entries))
+            },
+            uploadSize: 0
+        };
+    }
+
+    /**
+     * While the fresh connection window is open, disables keepalive,
+     * which makes Bun open a new connection for the request.
+     * Errors are returned without the token, as network errors may carry the request url.
+     */
+    private async post(
+        method: BotApiMethod,
+        request: RequestInit,
+        timeout: Milliseconds,
+        signal: AbortSignal | undefined
+    ) {
+        const { controller, timer } = getAbortControllerWithTimeout(timeout);
+        const freshConnection =
+            freshConnectionWindow.failing ||
+            performance.now() < freshConnectionWindow.until;
+
+        try {
+            const response = await fetch(`${this.baseUrl}/${method}`, {
+                ...request,
+                method: 'POST',
+                signal: signal
+                    ? AbortSignal.any([signal, controller.signal])
+                    : controller.signal,
+                ...(freshConnection && { keepalive: false })
+            });
+            const text = await response.text();
+            freshConnectionWindow.failing = false;
+
+            return { response, text };
+        } catch (error) {
+            if (!signal?.aborted) {
+                freshConnectionWindow.failing = true;
+                this.useFreshConnections();
+            }
+            throw this.redactToken(error);
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    private parseResult<M extends BotApiMethod>(
+        method: M,
+        response: Response,
+        text: string
+    ): BotApiResult<M> {
         let body: BotApiResponse<BotApiResult<M>>;
         try {
             body = JSON.parse(text) as BotApiResponse<BotApiResult<M>>;
@@ -199,10 +281,7 @@ export class BotApiClient {
             if (key == 'cause') continue;
             if (typeof value == 'string') {
                 target[key] = this.redact(value);
-            } else if (
-                typeof value == 'number' ||
-                typeof value == 'boolean'
-            ) {
+            } else if (typeof value == 'number' || typeof value == 'boolean') {
                 target[key] = value;
             }
         }
@@ -212,10 +291,12 @@ export class BotApiClient {
 
     private async buildFormData(entries: [string, unknown][]) {
         const form = new FormData();
+        let uploadSize = 0;
 
         for (const [key, value] of entries) {
             if (isInputFile(value)) {
                 const content = await readFile(value.source);
+                uploadSize += content.byteLength;
                 form.append(
                     key,
                     new Blob([content]),
@@ -228,6 +309,6 @@ export class BotApiClient {
             }
         }
 
-        return form;
+        return { request: { body: form }, uploadSize };
     }
 }

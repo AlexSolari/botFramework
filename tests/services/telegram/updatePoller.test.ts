@@ -1,8 +1,18 @@
-import { describe, test, expect } from 'bun:test';
+import {
+    describe,
+    test,
+    expect,
+    mock,
+    spyOn,
+    beforeEach,
+    afterEach,
+    jest
+} from 'bun:test';
 import {
     BotApiClient,
     BotApiCallOptions,
-    TelegramApiError
+    TelegramApiError,
+    freshConnectionWindow
 } from '../../../src/services/telegram/botApiClient';
 import { UpdatePoller } from '../../../src/services/telegram/updatePoller';
 import type {
@@ -15,6 +25,7 @@ import type { Milliseconds } from '../../../src/types/timeValues';
 interface RecordedCall {
     method: string;
     params: Record<string, unknown>;
+    options: BotApiCallOptions;
 }
 
 type ScriptedResult = Update[] | Error;
@@ -28,7 +39,7 @@ function createFakeClient(
     deleteWebhookErrors: Error[] = []
 ) {
     const calls: RecordedCall[] = [];
-    const freshConnections: boolean[] = [];
+    const freshConnections = { requested: 0 };
     let idleListeners: (() => void)[] = [];
     const nextIdle = () =>
         new Promise<void>((resolve) => {
@@ -42,8 +53,7 @@ function createFakeClient(
             params: Record<string, unknown>,
             options: BotApiCallOptions = {}
         ) => {
-            calls.push({ method, params });
-            freshConnections.push(options.freshConnection ?? false);
+            calls.push({ method, params, options });
             const webhookError = method == 'deleteWebhook' && deleteWebhookErrors.shift();
             if (webhookError) return Promise.reject(webhookError);
             if (method != 'getUpdates' || params.timeout === 0) {
@@ -55,7 +65,9 @@ function createFakeClient(
             if (next) return Promise.resolve(next);
 
             const signal = options.signal;
-            if (!signal) throw new Error('getUpdates called without signal');
+            if (!signal) {
+                throw new Error('getUpdates called without signal');
+            }
             for (const listener of idleListeners) listener();
             idleListeners = [];
             return new Promise((_, reject) => {
@@ -63,13 +75,16 @@ function createFakeClient(
                     reject(signal.reason as Error);
                 });
             });
+        },
+        useFreshConnections: () => {
+            freshConnections.requested++;
         }
     };
 
     return {
         client: client as unknown as BotApiClient,
         calls,
-        /** `freshConnection` option of every call, in the same order as `calls`. */
+        /** How many times fresh connections were requested. */
         freshConnections,
         /** Resolves once the script is exhausted and the poller waits for new updates. */
         idle,
@@ -77,11 +92,6 @@ function createFakeClient(
         nextIdle
     };
 }
-
-const getUpdatesFreshConnections = (
-    calls: RecordedCall[],
-    freshConnections: boolean[]
-) => freshConnections.filter((_, i) => calls[i].method == 'getUpdates');
 
 const message = (id: number) =>
     ({ message_id: id, date: 0, chat: { id: 1, type: 'private' } }) as Message;
@@ -96,7 +106,31 @@ const conflictError = () =>
         'Conflict: terminated by other getUpdates request'
     );
 
+/** Fires timers until the promise settles, so retry delays and timeouts pass at once. */
+async function runTimersUntil<T>(promise: Promise<T>) {
+    let settled = false;
+    const result = promise.finally(() => {
+        settled = true;
+    });
+    for (let i = 0; !settled; i++) {
+        if (i > 10_000) throw new Error('Promise did not settle');
+        jest.runOnlyPendingTimers();
+        await Promise.resolve();
+    }
+
+    return await result;
+}
+
 describe('UpdatePoller', () => {
+    beforeEach(() => {
+        jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
+        mock.restore();
+    });
+
     test('should not poll when no handlers are registered', async () => {
         const { client, calls } = createFakeClient();
         const poller = new UpdatePoller(client, () => undefined);
@@ -118,7 +152,7 @@ describe('UpdatePoller', () => {
         await running;
 
         expect(calls[0].method).toBe('deleteWebhook');
-        expect(calls[1]).toEqual({
+        expect(calls[1]).toMatchObject({
             method: 'getUpdates',
             params: {
                 offset: 0,
@@ -172,7 +206,7 @@ describe('UpdatePoller', () => {
         poller.stop();
         await running;
 
-        expect(calls.at(-1)).toEqual({
+        expect(calls.at(-1)).toMatchObject({
             method: 'getUpdates',
             params: { offset: 6, limit: 1, timeout: 0 }
         });
@@ -270,7 +304,7 @@ describe('UpdatePoller', () => {
         poller.on('message', () => undefined);
 
         const running = poller.start();
-        await idle;
+        await runTimersUntil(idle);
         poller.stop();
         await running;
 
@@ -281,30 +315,26 @@ describe('UpdatePoller', () => {
     });
 
     test('should keep retrying recoverable errors after the delay list is exhausted', async () => {
-        const { client, calls, idle } = createFakeClient([
-            new Error('failure 1'),
-            new Error('failure 2'),
-            new Error('failure 3')
-        ]);
-        const errors: string[] = [];
-        const poller = new UpdatePoller(
-            client,
-            (error) => {
-                errors.push(error.message);
-            },
-            [0 as Milliseconds]
+        const failures = Array.from(
+            { length: 8 },
+            (_, i) => new Error(`failure ${i + 1}`)
         );
+        const { client, calls, idle } = createFakeClient([...failures]);
+        const errors: Error[] = [];
+        const poller = new UpdatePoller(client, (error) => {
+            errors.push(error);
+        });
         poller.on('message', () => undefined);
 
         const running = poller.start();
-        await idle;
+        await runTimersUntil(idle);
         poller.stop();
         await running;
 
-        expect(errors).toEqual(['failure 1', 'failure 2', 'failure 3']);
+        expect(errors).toEqual(failures);
         expect(
             calls.filter((x) => x.method == 'getUpdates').length
-        ).toBe(4);
+        ).toBe(9);
     });
 
     test('should recover when fatal error goes away before retries are exhausted', async () => {
@@ -314,19 +344,15 @@ describe('UpdatePoller', () => {
         ]);
         const errors: Error[] = [];
         const received: number[] = [];
-        const poller = new UpdatePoller(
-            client,
-            (error) => {
-                errors.push(error);
-            },
-            [0 as Milliseconds, 0 as Milliseconds]
-        );
+        const poller = new UpdatePoller(client, (error) => {
+            errors.push(error);
+        });
         poller.on('message', (x) => {
             received.push(x.message_id);
         });
 
         const running = poller.start();
-        await idle;
+        await runTimersUntil(idle);
         poller.stop();
         await running;
 
@@ -335,30 +361,22 @@ describe('UpdatePoller', () => {
     });
 
     test('should stop polling and report fatal errors once every retry failed', async () => {
-        const { client, calls } = createFakeClient([
-            conflictError(),
-            conflictError(),
-            conflictError()
-        ]);
-        const errors: Error[] = [];
-        const poller = new UpdatePoller(
-            client,
-            (error) => {
-                errors.push(error);
-            },
-            [0 as Milliseconds, 0 as Milliseconds]
+        const { client, calls } = createFakeClient(
+            Array.from({ length: 7 }, conflictError)
         );
+        const errors: Error[] = [];
+        const poller = new UpdatePoller(client, (error) => {
+            errors.push(error);
+        });
         poller.on('message', () => undefined);
 
-        await poller.start();
+        await runTimersUntil(poller.start());
 
-        expect(errors.length).toBe(3);
+        expect(errors.length).toBe(7);
         expect(errors.every((x) => x instanceof TelegramApiError)).toBe(true);
         expect(calls.map((x) => x.method)).toEqual([
             'deleteWebhook',
-            'getUpdates',
-            'getUpdates',
-            'getUpdates'
+            ...Array<string>(7).fill('getUpdates')
         ]);
     });
 
@@ -409,17 +427,13 @@ describe('UpdatePoller', () => {
             [new Error('network failure')]
         );
         const errors: string[] = [];
-        const poller = new UpdatePoller(
-            client,
-            (error) => {
-                errors.push(error.message);
-            },
-            [0 as Milliseconds]
-        );
+        const poller = new UpdatePoller(client, (error) => {
+            errors.push(error.message);
+        });
         poller.on('message', () => undefined);
 
         const running = poller.start();
-        await idle;
+        await runTimersUntil(idle);
         poller.stop();
         await running;
 
@@ -436,53 +450,80 @@ describe('UpdatePoller', () => {
             new TelegramApiError('deleteWebhook', 401, 'Unauthorized');
         const { client, calls } = createFakeClient(
             [],
-            [unauthorized(), unauthorized(), unauthorized()]
+            Array.from({ length: 7 }, unauthorized)
         );
         const errors: Error[] = [];
-        const poller = new UpdatePoller(
-            client,
-            (error) => {
-                errors.push(error);
-            },
-            [0 as Milliseconds, 0 as Milliseconds]
-        );
+        const poller = new UpdatePoller(client, (error) => {
+            errors.push(error);
+        });
         poller.on('message', () => undefined);
 
-        await poller.start();
+        await runTimersUntil(poller.start());
 
-        expect(errors.length).toBe(3);
-        expect(calls.map((x) => x.method)).toEqual([
-            'deleteWebhook',
-            'deleteWebhook',
-            'deleteWebhook'
-        ]);
+        expect(errors.length).toBe(7);
+        expect(calls.map((x) => x.method)).toEqual(
+            Array<string>(7).fill('deleteWebhook')
+        );
     });
 
-    test('should drop a request that gets no answer in time and retry on a fresh connection', async () => {
-        const { client, calls, freshConnections, idle, nextIdle } =
-            createFakeClient();
-        const errors: Error[] = [];
-        const poller = new UpdatePoller(
-            client,
-            (error) => {
-                errors.push(error);
-            },
-            [0 as Milliseconds],
-            10 as Milliseconds
-        );
+    test('should limit only the long poll to the long polling timeout', async () => {
+        const { client, calls, idle } = createFakeClient([
+            [{ update_id: 1, message: message(1) }]
+        ]);
+        const poller = new UpdatePoller(client, () => undefined);
         poller.on('message', () => undefined);
 
         const running = poller.start();
         await idle;
-        await nextIdle();
+        poller.stop();
+        await running;
+
+        expect(calls.map((x) => x.options.timeout)).toEqual([
+            undefined,
+            60_000 as Milliseconds,
+            60_000 as Milliseconds,
+            undefined
+        ]);
+    });
+
+    test('should drop a long poll that gets no answer in time and retry on a new connection', async () => {
+        const longPolls: RequestInit[] = [];
+        let onRetry: () => void = () => undefined;
+        const retried = new Promise<void>((resolve) => {
+            onRetry = resolve;
+        });
+        const fetchMock = (url: string, init: RequestInit) => {
+            if (url.endsWith('/deleteWebhook')) {
+                return Promise.resolve(Response.json({ ok: true, result: true }));
+            }
+
+            longPolls.push(init);
+            if (longPolls.length == 2) onRetry();
+            return new Promise((_, reject) => {
+                init.signal?.addEventListener('abort', () => {
+                    reject(init.signal?.reason as Error);
+                });
+            });
+        };
+        spyOn(globalThis, 'fetch').mockImplementation(
+            fetchMock as unknown as typeof fetch
+        );
+        freshConnectionWindow.until = 0;
+        freshConnectionWindow.failing = false;
+        const client = new BotApiClient('TOKEN');
+        const errors: Error[] = [];
+        const poller = new UpdatePoller(client, (error) => {
+            errors.push(error);
+        });
+        poller.on('message', () => undefined);
+
+        const running = poller.start();
+        await runTimersUntil(retried);
         poller.stop();
         await running;
 
         expect(errors[0].name).toBe('TimeoutError');
-        expect(getUpdatesFreshConnections(calls, freshConnections)).toEqual([
-            false,
-            true
-        ]);
+        expect(longPolls.map((x) => x.keepalive)).toEqual([undefined, false]);
     });
 
     test('should reconnect right away on a fresh connection without reporting an error', async () => {
@@ -499,18 +540,13 @@ describe('UpdatePoller', () => {
         const reconnected = nextIdle();
         poller.reconnect();
         await reconnected;
+        expect(freshConnections.requested).toBe(1);
         poller.stop();
         await running;
 
         expect(errors).toEqual([]);
         const getUpdates = calls.filter((x) => x.method == 'getUpdates');
         expect(getUpdates.map((x) => x.params.offset)).toEqual([0, 2, 2, 2]);
-        expect(getUpdatesFreshConnections(calls, freshConnections)).toEqual([
-            false,
-            false,
-            true,
-            false
-        ]);
     });
 
     test('should skip the wait before a retry on reconnect', async () => {
@@ -521,26 +557,20 @@ describe('UpdatePoller', () => {
         const failed = new Promise<void>((resolve) => {
             onFailure = resolve;
         });
-        const poller = new UpdatePoller(
-            client,
-            () => {
-                onFailure();
-            },
-            [(10 * 60 * 1000) as Milliseconds]
-        );
+        const poller = new UpdatePoller(client, () => {
+            onFailure();
+        });
         poller.on('message', () => undefined);
 
         const running = poller.start();
         await failed;
         poller.reconnect();
         await idle;
+        expect(freshConnections.requested).toBe(1);
         poller.stop();
         await running;
 
-        expect(getUpdatesFreshConnections(calls, freshConnections)).toEqual([
-            false,
-            true
-        ]);
+        expect(calls.filter((x) => x.method == 'getUpdates').length).toBe(2);
     });
 
     test('should ignore reconnect when not polling', () => {

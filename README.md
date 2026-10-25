@@ -443,10 +443,12 @@ A handler that never finishes keeps `stopBots()` waiting too.
 
 ## Network Changes
 
-A request for updates still waiting on a connection that stopped working, for example after the default route switched to another network interface, is dropped after 60 seconds and retried on a new connection. To recover right away instead, call `reconnect()` after the network changes, for example when a failover script sends the bot a signal:
+Every request to Telegram that gets no answer within 60 seconds, for example because it is stuck on a connection that stopped working after the default route switched to another network interface, is dropped. Requests uploading a file get extra time for the upload, as long as it would take at 100 KB/s, so a 50 MB video may take up to about 9.5 minutes. Requests for updates are retried; a dropped response emits an `error` event and is not resent, as Telegram may have received it. After a dropped request or a network error, requests of all bots open new connections instead of reusing pooled ones, which may be dead too, as the bots share the connection pool. This lasts until a request gets an answer, and at least 30 seconds. When stopping after a network change, call `reconnect()` before `stopBots()`, so the responses still due don't get stuck on a dead connection.
+
+To recover right away instead, call `reconnect()` after the network changes, for example when a failover script sends the bot a signal:
 
 ```typescript
 process.on('SIGUSR2', () => botOrchestrator.reconnect());
 ```
 
-`reconnect()` doesn't stop the bot: messages being processed and queued responses are not affected.
+`reconnect()` doesn't stop the bot: it drops the request for updates in progress and makes requests of all bots use new connections for the next 30 seconds. Messages being processed and queued responses are not dropped; a response already being sent on a dead connection is dropped after 60 seconds.

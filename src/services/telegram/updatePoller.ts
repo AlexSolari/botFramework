@@ -1,6 +1,6 @@
 import { setTimeout } from 'timers/promises';
 import { Update } from '../../types/botApi.generated';
-import { Milliseconds, Seconds } from '../../types/timeValues';
+import { Seconds } from '../../types/timeValues';
 import { BotApiClient, TelegramApiError } from './botApiClient';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 
@@ -15,7 +15,7 @@ const LONG_POLLING_TIMEOUT = 50 as Seconds;
  * Telegram answers `getUpdates` within the long polling timeout,
  * so a request still waiting past this is stuck on a dead connection.
  */
-const DEFAULT_REQUEST_TIMEOUT = secondsToMilliseconds(
+const LONG_POLL_REQUEST_TIMEOUT = secondsToMilliseconds(
     (LONG_POLLING_TIMEOUT + 10) as Seconds
 );
 
@@ -23,7 +23,7 @@ const DEFAULT_REQUEST_TIMEOUT = secondsToMilliseconds(
  * Delays between consecutive failed polling attempts.
  * Recoverable errors keep retrying with the last delay.
  */
-const DEFAULT_RETRY_DELAYS = [1, 3, 5, 10, 30, 60].map((x) =>
+const RETRY_DELAYS = [1, 3, 5, 10, 30, 60].map((x) =>
     secondsToMilliseconds(x as Seconds)
 );
 
@@ -41,8 +41,6 @@ const FATAL_ERROR_CODES = new Set([401, 409]);
 export class UpdatePoller {
     private readonly client: BotApiClient;
     private readonly onError: (error: Error) => void;
-    private readonly retryDelays: Milliseconds[];
-    private readonly requestTimeout: Milliseconds;
     private readonly handlers = new Map<
         UpdateType,
         ((payload: never) => void | Promise<void>)[]
@@ -52,16 +50,9 @@ export class UpdatePoller {
     private reconnectController: AbortController | null = null;
     private offset = 0;
 
-    constructor(
-        client: BotApiClient,
-        onError: (error: Error) => void,
-        retryDelays: Milliseconds[] = DEFAULT_RETRY_DELAYS,
-        requestTimeout: Milliseconds = DEFAULT_REQUEST_TIMEOUT
-    ) {
+    constructor(client: BotApiClient, onError: (error: Error) => void) {
         this.client = client;
         this.onError = onError;
-        this.retryDelays = retryDelays;
-        this.requestTimeout = requestTimeout;
     }
 
     on<T extends UpdateType>(type: T, handler: UpdateHandler<T>) {
@@ -100,6 +91,7 @@ export class UpdatePoller {
     }
 
     reconnect() {
+        this.client.useFreshConnections();
         this.reconnectController?.abort();
     }
 
@@ -107,24 +99,20 @@ export class UpdatePoller {
         const allowedUpdates = [...this.handlers.keys()];
         let failedAttempts = 0;
         let isWebhookDeleted = false;
-        let freshConnection = false;
 
         while (!signal.aborted) {
             const reconnect = new AbortController();
             this.reconnectController = reconnect;
             const attemptSignal = AbortSignal.any([signal, reconnect.signal]);
-            const requestOptions = () => ({
-                signal: AbortSignal.any([
-                    attemptSignal,
-                    AbortSignal.timeout(this.requestTimeout)
-                ]),
-                freshConnection
-            });
 
             try {
                 // Retried like getUpdates, so a network error at startup doesn't stop polling
                 if (!isWebhookDeleted) {
-                    await this.client.call('deleteWebhook', {}, requestOptions());
+                    await this.client.call(
+                        'deleteWebhook',
+                        {},
+                        { signal: attemptSignal }
+                    );
                     isWebhookDeleted = true;
                 }
 
@@ -135,11 +123,12 @@ export class UpdatePoller {
                         timeout: LONG_POLLING_TIMEOUT,
                         allowed_updates: allowedUpdates
                     },
-                    requestOptions()
+                    {
+                        signal: attemptSignal,
+                        timeout: LONG_POLL_REQUEST_TIMEOUT
+                    }
                 );
                 failedAttempts = 0;
-                // Reconnect requested after the response arrived still needs a new connection
-                freshConnection = reconnect.signal.aborted;
 
                 for (const update of updates) {
                     this.offset = update.update_id + 1;
@@ -147,7 +136,6 @@ export class UpdatePoller {
                 }
             } catch (error) {
                 if (signal.aborted) break;
-                freshConnection = true;
                 if (reconnect.signal.aborted) {
                     failedAttempts = 0;
                     continue;
@@ -155,7 +143,7 @@ export class UpdatePoller {
                 if (
                     error instanceof TelegramApiError &&
                     FATAL_ERROR_CODES.has(error.errorCode) &&
-                    failedAttempts >= this.retryDelays.length
+                    failedAttempts >= RETRY_DELAYS.length
                 ) {
                     throw error;
                 }
@@ -174,11 +162,7 @@ export class UpdatePoller {
         if (this.offset == 0) return;
 
         await this.client
-            .call(
-                'getUpdates',
-                { offset: this.offset, limit: 1, timeout: 0 },
-                { signal: AbortSignal.timeout(this.requestTimeout) }
-            )
+            .call('getUpdates', { offset: this.offset, limit: 1, timeout: 0 })
             .catch((error: unknown) => {
                 this.onError(this.toError(error));
             });
@@ -205,9 +189,7 @@ export class UpdatePoller {
     }
 
     private retryDelay(failedAttempts: number) {
-        return this.retryDelays[
-            Math.min(failedAttempts, this.retryDelays.length - 1)
-        ];
+        return RETRY_DELAYS[Math.min(failedAttempts, RETRY_DELAYS.length - 1)];
     }
 
     private toError(error: unknown) {

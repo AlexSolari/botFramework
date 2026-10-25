@@ -1,41 +1,86 @@
-import { describe, test, expect, mock, beforeAll, afterAll } from 'bun:test';
+import {
+    describe,
+    test,
+    expect,
+    mock,
+    beforeAll,
+    afterAll,
+    afterEach,
+    spyOn
+} from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
     BotApiClient,
-    TelegramApiError
+    TelegramApiError,
+    freshConnectionWindow
 } from '../../../src/services/telegram/botApiClient';
+import type { Milliseconds } from '../../../src/types/timeValues';
 
 interface RecordedRequest {
     url: string;
     init: RequestInit;
 }
 
-function createFetch(...responses: (() => Response)[]) {
+type ScriptedResponse = (init: RequestInit) => Response | Promise<Response>;
+
+/** Replaces the global fetch until the end of the test. */
+function createFetch(...responses: ScriptedResponse[]) {
     const requests: RecordedRequest[] = [];
-    const fetchMock = mock((url: string, init: RequestInit) => {
+    spyOn(globalThis, 'fetch').mockImplementation(((
+        url: string,
+        init: RequestInit
+    ) => {
         requests.push({ url, init });
         const next = responses.shift();
         if (!next) throw new Error('Unexpected request');
-        return Promise.resolve(next());
-    });
+        return Promise.resolve(next(init));
+    }) as typeof fetch);
 
-    return { fetch: fetchMock as unknown as typeof fetch, requests };
+    return { requests };
 }
 
 const json = (body: unknown, status = 200) => () =>
     new Response(JSON.stringify(body), { status });
 
+const delayed =
+    (delay: number, response: ScriptedResponse): ScriptedResponse =>
+    async (init) => {
+        await Bun.sleep(delay);
+        return response(init);
+    };
+
+const networkError: ScriptedResponse = () =>
+    Promise.reject(new TypeError('fetch failed'));
+
+/** Request stuck on a dead connection: fails only once its signal is aborted. */
+const noAnswer: ScriptedResponse = (init) =>
+    new Promise((_, reject) => {
+        const signal = init.signal;
+        if (signal?.aborted) {
+            reject(signal.reason as Error);
+            return;
+        }
+        signal?.addEventListener('abort', () => {
+            reject(signal.reason as Error);
+        });
+    });
+
+const ok = json({ ok: true, result: true });
+
 describe('BotApiClient', () => {
+    afterEach(() => {
+        mock.restore();
+        freshConnectionWindow.until = 0;
+        freshConnectionWindow.failing = false;
+    });
+
     test('should POST JSON params to the method url and return the result', async () => {
-        const { fetch, requests } = createFetch(
+        const { requests } = createFetch(
             json({ ok: true, result: { message_id: 42 } })
         );
-        const client = new BotApiClient('TOKEN', {
-            apiRoot: 'https://api.example',
-            fetch
-        });
+        const client = new BotApiClient('TOKEN');
 
         const result = await client.call('sendMessage', {
             chat_id: 1,
@@ -44,7 +89,9 @@ describe('BotApiClient', () => {
         });
 
         expect(result).toEqual({ message_id: 42 } as never);
-        expect(requests[0].url).toBe('https://api.example/botTOKEN/sendMessage');
+        expect(requests[0].url).toBe(
+            'https://api.telegram.org/botTOKEN/sendMessage'
+        );
         expect(requests[0].init.method).toBe('POST');
         expect(requests[0].init.headers).toEqual({
             'Content-Type': 'application/json'
@@ -55,19 +102,8 @@ describe('BotApiClient', () => {
         });
     });
 
-    test('should use the Telegram API root by default', async () => {
-        const { fetch, requests } = createFetch(json({ ok: true, result: true }));
-        const client = new BotApiClient('TOKEN', { fetch });
-
-        await client.call('deleteWebhook', {});
-
-        expect(requests[0].url).toBe(
-            'https://api.telegram.org/botTOKEN/deleteWebhook'
-        );
-    });
-
     test('should throw TelegramApiError in "<code>: <description>" format', async () => {
-        const { fetch } = createFetch(
+        createFetch(
             json(
                 {
                     ok: false,
@@ -77,7 +113,7 @@ describe('BotApiClient', () => {
                 400
             )
         );
-        const client = new BotApiClient('TOKEN', { fetch });
+        const client = new BotApiClient('TOKEN');
 
         const error = await client
             .call('sendMessage', { chat_id: 1, text: 'x' })
@@ -92,8 +128,8 @@ describe('BotApiClient', () => {
     });
 
     test('should fall back to HTTP status when error body is incomplete', async () => {
-        const { fetch } = createFetch(json({ ok: false }, 500));
-        const client = new BotApiClient('TOKEN', { fetch });
+        createFetch(json({ ok: false }, 500));
+        const client = new BotApiClient('TOKEN');
 
         const error = (await client
             .call('getMe', {})
@@ -104,14 +140,14 @@ describe('BotApiClient', () => {
     });
 
     test('should throw TelegramApiError on non-JSON response', async () => {
-        const { fetch } = createFetch(
+        createFetch(
             () =>
                 new Response('<html>Bad Gateway</html>', {
                     status: 502,
                     statusText: 'Bad Gateway'
                 })
         );
-        const client = new BotApiClient('TOKEN', { fetch });
+        const client = new BotApiClient('TOKEN');
 
         const error = (await client
             .call('getMe', {})
@@ -132,11 +168,11 @@ describe('BotApiClient', () => {
             },
             429
         );
-        const { fetch, requests } = createFetch(
+        const { requests } = createFetch(
             floodError,
             json({ ok: true, result: true })
         );
-        const client = new BotApiClient('TOKEN', { fetch });
+        const client = new BotApiClient('TOKEN');
 
         const result = await client.call('deleteMessage', {
             chat_id: 1,
@@ -157,8 +193,8 @@ describe('BotApiClient', () => {
             },
             429
         );
-        const { fetch, requests } = createFetch(floodError, floodError);
-        const client = new BotApiClient('TOKEN', { fetch });
+        const { requests } = createFetch(floodError, floodError);
+        const client = new BotApiClient('TOKEN');
 
         const error = (await client
             .call('getMe', {})
@@ -170,51 +206,180 @@ describe('BotApiClient', () => {
     });
 
     test('should not retry other errors', async () => {
-        const { fetch, requests } = createFetch(
+        const { requests } = createFetch(
             json({ ok: false, error_code: 403, description: 'Forbidden' }, 403)
         );
-        const client = new BotApiClient('TOKEN', { fetch });
+        const client = new BotApiClient('TOKEN');
 
         await client.call('getMe', {}).catch(() => undefined);
 
         expect(requests.length).toBe(1);
     });
 
-    test('should pass abort signal to fetch', async () => {
-        const { fetch, requests } = createFetch(json({ ok: true, result: [] }));
-        const client = new BotApiClient('TOKEN', { fetch });
+    test('should abort the request when the signal is aborted', async () => {
+        createFetch(noAnswer);
+        const client = new BotApiClient('TOKEN');
         const controller = new AbortController();
 
-        await client.call('getUpdates', {}, { signal: controller.signal });
+        const result = client
+            .call('getUpdates', {}, { signal: controller.signal })
+            .catch((e: unknown) => e);
+        controller.abort();
 
-        expect(requests[0].init.signal).toBe(controller.signal);
+        expect(((await result) as Error).name).toBe('AbortError');
     });
 
-    test('should reuse pooled connections unless a fresh connection is requested', async () => {
-        const { fetch, requests } = createFetch(
-            json({ ok: true, result: [] }),
-            json({ ok: true, result: [] })
+    test('should drop a request that gets no answer in time', async () => {
+        createFetch(noAnswer);
+        const client = new BotApiClient('TOKEN');
+
+        const timedOut = (await client
+            .call('getMe', {}, { timeout: 10 as Milliseconds })
+            .catch((e: unknown) => e)) as Error;
+
+        expect(timedOut.name).toBe('TimeoutError');
+    });
+
+    test('should apply the timeout to each attempt separately', async () => {
+        const floodError = json(
+            {
+                ok: false,
+                error_code: 429,
+                description: 'Too Many Requests: retry after 0',
+                parameters: { retry_after: 0 }
+            },
+            429
         );
-        const client = new BotApiClient('TOKEN', { fetch });
+        createFetch(
+            delayed(60, floodError),
+            delayed(60, ok)
+        );
+        const client = new BotApiClient('TOKEN');
 
-        await client.call('getUpdates', {});
-        await client.call('getUpdates', {}, { freshConnection: true });
+        expect(
+            await client.call('getMe', {}, { timeout: 100 as Milliseconds })
+        ).toBe(true as never);
+    });
 
-        expect(requests[0].init.keepalive).toBeUndefined();
-        expect(requests[1].init.keepalive).toBe(false);
+    describe('fresh connections', () => {
+        test('should reuse pooled connections by default', async () => {
+            const { requests } = createFetch(ok);
+            const client = new BotApiClient('TOKEN');
+
+            await client.call('getMe', {});
+
+            expect(requests[0].init.keepalive).toBeUndefined();
+        });
+
+        test('should open new connections for a while when requested', async () => {
+            const { requests } = createFetch(ok, ok, ok);
+            const client = new BotApiClient('TOKEN');
+            const now = spyOn(performance, 'now').mockReturnValue(1_000);
+
+            client.useFreshConnections();
+            await client.call('getMe', {});
+            now.mockReturnValue(30_000);
+            await client.call('getMe', {});
+            now.mockReturnValue(32_000);
+            await client.call('getMe', {});
+
+            expect(requests.map((x) => x.init.keepalive)).toEqual([
+                false,
+                false,
+                undefined
+            ]);
+        });
+
+        test('should share the window between clients', async () => {
+            const { requests } = createFetch(ok, ok);
+            const first = new BotApiClient('TOKEN');
+            const second = new BotApiClient('OTHER');
+
+            first.useFreshConnections();
+            await first.call('getMe', {});
+            await second.call('getMe', {});
+
+            expect(requests.map((x) => x.init.keepalive)).toEqual([
+                false,
+                false
+            ]);
+        });
+
+        test('should open new connections after a network error', async () => {
+            const { requests } = createFetch(networkError, ok);
+            const client = new BotApiClient('TOKEN');
+
+            await client.call('getMe', {}).catch(() => undefined);
+            await client.call('getMe', {});
+
+            expect(requests[1].init.keepalive).toBe(false);
+        });
+
+        test('should keep opening new connections after a network error until a request gets an answer', async () => {
+            const { requests } = createFetch(
+                networkError,
+                networkError,
+                ok,
+                ok
+            );
+            const client = new BotApiClient('TOKEN');
+            const now = spyOn(performance, 'now').mockReturnValue(1_000);
+
+            await client.call('getMe', {}).catch(() => undefined);
+            now.mockReturnValue(100_000);
+            await client.call('getMe', {}).catch(() => undefined);
+            now.mockReturnValue(200_000);
+            await client.call('getMe', {});
+            await client.call('getMe', {});
+
+            expect(requests.map((x) => x.init.keepalive)).toEqual([
+                undefined,
+                false,
+                false,
+                undefined
+            ]);
+        });
+
+        test('should open new connections after a timeout', async () => {
+            const { requests } = createFetch(noAnswer, ok);
+            const client = new BotApiClient('TOKEN');
+
+            await client
+                .call('getMe', {}, { timeout: 10 as Milliseconds })
+                .catch(() => undefined);
+            await client.call('getMe', {});
+
+            expect(requests[1].init.keepalive).toBe(false);
+        });
+
+        test('should keep pooled connections after an API error or an abort by the caller', async () => {
+            const { requests } = createFetch(
+                json({ ok: false, error_code: 403, description: 'Forbidden' }, 403),
+                noAnswer,
+                ok
+            );
+            const client = new BotApiClient('TOKEN');
+            const controller = new AbortController();
+
+            await client.call('getMe', {}).catch(() => undefined);
+            const aborted = client
+                .call('getMe', {}, { signal: controller.signal })
+                .catch(() => undefined);
+            controller.abort();
+            await aborted;
+            await client.call('getMe', {});
+
+            expect(requests[2].init.keepalive).toBeUndefined();
+        });
     });
 
     describe('token redaction', () => {
         const token = '123456:SECRET-token';
         const url = `https://api.telegram.org/bot${token}/getMe`;
 
-        const failingFetch = (error: unknown) =>
-            (() => Promise.reject(error)) as unknown as typeof fetch;
-
         const callAndCatch = async (error: unknown) => {
-            const client = new BotApiClient(token, {
-                fetch: failingFetch(error)
-            });
+            createFetch(() => Promise.reject(error));
+            const client = new BotApiClient(token);
             return await client.call('getMe', {}).then(
                 () => undefined,
                 (reason: unknown) => reason
@@ -272,10 +437,10 @@ describe('BotApiClient', () => {
         });
 
         test('should keep API errors as TelegramApiError', async () => {
-            const { fetch } = createFetch(
+            createFetch(
                 json({ ok: false, error_code: 403, description: 'Forbidden' }, 403)
             );
-            const client = new BotApiClient(token, { fetch });
+            const client = new BotApiClient(token);
 
             await expect(client.call('getMe', {})).rejects.toBeInstanceOf(
                 TelegramApiError
@@ -298,10 +463,10 @@ describe('BotApiClient', () => {
         });
 
         test('should send InputFile params as multipart form data', async () => {
-            const { fetch, requests } = createFetch(
+            const { requests } = createFetch(
                 json({ ok: true, result: { message_id: 7 } })
             );
-            const client = new BotApiClient('TOKEN', { fetch });
+            const client = new BotApiClient('TOKEN');
 
             await client.call('sendPhoto', {
                 chat_id: 5,
@@ -327,10 +492,10 @@ describe('BotApiClient', () => {
         });
 
         test('should use explicit filename when provided', async () => {
-            const { fetch, requests } = createFetch(
+            const { requests } = createFetch(
                 json({ ok: true, result: { message_id: 7 } })
             );
-            const client = new BotApiClient('TOKEN', { fetch });
+            const client = new BotApiClient('TOKEN');
 
             await client.call('sendVideo', {
                 chat_id: 5,
@@ -343,11 +508,34 @@ describe('BotApiClient', () => {
             expect(file.name).toBe('clip.mp4');
         });
 
+        test('should extend the timeout by the time the upload takes at the minimum speed', async () => {
+            const largeFilePath = join(directory, 'large.mp4');
+            await writeFile(largeFilePath, Buffer.alloc(20 * 1024));
+            createFetch(delayed(60, ok), noAnswer);
+            const client = new BotApiClient('TOKEN');
+            const video = { source: largeFilePath };
+            const options = { timeout: 10 as Milliseconds };
+
+            const uploaded = await client.call(
+                'sendVideo',
+                { chat_id: 5, video },
+                options
+            );
+            const startedAt = performance.now();
+            const timedOut = (await client
+                .call('sendVideo', { chat_id: 5, video }, options)
+                .catch((e: unknown) => e)) as Error;
+
+            expect(uploaded).toBe(true as never);
+            expect(timedOut.name).toBe('TimeoutError');
+            expect(performance.now() - startedAt).toBeGreaterThanOrEqual(200);
+        });
+
         test('should not treat objects with other keys as files', async () => {
-            const { fetch, requests } = createFetch(
+            const { requests } = createFetch(
                 json({ ok: true, result: true })
             );
-            const client = new BotApiClient('TOKEN', { fetch });
+            const client = new BotApiClient('TOKEN');
 
             await client.call('setMessageReaction', {
                 chat_id: 1,
