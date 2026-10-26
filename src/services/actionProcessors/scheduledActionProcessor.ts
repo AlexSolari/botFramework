@@ -1,3 +1,4 @@
+import { Sema as Semaphore } from 'async-sema';
 import { ChatInfo } from '../../dtos/chatInfo';
 import {
     ScheduledAction,
@@ -6,6 +7,7 @@ import {
 import { ChatContextInternal } from '../../entities/context/chatContext';
 import { secondsToMilliseconds } from '../../helpers/timeConvertions';
 import { createTrace } from '../../helpers/traceFactory';
+import { getOrCreateIfNotExists } from '../../helpers/mapUtils';
 import { IActionState } from '../../types/actionState';
 import { IScheduler } from '../../types/scheduler';
 import { IStorageClient } from '../../types/storage';
@@ -23,6 +25,8 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
     );
 
     private scheduled!: ScheduledActionInternal<IActionState>[];
+    private readonly runLocks = new Map<string, Semaphore>();
+    private readonly semaphoreFactory = () => new Semaphore(1);
 
     constructor(
         botName: string,
@@ -94,6 +98,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                 const chatInfo = new ChatInfo(chatId, chatName, []);
 
                 return this.scheduled.map(async (scheduledAction) => {
+                    const runKey = `${scheduledAction.key}-${chatId}`;
                     const ctx = new ChatContextInternal<IActionState>(
                         this.storage,
                         this.scheduler,
@@ -101,15 +106,17 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                         this.api.client,
                         scheduledAction,
                         chatInfo,
-                        createTrace(
-                            scheduledAction,
-                            this.botName,
-                            `${scheduledAction.key}-${chatId}`
-                        ),
+                        createTrace(scheduledAction, this.botName, runKey),
                         this.botName
                     );
 
                     const { proxy, revoke } = Proxy.revocable(ctx, {});
+                    const lock = getOrCreateIfNotExists(
+                        this.runLocks,
+                        runKey,
+                        this.semaphoreFactory
+                    );
+                    await lock.acquire();
 
                     try {
                         await this.executeActionAndQueueResponses(
@@ -117,6 +124,7 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                             proxy
                         );
                     } finally {
+                        lock.release();
                         revoke();
                         this.api.flushResponses();
                     }

@@ -14,6 +14,7 @@ import { ScheduledActionProcessor } from '../../../src/services/actionProcessors
 import { ActionKey } from '../../../src/types/action';
 import type { ScheduledAction } from '../../../src/entities/actions/scheduledAction';
 import type { IActionState } from '../../../src/types/actionState';
+import { ScheduledActionBuilder } from '../../../src/helpers/builders/scheduledActionBuilder';
 import {
     createMockStorage,
     createMockScheduler,
@@ -442,6 +443,150 @@ describe('ScheduledActionProcessor', () => {
             } finally {
                 setSystemTime(); // restore real time
             }
+        });
+    });
+
+    describe('overlapping checks', () => {
+        function createStartupCheckScheduler() {
+            const startupChecks: (() => unknown)[] = [];
+            const scheduler: MockScheduler = {
+                ...createMockScheduler(),
+                createOnetimeTask: mock(
+                    (name: string, action: () => unknown) => {
+                        if (name === 'ScheduledProcessing_Startup') {
+                            startupChecks.push(action);
+                        }
+                    }
+                )
+            };
+
+            return {
+                scheduler,
+                runCheck: () => startupChecks[0]()
+            };
+        }
+
+        function createInMemoryStorage(): IStorageClient {
+            const states = new Map<string, IActionState>();
+
+            return {
+                ...createMockStorage(),
+                getActionState: ((
+                    action: ScheduledAction<IActionState>,
+                    chatId: number
+                ) =>
+                    structuredClone(
+                        states.get(`${action.key}-${chatId}`) ??
+                            action.stateConstructor()
+                    )) as IStorageClient['getActionState'],
+                saveActionExecutionResult: ((
+                    action: ScheduledAction<IActionState>,
+                    chatId: number,
+                    state: IActionState
+                ) => {
+                    states.set(
+                        `${action.key}-${chatId}`,
+                        structuredClone(state)
+                    );
+                    return Promise.resolve();
+                }) as IStorageClient['saveActionExecutionResult']
+            };
+        }
+
+        function createPendingHandler() {
+            const pending: (() => void)[] = [];
+            const handler = mock(
+                () =>
+                    new Promise<void>((resolve) => {
+                        pending.push(resolve);
+                    })
+            );
+
+            return {
+                handler,
+                finish: () => pending.splice(0).forEach((run) => run())
+            };
+        }
+
+        const nextTick = () =>
+            new Promise((resolve) => setTimeout(resolve, 0));
+
+        test('should not run a handler again while its previous run in the chat is in progress', async () => {
+            const { scheduler: localScheduler, runCheck } =
+                createStartupCheckScheduler();
+            const { handler, finish } = createPendingHandler();
+            const action = new ScheduledActionBuilder('slow')
+                .runAt(0)
+                .in([111, 222])
+                .do(handler)
+                .build();
+
+            const localProcessor = new ScheduledActionProcessor(
+                'overlap-bot',
+                { chat1: 111, chat2: 222 },
+                createInMemoryStorage(),
+                localScheduler,
+                new TypedEventEmitter()
+            );
+            localProcessor.initialize(
+                createMockTelegramApi(),
+                [action],
+                3600 as Seconds
+            );
+
+            runCheck();
+            await nextTick();
+            runCheck();
+            await nextTick();
+            expect(handler.mock.calls.length).toBe(2);
+
+            finish();
+            await localProcessor.waitForProcessing();
+
+            // The waiting check sees the saved run and skips the handler
+            expect(handler.mock.calls.length).toBe(2);
+        });
+
+        test('should run other actions while one is still running', async () => {
+            const { scheduler: localScheduler, runCheck } =
+                createStartupCheckScheduler();
+            const slow = createPendingHandler();
+            const slowExec = mock(() => slow.handler().then(() => []));
+            const fastExec = mock(() => Promise.resolve([]));
+            const actions = [
+                { key: 'scheduled:slow-action', exec: slowExec },
+                { key: 'scheduled:fast-action', exec: fastExec }
+            ] as unknown as ScheduledAction<IActionState>[];
+
+            const localProcessor = new ScheduledActionProcessor(
+                'overlap-other-bot',
+                { chat1: 111 },
+                createMockStorage(),
+                localScheduler,
+                new TypedEventEmitter()
+            );
+            localProcessor.initialize(
+                createMockTelegramApi(),
+                actions,
+                3600 as Seconds
+            );
+
+            runCheck();
+            await nextTick();
+            runCheck();
+            await nextTick();
+
+            expect(slowExec.mock.calls.length).toBe(1);
+            expect(fastExec.mock.calls.length).toBe(2);
+
+            slow.finish();
+            await nextTick();
+
+            // The waiting run starts once the previous one finishes
+            expect(slowExec.mock.calls.length).toBe(2);
+
+            slow.finish();
+            await localProcessor.waitForProcessing();
         });
     });
 });
