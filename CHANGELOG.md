@@ -26,6 +26,7 @@ This file was reconstructed from the git history and `package.json` version bump
 - Scheduled actions were first checked at the top of the hour after startup, so an action due in the hour of a restart that hadn't run yet, such as `runAt(23)` after a restart at 23:30, was skipped for the day. The bot now also checks once at startup.
 - A scheduled handler still running at the next check, for example a `fetch` stuck while the network is down, was run again, because the action counts as run only once its handler finishes. It could then run twice in a day. A check now waits for the previous run of an action in the same chat to finish, then runs the action only if it is still due. The other actions don't wait.
 - Calling `stopBots()` a second time never finished, for example after starting bots again or from a second shutdown signal: stopped bots stayed in `botOrchestrator.bots` and were stopped again, and closing the storage a second time waited forever. Stopped bots are now removed, and `BotInstance.stop()` and `JsonFileStorage.close()` return the first call's promise when called again.
+- A cooldown started with `startCustomCooldown()` was kept only in memory, so a restart replaced it with the action's cooldown, and an action shared between two bots shared it for chats with the same id. `startCustomCooldown(0)` was ignored, and the action's cooldown applied instead. The custom cooldown is now saved in the chat's action state, in a new optional `customCooldown` field of `IActionState`, and 0 is honored.
 
 ## [0.9.1] - 2026-10-09
 

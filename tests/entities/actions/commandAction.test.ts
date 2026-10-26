@@ -402,6 +402,70 @@ describe('CommandActionInternal', () => {
 
             expect(callCount).toBe(1);
         });
+
+        test('should keep a custom cooldown in the state, so it applies after a restart', async () => {
+            let callCount = 0;
+            const handler: CommandHandler<ActionStateBase> = (ctx) => {
+                callCount++;
+                ctx.startCustomCooldown(3600 as Seconds);
+            };
+            const state: IActionState = {
+                lastExecutedDate: 0,
+                pinnedMessages: []
+            };
+            const storage = createMockStorage(state);
+
+            const action = buildAction({ handler });
+            const { ctx: firstCtx } = createContext(action, { storage });
+            await action.exec(firstCtx);
+
+            expect(state.customCooldown).toBe(3600 as Seconds);
+
+            const restartedAction = buildAction({ handler });
+            const { ctx: secondCtx } = createContext(restartedAction, {
+                storage
+            });
+            await restartedAction.exec(secondCtx);
+
+            expect(callCount).toBe(1);
+        });
+
+        test('should apply a custom cooldown of 0 instead of the action cooldown', async () => {
+            let callCount = 0;
+            const action = buildAction({
+                handler: (ctx) => {
+                    callCount++;
+                    ctx.startCustomCooldown(0 as Seconds);
+                },
+                providers: {
+                    cooldownProvider: () => new CooldownInfo(3600 as Seconds)
+                }
+            });
+            const storage = createMockStorage();
+
+            const { ctx: firstCtx } = createContext(action, { storage });
+            await action.exec(firstCtx);
+            const { ctx: secondCtx } = createContext(action, { storage });
+            await action.exec(secondCtx);
+
+            expect(callCount).toBe(2);
+        });
+
+        test('should clear the custom cooldown when an execution starts the action cooldown', async () => {
+            const action = buildAction({ handler: () => {} });
+            const state: IActionState = {
+                lastExecutedDate: 0,
+                pinnedMessages: [],
+                customCooldown: 3600 as Seconds
+            };
+            const { ctx } = createContext(action, {
+                storage: createMockStorage(state)
+            });
+
+            await action.exec(ctx);
+
+            expect(state.customCooldown).toBeUndefined();
+        });
     });
 
     describe('exec - state persistence', () => {

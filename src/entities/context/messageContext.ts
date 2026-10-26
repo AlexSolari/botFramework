@@ -141,6 +141,10 @@ export class MessageContextInternal<
         this.startCooldown = false;
     }
 
+    /**
+     * Starts a cooldown of `customCooldown` instead of the action's one.
+     * It is saved in the chat's state and applies until the next execution that starts a cooldown.
+     */
     startCustomCooldown(customCooldown: Seconds) {
         this.startCooldown = true;
         this.customCooldown = customCooldown;

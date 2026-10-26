@@ -16,7 +16,6 @@ import { getOrCreateIfNotExists } from '../../helpers/mapUtils';
 import { CooldownInfo } from '../../dtos/cooldownInfo';
 import { TextMessage } from '../../dtos/responses/textMessage';
 import { ReplyInfo } from '../../dtos/replyInfo';
-import { Seconds } from '../../types/timeValues';
 import { CommandActionPropertyProvider } from '../../types/propertyProvider';
 import { CommandActionProviders } from '../../dtos/propertyProviderSets';
 import { BotResponse } from '../../types/response';
@@ -42,7 +41,6 @@ export class CommandActionInternal<TActionState extends IActionState>
     private readonly usersWhitelistProvider: CommandActionPropertyProvider<
         number[]
     >;
-    private readonly customCooldowns = new Map<number, Seconds>();
     private readonly ratelimitSemaphores = new Map<number, Semaphore>();
     private readonly maxAllowedSimultaniousExecutions: number;
 
@@ -152,8 +150,7 @@ export class CommandActionInternal<TActionState extends IActionState>
         state: TActionState
     ): BotResponse[] | null {
         const cooldownInMilliseconds = secondsToMilliseconds(
-            this.customCooldowns.get(ctx.chatInfo.id) ??
-                this.cooldownInfoProvider(ctx).cooldown
+            state.customCooldown ?? this.cooldownInfoProvider(ctx).cooldown
         );
         const onCooldown =
             Date.now() - state.lastExecutedDate < cooldownInMilliseconds;
@@ -196,15 +193,7 @@ export class CommandActionInternal<TActionState extends IActionState>
             await this.handler(ctx, state);
 
             if (ctx.startCooldown) {
-                if (ctx.customCooldown) {
-                    this.customCooldowns.set(
-                        ctx.chatInfo.id,
-                        ctx.customCooldown
-                    );
-                } else {
-                    this.customCooldowns.delete(ctx.chatInfo.id);
-                }
-
+                state.customCooldown = ctx.customCooldown;
                 state.lastExecutedDate = Date.now();
             }
 
