@@ -86,9 +86,12 @@ class BotOrchestrator {
      * Responses waiting on `ctx.wait()` are dropped and pending `deleteAfter()` timers are cancelled.
      */
     async stopBots() {
-        for (const bot of this.bots) {
+        const bots = [...this.bots];
+        for (const bot of bots) {
             await bot.stop();
         }
+
+        this.bots = this.bots.filter((bot) => !bots.includes(bot));
     }
 }
 

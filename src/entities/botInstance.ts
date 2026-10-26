@@ -17,6 +17,7 @@ export class BotInstance {
     private readonly storage: IStorageClient;
     private readonly scheduler: IScheduler;
     private readonly actionProcessingService: ActionProcessingService;
+    private stopping?: Promise<void>;
 
     readonly name: string;
     readonly eventEmitter: TypedEventEmitter<Record<string, unknown>>;
@@ -92,7 +93,16 @@ export class BotInstance {
         this.actionProcessingService.reconnect();
     }
 
-    async stop() {
+    /**
+     * Stops the bot. Later calls return the promise of the first one.
+     */
+    stop() {
+        this.stopping ??= this.stopProcessing();
+
+        return this.stopping;
+    }
+
+    private async stopProcessing() {
         this.eventEmitter.emit(BotEventType.botStopping, {
             botName: this.name,
             traceId: createTrace(this, this.name, 'stop')

@@ -49,5 +49,20 @@ describe('BotInstance', () => {
 
             expect(callsBeforeClose).toBe(2);
         });
+
+        test('should stop only once when called again', async () => {
+            const { bot, storage } = createBot();
+            const stopProcessing = mock(() => Promise.resolve());
+            bot['actionProcessingService'].stop = stopProcessing;
+
+            const firstStop = bot.stop();
+
+            expect(bot.stop()).toBe(firstStop);
+            await bot.stop();
+            expect(stopProcessing.mock.calls.length).toBe(1);
+            expect(
+                (storage.close as ReturnType<typeof mock>).mock.calls.length
+            ).toBe(1);
+        });
     });
 });

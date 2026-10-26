@@ -444,6 +444,8 @@ await botOrchestrator.stopBots();
 
 A handler that never finishes keeps `stopBots()` waiting too.
 
+Stopped bots are removed from `botOrchestrator.bots`. Calling `stopBots()` again, for example from a second shutdown signal, waits for the shutdown already in progress, and stops only the bots started since.
+
 ## Network Changes
 
 Every request to Telegram that gets no answer within 60 seconds, for example because it is stuck on a connection that stopped working after the default route switched to another network interface, is dropped. Requests uploading a file get extra time for the upload, as long as it would take at 100 KB/s, so a 50 MB video may take up to about 9.5 minutes. Requests for updates are retried; a dropped response emits an `error` event and is not resent, as Telegram may have received it. After a dropped request or a network error, requests of all bots open new connections instead of reusing pooled ones, which may be dead too, as the bots share the connection pool. This lasts until a request gets an answer, and at least 30 seconds. When stopping after a network change, call `reconnect()` before `stopBots()`, so the responses still due don't get stuck on a dead connection.

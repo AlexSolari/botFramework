@@ -563,6 +563,19 @@ describe('JsonFileStorage', () => {
             await expect(localStorage.close()).resolves.toBeUndefined();
         });
 
+        test('should resolve a second close instead of waiting forever', async () => {
+            const localStorage = new JsonFileStorage(
+                TEST_BOT_NAME,
+                [testAction],
+                TEST_STORAGE_PATH
+            );
+
+            const firstClose = localStorage.close();
+
+            expect(localStorage.close()).toBe(firstClose);
+            await expect(localStorage.close()).resolves.toBeUndefined();
+        });
+
         test('should reject saves after close instead of waiting forever', async () => {
             const localStorage = new JsonFileStorage(
                 TEST_BOT_NAME,
