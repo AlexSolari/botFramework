@@ -18,6 +18,7 @@ import {
     createMockStorage,
     createMockScheduler,
     createMockTelegramApi,
+    getMockFn,
     type MockScheduler
 } from './processorTestHelpers';
 
@@ -249,7 +250,7 @@ describe('ScheduledActionProcessor', () => {
 
         test('should call executeAction for each chat and action combination', async () => {
             const localEventEmitter = new TypedEventEmitter();
-            const localScheduler = createImmediateOnetimeScheduler();
+            const localScheduler = createMockScheduler();
 
             const localProcessor = new ScheduledActionProcessor(
                 'multi-run-bot',
@@ -270,7 +271,7 @@ describe('ScheduledActionProcessor', () => {
 
             await new Promise((resolve) => setTimeout(resolve, 20));
 
-            // Should have been called once per chat (2 chats × 1 action = 2 calls)
+            // The startup check runs once per chat (2 chats × 1 action = 2 calls)
             expect(execMock.mock.calls.length).toBe(2);
         });
 
@@ -338,14 +339,52 @@ describe('ScheduledActionProcessor', () => {
             expect(createTaskMock.mock.calls.length).toBe(1);
         });
 
-        test('should schedule via onetime task (with zero delay) when initialized at aligned time', async () => {
-            // Set system time to exactly HH:00:00, where the computed delay is 0
+        test('should run a check at startup, before the first top of the hour', async () => {
+            const alignedTime = new Date();
+            alignedTime.setMinutes(30, 0, 0);
+            setSystemTime(alignedTime);
+
+            try {
+                const localScheduler = createMockScheduler();
+                const execMock = mock(() => Promise.resolve([]));
+                const action = {
+                    key: 'scheduled:startup-action' as ActionKey,
+                    exec: execMock
+                } as unknown as ScheduledAction<IActionState>;
+
+                const localProcessor = new ScheduledActionProcessor(
+                    'startup-bot',
+                    { chat1: 111 },
+                    createMockStorage(),
+                    localScheduler,
+                    new TypedEventEmitter()
+                );
+
+                localProcessor.initialize(
+                    createMockTelegramApi(),
+                    [action],
+                    3600 as Seconds
+                );
+
+                const delays = getMockFn(
+                    localScheduler.createOnetimeTask
+                ).mock.calls.map((call) => call[2] as number);
+                expect(delays).toEqual([0, 1800000]);
+
+                await new Promise((resolve) => setTimeout(resolve, 20));
+                expect(execMock.mock.calls.length).toBe(1);
+                expect(localScheduler.createTaskCallCount()).toBe(0);
+            } finally {
+                setSystemTime();
+            }
+        });
+
+        test('should start the periodic checks at the next hour when initialized at the top of the hour', () => {
             const alignedTime = new Date();
             alignedTime.setMinutes(0, 0, 0);
             setSystemTime(alignedTime);
 
             try {
-                const localEventEmitter = new TypedEventEmitter();
                 const localScheduler = createMockScheduler();
 
                 const localProcessor = new ScheduledActionProcessor(
@@ -353,23 +392,22 @@ describe('ScheduledActionProcessor', () => {
                     { chat1: 111 },
                     createMockStorage(),
                     localScheduler,
-                    localEventEmitter
+                    new TypedEventEmitter()
                 );
 
-                const mockApi = createMockTelegramApi();
-                const action = createMockScheduledAction();
+                localProcessor.initialize(
+                    createMockTelegramApi(),
+                    [createMockScheduledAction()],
+                    3600 as Seconds
+                );
 
-                localProcessor.initialize(mockApi, [action], 3600 as Seconds);
-
-                // Scheduling always goes through createOnetimeTask, even with zero delay
-                expect(localScheduler.createOnetimeTaskCallCount()).toBe(1);
-                expect(localScheduler.createTaskCallCount()).toBe(0);
-
-                // Once the zero-delay onetime task fires, the periodic task is created
-                await new Promise((resolve) => setTimeout(resolve, 20));
-                expect(localScheduler.createTaskCallCount()).toBe(1);
+                // The startup check covers the current hour
+                const delays = getMockFn(
+                    localScheduler.createOnetimeTask
+                ).mock.calls.map((call) => call[2] as number);
+                expect(delays).toEqual([0, 3600000]);
             } finally {
-                setSystemTime(); // restore real time
+                setSystemTime();
             }
         });
 

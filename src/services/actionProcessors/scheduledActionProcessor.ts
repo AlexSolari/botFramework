@@ -44,11 +44,18 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
         this.scheduled = scheduled as ScheduledActionInternal<IActionState>[];
 
         if (this.scheduled.length > 0) {
+            this.scheduler.createOnetimeTask(
+                'ScheduledProcessing_Startup',
+                () => this.track(this.runScheduled()),
+                0 as Milliseconds,
+                this.botName
+            );
+
             const now = new Date();
             const nextExecutionTime = new Date(now);
             nextExecutionTime.setMinutes(0, 0, 0);
 
-            if (nextExecutionTime.getTime() < now.getTime()) {
+            if (nextExecutionTime.getTime() <= now.getTime()) {
                 nextExecutionTime.setTime(
                     nextExecutionTime.getTime() + 3600000
                 );

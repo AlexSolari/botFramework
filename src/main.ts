@@ -37,7 +37,7 @@ class BotOrchestrator {
         chats: Record<string, number>;
         /** Storage path for default `JsonFileStorage` client. Will be used only if `storageClient` is not provided. If not provided, default value of `./storage/` will be used.*/
         storagePath?: string;
-        /** Period of time between execution of scheduled actions. */
+        /** Period of time between checks for due scheduled actions. Defaults to 1 hour. Keep it at 1 hour or less, or actions due in the hours without a check can be skipped for the day. */
         scheduledPeriod?: Seconds;
         services?: {
             /** Storage client for bot state storage. If not provided, default `JsonFileStorage` will be used. */

@@ -209,8 +209,9 @@ const dailyNotification = new ScheduledActionBuilder('GM')
 How scheduling works:
 
 - Actions only run in chats that are both listed in the `chats` option of `startBot` and in the action's `.in([...])` whitelist. **Without `.in(...)` a scheduled action never runs.**
-- `scheduledPeriod` controls how often the bot checks for due actions. The first check happens at the top of the next hour, then repeats every period.
-- `runAt(hour)` (0-23, server local time, default `0`) means "run at the first check at or after this hour, if the action hasn't already run today". With the default 1 hour period it fires shortly after the hour; with a longer period it can fire later.
+- `scheduledPeriod` controls how often the bot checks for due actions. The bot checks once at startup, then at the top of the next hour, then every period.
+- `runAt(hour)` (0-23, server local time, default `0`) means "run at the first check at or after this hour, if the action hasn't already run today". With the default 1 hour period it fires shortly after the hour.
+- Keep the period at 1 hour or less. With a longer one, some hours get no check, so an action due in one of them runs at the next check of the same day, or not at all if the day has none left, for example `runAt(23)` with checks at 22:00 and 00:00.
 - The scheduled handler also receives a cache accessor and the state: `.do((ctx, getCached, state) => ...)`. Values are registered with `.withSharedCache(key, factory, invalidationHours)`; they are shared process-wide and refreshed after the timeout (20 hours by default).
 
 ### Replies and message sending
@@ -342,7 +343,7 @@ When starting a bot, you can provide the following configuration:
 | `actions`         | `{ commands: CommandAction[], scheduled: ScheduledAction[], inlineQueries: InlineQueryAction[], persistentCaptures?: PersistentReplyCapture[], messageFilter?: ... }` | Yes (can be empty)          | Collection of actions grouped under `actions` — `commands`, `scheduled`, `inlineQueries`, and optional `persistentCaptures` and `messageFilter` |
 | `chats`           | `Record<string, number>`                                                                                               | Yes                         | Object containing chat name-id pairs. Used for logging and scheduled execution.                                        |
 | `storagePath`     | `string`                                                                                                               | No (defaults to `./storage`) | Custom storage path for default JsonFileStorage client; ignored if `services.storageClient` is provided               |
-| `scheduledPeriod` | `Seconds`                                                                                                              | No (will default to 1 hour) | Period between scheduled action executions                                                                             |
+| `scheduledPeriod` | `Seconds`                                                                                                              | No (will default to 1 hour) | Period between checks for due scheduled actions; keep it at 1 hour or less                                             |
 | `services`        |                                                                                                                        | No                          | Custom services to be used instead of default ones                                                                     |
 
 Services object should have following structure:
@@ -381,6 +382,8 @@ const counterCommand = new CommandActionBuilderWithState<MyCustomState>(
 ```
 
 State is mutable and all changes to it will be saved after execution of action is finished. If the same command can run concurrently in one chat, the last execution to finish overwrites the others' changes; use `withRatelimit(1)` to prevent that (see [Command Actions](#command-actions)).
+
+If writing the state fails, for example because the disk is full or was remounted read-only, the action fails: the error is reported as an `error` event and its responses are dropped. The new state is still kept in memory, so cooldowns still apply, and it reaches the file with the next save of the same action.
 
 ### Inline Queries
 
