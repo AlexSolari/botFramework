@@ -301,6 +301,66 @@ describe('TelegramApiService', () => {
             ]);
         });
 
+        test('should quote the trigger text in image and video replies', async () => {
+            const call = mock((_method: string, _params: object) => ok());
+            const { api } = createApi(call);
+            const image = { source: 'picture.png' };
+            const video = { source: 'clip.mp4' };
+
+            await process(
+                api,
+                new ImageMessage(
+                    image,
+                    chatInfo,
+                    traceId,
+                    action,
+                    new ReplyInfo(7, 'hello')
+                )
+            );
+            await process(
+                api,
+                new VideoMessage(
+                    video,
+                    chatInfo,
+                    traceId,
+                    action,
+                    new ReplyInfo(7, 'hello')
+                )
+            );
+
+            expect(
+                call.mock.calls.map(([, params]) => params)
+            ).toMatchObject([
+                { reply_parameters: { message_id: 7, quote: 'hello' } },
+                { reply_parameters: { message_id: 7, quote: 'hello' } }
+            ]);
+        });
+
+        test('should resend an image without reply info when its quote is invalid', async () => {
+            const call = mock((_method: string, params: CallParams) =>
+                params.reply_parameters
+                    ? Promise.reject(
+                          new Error(`Bad Request: ${TELEGRAM_ERROR_QUOTE_INVALID}`)
+                      )
+                    : ok()
+            );
+            const { api } = createApi(call);
+
+            await process(
+                api,
+                new ImageMessage(
+                    { source: 'picture.png' },
+                    chatInfo,
+                    traceId,
+                    action,
+                    new ReplyInfo(7, 'not in the message')
+                )
+            );
+
+            expect(call).toHaveBeenCalledTimes(2);
+            expect(call.mock.calls[1][1].reply_parameters).toBeUndefined();
+        });
+
         test('should set a reaction', async () => {
             const call = mock((_method: string, _params: object) => ok());
             const { api } = createApi(call);

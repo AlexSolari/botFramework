@@ -307,7 +307,10 @@ export class TelegramApiService {
                         chat_id: response.chatInfo.id,
                         photo: response.content,
                         reply_parameters: response.replyInfo
-                            ? { message_id: response.replyInfo.id }
+                            ? {
+                                  message_id: response.replyInfo.id,
+                                  quote: response.replyInfo.quote
+                              }
                             : undefined
                     });
                 case 'video':
@@ -315,7 +318,10 @@ export class TelegramApiService {
                         chat_id: response.chatInfo.id,
                         video: response.content,
                         reply_parameters: response.replyInfo
-                            ? { message_id: response.replyInfo.id }
+                            ? {
+                                  message_id: response.replyInfo.id,
+                                  quote: response.replyInfo.quote
+                              }
                             : undefined
                     });
                 case 'react':
