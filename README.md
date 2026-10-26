@@ -68,14 +68,14 @@ const commands = [
     new CommandActionBuilder('HelloWorld')
         .on('/hello')
         .do((ctx) => {
-            ctx.reply.withText('Hello, world!');
+            ctx.reply.withText('Hello, world\\!');
         })
         .build(),
 
     new CommandActionBuilder('Welcome')
         .on(MessageType.NewChatMember)
         .do((ctx) => {
-            ctx.reply.withText('Welcome to the group!');
+            ctx.reply.withText('Welcome to the group\\!');
         })
         .build()
 ];
@@ -154,7 +154,7 @@ import { CommandActionBuilder } from 'chz-telegram-bot';
 const myCommand = new CommandActionBuilder('StartCommand')
     .on('/start')
     .do((ctx) => {
-        ctx.reply.withText('Welcome to my bot!');
+        ctx.reply.withText('Welcome to my bot\\!');
     })
     .build();
 ```
@@ -185,7 +185,7 @@ import { CommandActionBuilder, MessageType } from 'chz-telegram-bot';
 const myCommand = new CommandActionBuilder('WelcomeMessage')
     .on(MessageType.NewChatMember)
     .do((ctx) => {
-        ctx.reply.withText('Welcome to my group chat!');
+        ctx.reply.withText('Welcome to my group chat\\!');
     })
     .build();
 ```
@@ -201,7 +201,7 @@ const dailyNotification = new ScheduledActionBuilder('GM')
     .in([-1001234567890]) // Required: chat ids to run in
     .runAt(9) // Run at or after 9:00 (server local time)
     .do((ctx) => {
-        ctx.send.text('Good morning!');
+        ctx.send.text('Good morning\\!');
     })
     .build();
 ```
@@ -233,6 +233,8 @@ Depending on the type of action, you will have access to the following interacti
 | `reply.andQuote.*`   | Command     | `withText`, `withImage`, `withVideo` that also quote the trigger text (or a given quote) |
 
 `send.*` and `reply.with*` (except `withReaction`) return a controller with post-send operations: `pin()`, `deleteAfter(ms)` and `captureReplies(options)` (handle replies to the sent message; triggers work like command triggers, including message types such as `MessageType.Any`). Text messages accept `disableWebPreview` and an inline `keyboard` as options.
+
+Text is sent as Telegram [MarkdownV2](https://core.telegram.org/bots/api#markdownv2-style): `send.text`, `reply.withText`, `reply.andQuote.withText`, cooldown messages and `/help` readmes. Outside formatting, the characters `_`, `*`, `[`, `]`, `(`, `)`, `~`, `` ` ``, `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!` and `\` must be escaped with a preceding `\`; inside `pre` and `code`, only `` ` `` and `\`. The framework doesn't escape anything, so a message with an unescaped character is rejected by Telegram with "can't parse entities", reported as an `error` event and not sent. In a string literal the backslash is doubled, as in `ctx.reply.withText('Done\\!')`. Escape text you don't control too, such as user names or message text. All `/help` readmes are sent as one message, so one unescaped character in any of them breaks the whole reply.
 
 Keep in mind that reply sending is deferred until action execution finishes and is queued in the order it was added. Telegram rate limits still apply between queued sends, so the framework inserts spacing between responses rather than promising strict real-time ordering.
 
@@ -267,11 +269,11 @@ Captures kept in memory have no expiry. A capture stays in memory, and every lat
 const controller = new AbortController();
 setTimeout(() => controller.abort(), 10 * 60 * 1000); // stop after 10 minutes
 
-ctx.reply.withText('Guess the number! Reply to this message.').captureReplies({
+ctx.reply.withText('Guess the number\\! Reply to this message\\.').captureReplies({
     trigger: [/\d+/],
     handler: async (replyCtx) => {
         if (replyCtx.messageInfo.text == secret) {
-            replyCtx.reply.withText('Correct!');
+            replyCtx.reply.withText('Correct\\!');
             replyCtx.stopCapture();
         }
     },
@@ -294,7 +296,7 @@ const guessCapture = new PersistentReplyCaptureBuilder<{ secret: number; attempt
     .do(async (replyCtx, data) => {
         data.attempts++;
         if (Number(replyCtx.messageInfo.text) == data.secret) {
-            replyCtx.reply.withText(`Correct in ${data.attempts} attempts!`);
+            replyCtx.reply.withText(`Correct in ${data.attempts} attempts\\!`);
             replyCtx.stopCapture();
         }
     })
@@ -307,7 +309,7 @@ await botOrchestrator.startBot({
 
 // In a command or scheduled action:
 ctx.reply
-    .withText('Guess the number! Reply to this message.')
+    .withText('Guess the number\\! Reply to this message\\.')
     .captureReplies({ persistent: guessCapture, data: { secret: 42, attempts: 0 } });
 ```
 
@@ -319,7 +321,7 @@ ctx.reply
   ```typescript
   .do(async (replyCtx, data) => {
       if (Number(replyCtx.messageInfo.text) == data.secret) {
-          replyCtx.reply.withText('Correct!');
+          replyCtx.reply.withText('Correct\\!');
           replyCtx.stopCapture();
       } else {
           replyCtx.reply.withText('Wrong, try again').captureReplies({ continueCapture: true });

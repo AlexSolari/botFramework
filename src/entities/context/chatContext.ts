@@ -39,7 +39,7 @@ export class ChatContextInternal<
         /**
          * Sends text message to chat after action execution is finished.
          * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
-         * @param text Message contents.
+         * @param text Message contents, parsed as MarkdownV2. Outside formatting, escape _ * [ ] ( ) ~ ` > # + - = | { } . ! and \ with a preceding \, or Telegram rejects the message.
          * @param options Message sending option.
          */
         text: (text: string, options?: TextMessageSendingOptions) => {

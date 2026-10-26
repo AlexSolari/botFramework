@@ -108,6 +108,8 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
 
     /**
      * Sets factory method for readme (shown on /help) for this action.
+     * The readmes of all commands are sent as one MarkdownV2 message, so escape their special characters
+     * (see `withText`); one unescaped character makes Telegram reject the whole /help reply.
      * @param readmeFactory readme factory
      */
     withHelp(readmeFactory: (botName: string) => string) {
@@ -132,7 +134,8 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
     }
 
     /** Sets action cooldown settings.
-     * @param cooldownSettings Settings.
+     * @param cooldownSettings Settings. `message` is sent as a reply while the command is on cooldown,
+     * parsed as MarkdownV2, so escape its special characters (see `withText`).
      */
     withCooldown(cooldownSettings: { cooldown: Seconds; message?: string }) {
         const settings = new CooldownInfo(
