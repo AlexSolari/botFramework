@@ -114,6 +114,20 @@ function startBot(
     };
 
     const api = createMockTelegramApi();
+    // Simulates Telegram sending the last queued response as `messageId`.
+    const addLastResponseAs = (messageId: number) => {
+        const response = api.getEnqueueLastArgs()?.[0] as TextMessage;
+        for (const operation of response.postSendOperations) {
+            if (operation.kind != 'continuePersistentReplies') continue;
+
+            processor.captures.continuePersistentCapture(
+                operation as ContinuePersistentReplyCaptureOperation,
+                messageId,
+                chatInfo,
+                traceId
+            );
+        }
+    };
     processor.initialize(
         api,
         telegram as unknown as Parameters<typeof processor.initialize>[1],
@@ -127,19 +141,9 @@ function startBot(
         storage,
         processor,
         hasMessageListener: () => onMessage != undefined,
-        // Simulates Telegram sending the last queued response as `messageId`.
+        addLastResponseAs,
         sendLastResponseAs: async (messageId: number) => {
-            const response = api.getEnqueueLastArgs()?.[0] as TextMessage;
-            for (const operation of response.postSendOperations) {
-                if (operation.kind != 'continuePersistentReplies') continue;
-
-                processor.captures.continuePersistentCapture(
-                    operation as ContinuePersistentReplyCaptureOperation,
-                    messageId,
-                    chatInfo,
-                    traceId
-                );
-            }
+            addLastResponseAs(messageId);
             await processor.waitForProcessing();
         },
         receive: async (message: Message) => {
@@ -336,10 +340,10 @@ describe('persistent reply captures', () => {
             return { maxRunning, attempts };
         }
 
-        test('should run replies to the same capture concurrently by default', async () => {
+        test('should run replies to the same capture concurrently by default, the last to finish overwriting the changes of the others', async () => {
             expect(await measureConcurrentReplies()).toEqual({
                 maxRunning: 2,
-                attempts: 2
+                attempts: 1
             });
         });
 
@@ -443,20 +447,6 @@ describe('persistent reply captures', () => {
         await bot.stop();
     });
 
-    test('should not save when the handler leaves the data unchanged', async () => {
-        const handler = mock(() => {});
-        const definition = buildGuessCapture(handler);
-        const bot = startBot([definition]);
-        await startCapture(bot.processor, definition, { secret: 5, attempts: 0 });
-        const updateStateFor = spyOn(bot.storage, 'updateStateFor');
-
-        await bot.receive(replyMessage('1'));
-
-        expect(handler).toHaveBeenCalledTimes(1);
-        expect(updateStateFor).not.toHaveBeenCalled();
-        await bot.stop();
-    });
-
     test('should discard data changes of a handler that throws', async () => {
         const definition = buildGuessCapture((_ctx, data) => {
             data.attempts++;
@@ -467,6 +457,70 @@ describe('persistent reply captures', () => {
 
         await bot.receive(replyMessage('9'));
         await bot.receive(replyMessage('1'));
+
+        expect(readCaptures('guess')[PARENT_MESSAGE_ID].data).toEqual({ secret: 5, attempts: 1 });
+        await bot.stop();
+    });
+
+    test.each([
+        [
+            'a sent message is added to the capture',
+            (bot: ReturnType<typeof startBot>) => {
+                bot.addLastResponseAs(44);
+            }
+        ],
+        [
+            'one of its messages is deleted',
+            (bot: ReturnType<typeof startBot>) => {
+                bot.processor.captures.messageDeleted(chatInfo, PARENT_MESSAGE_ID, traceId);
+            }
+        ]
+    ])('should not save changes of a handler that throws when %s while it runs', async (_, saveCapture) => {
+        let release: () => void = () => undefined;
+        const released = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const definition = buildGuessCapture(async (ctx, data) => {
+            data.attempts++;
+            if (ctx.messageInfo.text == '9') {
+                await released;
+                throw new Error('Handler failed');
+            }
+            ctx.reply.withText('Wrong, try again').captureReplies({ continueCapture: true });
+        });
+        const bot = startBot([definition]);
+        await startCapture(bot.processor, definition, { secret: 5, attempts: 0 });
+        await bot.receive(replyMessage('1'));
+        await bot.sendLastResponseAs(43);
+        const updateStateFor = spyOn(bot.storage, 'updateStateFor');
+
+        const failing = bot.receive(replyMessage('9'));
+        saveCapture(bot);
+        await updateStateFor.mock.results[0].value;
+        release();
+        await failing;
+
+        expect(readCaptures('guess')[PARENT_MESSAGE_ID].data).toEqual({ secret: 5, attempts: 1 });
+        await bot.receive(replyMessage('2', 43));
+        expect(readCaptures('guess')[PARENT_MESSAGE_ID].data).toEqual({ secret: 5, attempts: 2 });
+        await bot.stop();
+    });
+
+    test('should discard data changes of a handler that throws while another reply is handled', async () => {
+        const definition = buildGuessCapture(async (ctx, data) => {
+            data.attempts += Number(ctx.messageInfo.text);
+            if (ctx.messageInfo.text == '9') {
+                await setTimeout(30);
+                throw new Error('Handler failed');
+            }
+        });
+        const bot = startBot([definition]);
+        await startCapture(bot.processor, definition, { secret: 5, attempts: 0 });
+
+        await Promise.all([
+            bot.receive(replyMessage('9')),
+            bot.receive(replyMessage('1'))
+        ]);
 
         expect(readCaptures('guess')[PARENT_MESSAGE_ID].data).toEqual({ secret: 5, attempts: 1 });
         await bot.stop();

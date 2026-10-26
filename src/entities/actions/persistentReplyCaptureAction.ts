@@ -20,8 +20,6 @@ export class PersistentReplyCaptureActionInternal<
     readonly definition: PersistentReplyCapture<TData>;
     readonly record: PersistentReplyCaptureRecord<TData>;
     private readonly lock: Semaphore | undefined;
-    private startedExecutions = 0;
-    private runningExecutions = 0;
 
     constructor(
         captureId: number,
@@ -32,7 +30,9 @@ export class PersistentReplyCaptureActionInternal<
             captureId,
             definition.storageKey,
             async (ctx) => {
-                await definition.handler(ctx, record.data);
+                const data = structuredClone(record.data);
+                await definition.handler(ctx, data);
+                record.data = data;
             },
             definition.triggers,
             new AbortController()
@@ -96,57 +96,12 @@ export class PersistentReplyCaptureActionInternal<
         try {
             if (this.abortController.signal.aborted) return Noop.NoResponse;
 
-            return await this.execTransactionally(ctx);
+            const responses = await super.exec(ctx);
+            await this.save(ctx.storage, ctx.chatInfo.id);
+
+            return responses;
         } finally {
             this.lock?.release();
         }
-    }
-
-    private async execTransactionally(ctx: ReplyContextInternal<IActionState>) {
-        const serializedDataBefore = JSON.stringify(this.record.data);
-
-        const transaction = this.startTransaction();
-
-        let responses;
-        try {
-            responses = await super.exec(ctx);
-        } catch (error) {
-            this.tryRollback(transaction, serializedDataBefore);
-
-            throw error;
-        } finally {
-            await this.commitTransaction(serializedDataBefore, ctx);
-        }
-
-        return responses;
-    }
-
-    private startTransaction() {
-        const isOnlyExecution = this.runningExecutions == 0;
-        const executionNumber = ++this.startedExecutions;
-        this.runningExecutions++;
-
-        return { isOnlyExecution, executionNumber };
-    }
-
-    private tryRollback(
-        transaction: { isOnlyExecution: boolean; executionNumber: number },
-        serializedDataBefore: string
-    ) {
-        if (
-            transaction.isOnlyExecution &&
-            transaction.executionNumber == this.startedExecutions
-        )
-            this.record.data = JSON.parse(serializedDataBefore) as TData;
-    }
-
-    private async commitTransaction(
-        serializedDataBefore: string,
-        ctx: ReplyContextInternal<IActionState>
-    ) {
-        this.runningExecutions--;
-
-        if (JSON.stringify(this.record.data) != serializedDataBefore)
-            await this.save(ctx.storage, ctx.chatInfo.id);
     }
 }

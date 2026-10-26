@@ -11,6 +11,7 @@ This file was reconstructed from the git history and `package.json` version bump
 ### Changed
 
 - **Breaking:** `IScheduler.stopAll()` is renamed to `cancelAllTasks()`, as it cancels the tasks created so far but doesn't stop new ones from being scheduled. Custom schedulers passed in `services.scheduler` must rename the method.
+- Replies to the same persistent capture handled at the same time no longer share one `data` object. Each reply's handler gets its own copy, and the one that finishes last overwrites the others' changes, as with command state. Use `withRatelimit(1)` if the handler relies on the changes of other replies, for example to count them.
 
 ### Fixed
 
@@ -21,6 +22,7 @@ This file was reconstructed from the git history and `package.json` version bump
 - `stopBots()` stopped scheduled actions only after waiting for the processing in progress, which could take a minute with the network down. A scheduled run in that time could queue responses that were never sent and try to save to closed storage. Scheduled actions now stop first, as documented.
 - A global regex trigger that can match an empty string, such as `/(\w+)?/g`, filled `matchResults` with the same empty match up to the limit and lost the matches after it. Each empty match now appears once, as with `String.prototype.matchAll`, and the matches after it are collected.
 - Action state was copied only one level deep, so arrays and objects in it were shared with the stored state. A handler that changed one, for example with `state.items.push(x)`, and then threw kept the change anyway, and the next save of the same action for any chat wrote it to disk. Each execution and `updateStateOf()` call now gets its own deep copy of the state, and saving stores a copy too, so changes made after a save, for example by an event listener, don't reach the stored state either. As a result, concurrent executions in the same chat no longer combine their changes to the same array or object: the one that finishes last overwrites the others, as already documented, so use `withRatelimit(1)` if a command relies on them. State holding functions now throws when it is read or saved; functions were never written to disk.
+- A persistent capture could save changes to `data` that a handler was still making, when a message sent with `continueCapture` or the deletion of one of its messages saved the capture meanwhile. If the handler then threw, its changes were discarded in memory but stayed on disk and came back after a restart, even with `withRatelimit(1)`. With other replies handled at the same time, a handler that threw kept its changes too. A handler's changes are now saved only if it finishes without throwing.
 
 ## [0.9.1] - 2026-10-09
 

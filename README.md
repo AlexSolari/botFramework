@@ -311,8 +311,8 @@ ctx.reply
 ```
 
 - `data` must be JSON-serializable. It is copied through JSON when the capture starts, so it behaves the same before and after a restart: a `Date` becomes a string, and functions and `undefined` values are dropped.
-- Changes the handler makes to `data` are saved after the handler finishes. If the handler throws, its changes are discarded, unless other replies to the same capture were being handled at the same time. Use `withRatelimit(1)` if you rely on this.
-- By default, replies to the same capture can be handled at the same time, and all of them share the same `data` object. Use `withRatelimit(1)` to handle them one at a time. Then `stopCapture()` is final: replies still waiting when the handler stops the capture are skipped, so two people answering at the same moment can't both get a "Correct!". Like `withRatelimit` on commands, `0` (the default) means unlimited.
+- Each reply's handler gets its own copy of `data`. Its changes are saved after it finishes; if it throws, they are discarded.
+- By default, replies to the same capture can be handled at the same time. Each starts from `data` as saved by the last handler that finished, and the one that finishes last overwrites the others' changes. Use `withRatelimit(1)` to handle them one at a time, for example when the handler counts replies. Then `stopCapture()` is final: replies still waiting when the handler stops the capture are skipped, so two people answering at the same moment can't both get a "Correct!". Like `withRatelimit` on commands, `0` (the default) means unlimited.
 - A capture can track several messages. In its handler, pass `{ continueCapture: true }` to `captureReplies` on a message the handler sends, and replies to that message are handled by the same capture, with the same `data`. Using `continueCapture` anywhere else throws an error.
 
   ```typescript

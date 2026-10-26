@@ -34,7 +34,7 @@ export type PersistentReplyHandler<TData> = {
     handler(
         /** Context of a reply to a message with a persistent capture. */
         ctx: ReplyContext<IActionState>,
-        /** Data the capture was started with. Changes are saved after the handler finishes. */
+        /** Copy of the capture's data. Changes are saved if the handler finishes without throwing. */
         data: TData
     ): Promise<void> | void;
 }['handler'];
