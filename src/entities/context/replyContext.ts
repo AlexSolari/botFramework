@@ -35,7 +35,7 @@ export class ReplyContextInternal<
 > extends BaseContextInternal<ReplyCaptureActionInternal<TParentActionState>> {
     /** Collection of Regexp match results on a message that triggered this action. Will be empty if trigger is not a Regexp. */
     matchResults: RegExpExecArray[] = [];
-    /** Id of a message that triggered this action. */
+    /** Id of the message that the triggering message replies to. */
     readonly replyMessageId: number | undefined;
     /** Information about the user that triggered this action */
     readonly userInfo: UserInfo;
@@ -150,13 +150,14 @@ export class ReplyContextInternal<
     reply = {
         /**
          * Collection of actions that can be done as a reply to a message, quoting the part that triggered this action
-         * If regex is matched, first match will be quoted
+         * Quotes `quote` if given; otherwise the first capture group of the first regex match, or the whole message text when there is none.
          */
         andQuote: {
             /**
              * Reply with text message to message that triggered this action after action execution is finished.
              * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
              * @param text Message contents, parsed as MarkdownV2. Outside formatting, escape _ * [ ] ( ) ~ ` > # + - = | { } . ! and \ with a preceding \, or Telegram rejects the message.
+             * @param quote Text to quote from the triggering message. By default, the first capture group of the first regex match, or the whole message text when there is none. Telegram rejects a quote that isn't part of that message or is longer than 1024 characters, and the message is then sent without the reply.
              * @param options Message sending option.
              */
             withText: (
@@ -169,8 +170,8 @@ export class ReplyContextInternal<
             /**
              * Reply with image message to message that triggered this action after action execution is finished.
              * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
-             * @param text Message contents.
-             * @param options Message sending option.
+             * @param name File name in `./content`, without extension; the image is loaded from `./content/<name>.png`.
+             * @param quote Text to quote from the triggering message. By default, the first capture group of the first regex match, or the whole message text when there is none. Telegram rejects a quote that isn't part of that message or is longer than 1024 characters, and the message is then sent without the reply.
              */
             withImage: (name: string, quote?: string) => {
                 return this.replyWithImage(name, quote ?? true);
@@ -179,8 +180,8 @@ export class ReplyContextInternal<
             /**
              * Reply with video/gif message to message that triggered this action after action execution is finished.
              * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
-             * @param text Message contents.
-             * @param options Message sending option.
+             * @param name File name in `./content`, without extension; the video is loaded from `./content/<name>.mp4`.
+             * @param quote Text to quote from the triggering message. By default, the first capture group of the first regex match, or the whole message text when there is none. Telegram rejects a quote that isn't part of that message or is longer than 1024 characters, and the message is then sent without the reply.
              */
             withVideo: (name: string, quote?: string) => {
                 return this.replyWithVideo(name, quote ?? true);
@@ -199,8 +200,7 @@ export class ReplyContextInternal<
         /**
          * Reply with image message to message that triggered this action after action execution is finished.
          * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
-         * @param text Message contents.
-         * @param options Message sending option.
+         * @param name File name in `./content`, without extension; the image is loaded from `./content/<name>.png`.
          */
         withImage: (name: string) => {
             return this.replyWithImage(name, false);
@@ -209,8 +209,7 @@ export class ReplyContextInternal<
         /**
          * Reply with video/gif message to message that triggered this action after action execution is finished.
          * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
-         * @param text Message contents.
-         * @param options Message sending option.
+         * @param name File name in `./content`, without extension; the video is loaded from `./content/<name>.mp4`.
          */
         withVideo: (name: string) => {
             return this.replyWithVideo(name, false);

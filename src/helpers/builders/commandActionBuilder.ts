@@ -97,7 +97,9 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
         return this;
     }
 
-    /** Defines condition that will be checked before trigger match check is executed.
+    /** Defines a condition that must be true for the command to run.
+     * It is checked last: after the trigger matched, the chat and user checks passed and the cooldown check.
+     * So a message that fails the condition during the cooldown still gets the cooldown message, if one is set.
      * @param condition Condition check predicate
      */
     when(condition: CommandCondition<TActionState>) {

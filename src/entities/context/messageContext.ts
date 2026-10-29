@@ -156,13 +156,14 @@ export class MessageContextInternal<
     reply = {
         /**
          * Collection of actions that can be done as a reply to a message, quoting the part that triggered this action
-         * If regex is matched, first match will be quoted
+         * Quotes `quote` if given; otherwise the first capture group of the first regex match, or the whole message text when there is none.
          */
         andQuote: {
             /**
              * Reply with text message to message that triggered this action after action execution is finished.
              * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
              * @param text Message contents, parsed as MarkdownV2. Outside formatting, escape _ * [ ] ( ) ~ ` > # + - = | { } . ! and \ with a preceding \, or Telegram rejects the message.
+             * @param quote Text to quote from the triggering message. By default, the first capture group of the first regex match, or the whole message text when there is none. Telegram rejects a quote that isn't part of that message or is longer than 1024 characters, and the message is then sent without the reply.
              * @param options Message sending option.
              */
             withText: (
@@ -173,8 +174,8 @@ export class MessageContextInternal<
             /**
              * Reply with image message to message that triggered this action after action execution is finished.
              * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
-             * @param text Message contents.
-             * @param options Message sending option.
+             * @param name File name in `./content`, without extension; the image is loaded from `./content/<name>.png`.
+             * @param quote Text to quote from the triggering message. By default, the first capture group of the first regex match, or the whole message text when there is none. Telegram rejects a quote that isn't part of that message or is longer than 1024 characters, and the message is then sent without the reply.
              */
             withImage: (name: string, quote?: string) =>
                 this.replyWithImage(name, quote ?? true),
@@ -182,8 +183,8 @@ export class MessageContextInternal<
             /**
              * Reply with video/gif message to message that triggered this action after action execution is finished.
              * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
-             * @param text Message contents.
-             * @param options Message sending option.
+             * @param name File name in `./content`, without extension; the video is loaded from `./content/<name>.mp4`.
+             * @param quote Text to quote from the triggering message. By default, the first capture group of the first regex match, or the whole message text when there is none. Telegram rejects a quote that isn't part of that message or is longer than 1024 characters, and the message is then sent without the reply.
              */
             withVideo: (name: string, quote?: string) =>
                 this.replyWithVideo(name, quote ?? true)
@@ -200,16 +201,14 @@ export class MessageContextInternal<
         /**
          * Reply with image message to message that triggered this action after action execution is finished.
          * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
-         * @param text Message contents.
-         * @param options Message sending option.
+         * @param name File name in `./content`, without extension; the image is loaded from `./content/<name>.png`.
          */
         withImage: (name: string) => this.replyWithImage(name, false),
 
         /**
          * Reply with video/gif message to message that triggered this action after action execution is finished.
          * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
-         * @param text Message contents.
-         * @param options Message sending option.
+         * @param name File name in `./content`, without extension; the video is loaded from `./content/<name>.mp4`.
          */
         withVideo: (name: string) => this.replyWithVideo(name, false),
 

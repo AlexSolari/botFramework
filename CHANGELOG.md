@@ -12,6 +12,7 @@ This file was reconstructed from the git history and `package.json` version bump
 
 - **Breaking:** `IScheduler.stopAll()` is renamed to `cancelAllTasks()`, as it cancels the tasks created so far but doesn't stop new ones from being scheduled. Custom schedulers passed in `services.scheduler` must rename the method.
 - Replies to the same persistent capture handled at the same time no longer share one `data` object. Each reply's handler gets its own copy, and the one that finishes last overwrites the others' changes, as with command state. Use `withRatelimit(1)` if the handler relies on the changes of other replies, for example to count them.
+- The package no longer ships declaration maps (`.d.ts.map`). They pointed at source files that aren't published.
 
 ### Fixed
 
@@ -36,6 +37,7 @@ This file was reconstructed from the git history and `package.json` version bump
 - Two commands, or two scheduled actions, whose names differ only by `.` and `-`, such as `Greet.Hello` and `Greet-Hello`, got the same key and silently shared their state. The bot now doesn't start, with an error naming both, and an action registered twice is rejected the same way.
 - With the default storage, actions whose names differ only in case shared one state file on Windows and macOS. `JsonFileStorage` now rejects them when the bot starts, on every OS, so a bot that works on Linux doesn't break when moved.
 - The key of an inline action replaced only the first dot in its name with `-`, unlike other actions. All dots are replaced now. Inline actions have no stored state, so only traces and events see the change.
+- Scheduled and inline query handlers had to return a promise, so handlers that return nothing, such as the scheduled and inline examples in the README, didn't compile. They may now return nothing, as command handlers can.
 
 ## [0.9.1] - 2026-10-09
 
@@ -118,8 +120,8 @@ This file was reconstructed from the git history and `package.json` version bump
 ### Changed
 
 - **Breaking:** Replaced the `telegraf` dependency with a handrolled Telegram Bot API client and `getUpdates` long-polling update poller (#4). Telegraf types are no longer used anywhere in the public API.
-- **Breaking:** Contexts expose `telegramApiClient` (a `BotApiClient`) instead of Telegraf's client.
-- Bot API types are generated from the official Bot API specification (`bun run generate:types`) and exported as the `BotApi` namespace.
+- **Breaking:** Contexts expose `telegramApiClient`, the new Bot API client, instead of Telegraf's client. Its `BotApiClient` class isn't exported.
+- Bot API types are generated from a community-maintained, machine-readable Bot API specification ([PaulSonOfLars/telegram-bot-api-spec](https://github.com/PaulSonOfLars/telegram-bot-api-spec), `bun run generate:types`) and exported as the `BotApi` namespace.
 
 ### Removed
 
@@ -255,4 +257,18 @@ Initial development releases (0.0.16 through 0.0.54).
 - Delay option for responses and reworked message sending.
 - Tracing and verbose logging.
 
+[Unreleased]: https://github.com/AlexSolari/botFramework/compare/3e9f6f2...HEAD
+[0.9.1]: https://github.com/AlexSolari/botFramework/compare/7636d82...3e9f6f2
+[0.9.0]: https://github.com/AlexSolari/botFramework/compare/1b93667...7636d82
+[0.8.3]: https://github.com/AlexSolari/botFramework/compare/fffec5c...1b93667
+[0.8.2]: https://github.com/AlexSolari/botFramework/compare/af4975e...fffec5c
+[0.8.1]: https://github.com/AlexSolari/botFramework/compare/c668bb9...af4975e
 [0.8.0]: https://github.com/AlexSolari/botFramework/compare/c876f15...c668bb9
+[0.7.x]: https://github.com/AlexSolari/botFramework/compare/ac545cd...c876f15
+[0.6.x]: https://github.com/AlexSolari/botFramework/compare/e85dacf...ac545cd
+[0.5.x]: https://github.com/AlexSolari/botFramework/compare/b2cfe80...e85dacf
+[0.4.0]: https://github.com/AlexSolari/botFramework/compare/53ce8d3...b2cfe80
+[0.3.x]: https://github.com/AlexSolari/botFramework/compare/15a4531...53ce8d3
+[0.2.1]: https://github.com/AlexSolari/botFramework/compare/6a96d83...15a4531
+[0.1.x]: https://github.com/AlexSolari/botFramework/compare/f18263c...6a96d83
+[0.0.x]: https://github.com/AlexSolari/botFramework/compare/a725baa...f18263c

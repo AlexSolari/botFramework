@@ -159,7 +159,7 @@ const myCommand = new CommandActionBuilder('StartCommand')
     .build();
 ```
 
-A string trigger matches the whole message exactly, a `RegExp` triggers on a match, and an array can mix both. Builders also offer access control and tuning:
+A string trigger matches the whole message, ignoring case, a `RegExp` triggers on a match, and an array can mix both. Builders also offer access control and tuning:
 
 | Method                    | Description                                                                |
 | ------------------------- | -------------------------------------------------------------------------- |

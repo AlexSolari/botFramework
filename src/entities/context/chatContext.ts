@@ -60,8 +60,7 @@ export class ChatContextInternal<
         /**
          * Sends image message to chat after action execution is finished.
          * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
-         * @param name Message contents.
-         * @param options Message sending option.
+         * @param name File name in `./content`, without extension; the image is loaded from `./content/<name>.png`.
          */
         image: (name: string) => {
             const response = new ImageMessage(
@@ -79,8 +78,7 @@ export class ChatContextInternal<
         /**
          * Sends video/gif message to chat after action execution is finished.
          * If multiple responses are sent, sending will be initiated in the order they were added, spaced at least 35ms apart as per Telegram rate-limit. Actual delivery order is best-effort and not strictly guaranteed.
-         * @param name Message contents.
-         * @param options Message sending option.
+         * @param name File name in `./content`, without extension; the video is loaded from `./content/<name>.mp4`.
          */
         video: (name: string) => {
             const response = new VideoMessage(

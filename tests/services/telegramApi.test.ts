@@ -210,8 +210,7 @@ describe('TelegramApiService', () => {
                     ? Promise.reject(
                           new Error(`Bad Request: ${TELEGRAM_ERROR_QUOTE_INVALID}`)
                       )
-                    : // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-                      Promise.reject('not an error')
+                    : Promise.reject('not an error')
             );
             const { api, eventEmitter } = createApi(call);
             const errors = collectErrors(eventEmitter);
@@ -236,7 +235,6 @@ describe('TelegramApiService', () => {
         });
 
         test('should wrap non-Error failures', async () => {
-            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
             const call = mock(() => Promise.reject('not an error'));
             const { api, eventEmitter } = createApi(call);
             const errors = collectErrors(eventEmitter);
@@ -539,7 +537,6 @@ describe('TelegramApiService', () => {
             );
             const errors = collectErrors(eventEmitter);
             api['queue'].flushReadyItems = () =>
-                // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                 Promise.reject('not an error');
 
             api.flushResponses();
@@ -738,8 +735,7 @@ describe('TelegramApiService', () => {
         test('should wrap a non-Error failure of the delete', async () => {
             const call = mock((method: string, _params: CallParams) =>
                 method == 'deleteMessage'
-                    ? // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-                      Promise.reject('not an error')
+                    ? Promise.reject('not an error')
                     : Promise.resolve({ message_id: 42 })
             );
             const { api, eventEmitter } = createApi(call);
@@ -792,8 +788,7 @@ describe('TelegramApiService', () => {
         test('should wrap a non-Error failure of the pin', async () => {
             const call = mock((method: string, _params: CallParams) =>
                 method == 'pinChatMessage'
-                    ? // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-                      Promise.reject('not an error')
+                    ? Promise.reject('not an error')
                     : Promise.resolve({ message_id: 42 })
             );
             const { api, eventEmitter } = createApi(call);

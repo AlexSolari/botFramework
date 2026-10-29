@@ -281,7 +281,6 @@ describe('UpdatePoller', () => {
             errors.push(error.message);
         });
         poller.on('message', () => {
-            // eslint-disable-next-line @typescript-eslint/only-throw-error
             throw 'not an error';
         });
 

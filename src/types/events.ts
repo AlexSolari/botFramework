@@ -214,7 +214,6 @@ export type EachListener<TMap extends Record<string, unknown> = BotEventMap> = (
 ) => void;
 
 export class TypedEventEmitter<
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     TCustomEvents extends Record<string, unknown> = {}
 > {
     private readonly listeners = new Map<

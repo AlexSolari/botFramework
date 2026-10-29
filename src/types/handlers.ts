@@ -8,7 +8,7 @@ import { CachedValueAccessor } from './cachedValueAccessor';
 export type InlineQueryHandler = (
     /** Context of inline query executed in chat, in response to a message. */
     ctx: InlineQueryContext
-) => Promise<void>;
+) => Promise<void> | void;
 
 export type CommandHandler<TActionState extends IActionState> = {
     handler(
@@ -27,7 +27,7 @@ export type ScheduledHandler<TActionState extends IActionState> = {
         getCached: CachedValueAccessor,
         /** State of an action being executed. */
         state: TActionState
-    ): Promise<void>;
+    ): Promise<void> | void;
 }['handler'];
 
 export type PersistentReplyHandler<TData> = {

@@ -1,7 +1,5 @@
 import { BotResponse } from '../types/response';
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class Noop {
     static readonly NoResponse: BotResponse[] = [];
     static true(arg1: unknown) {

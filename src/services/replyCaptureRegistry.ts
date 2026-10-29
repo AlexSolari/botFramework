@@ -389,7 +389,6 @@ export class ReplyCaptureRegistry implements TelegramApiCallbacks {
                 capture.definition.storageKey,
                 chatInfo.id,
                 (state) => {
-                    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
                     delete state.captures[capture.parentMessageId];
                 }
             );
