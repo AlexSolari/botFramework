@@ -11,7 +11,7 @@ import { InlineActionPropertyProvider } from '../../types/propertyProvider';
  */
 export class InlineQueryActionBuilder {
     private readonly name: string;
-    private pattern: RegExp = /.+/gi;
+    private pattern: RegExp = /.*/;
 
     private activeProvider: InlineActionPropertyProvider<boolean> = () => true;
     private handler: InlineQueryHandler = Noop.call;
@@ -25,7 +25,8 @@ export class InlineQueryActionBuilder {
     }
 
     /**
-     * Defines action pattern to check if action should be executed, if not setup, check will default to true
+     * Defines action pattern to check if action should be executed.
+     * If not set, every query matches, including the empty one Telegram sends when the user types only the bot's username.
      * @param trigger RegExp to check
      */
     on(pattern: RegExp) {

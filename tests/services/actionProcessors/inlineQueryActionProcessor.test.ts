@@ -631,6 +631,50 @@ describe('InlineQueryActionProcessor', () => {
             expect(abortedQueryIds).toEqual(['q-a', 'q-b']);
         });
 
+        test('should not answer a query that a newer one aborted', async () => {
+            const releaseCallbacks: (() => void)[] = [];
+            const slowAction = createMockInlineQueryAction('slow');
+            slowAction.exec = mock(
+                (ctx: unknown) =>
+                    new Promise<BotResponse[]>((resolve) => {
+                        const { queryId } = ctx as { queryId: string };
+                        const answer = new InlineQueryResponse(
+                            [],
+                            queryId,
+                            'trace' as TraceId,
+                            slowAction as unknown as InlineQueryActionInternal
+                        );
+                        releaseCallbacks.push(() => resolve([answer]));
+                    })
+            );
+
+            const mockApi = createMockTelegramApi();
+            const mockTelegram = createMockTelegramBot();
+            processor.initialize(
+                mockApi,
+                mockTelegram as unknown as Parameters<
+                    typeof processor.initialize
+                >[1],
+                [slowAction as unknown as InlineQueryAction]
+            );
+
+            const sendQuery = (id: string) =>
+                mockTelegram.getEventHandler('inline_query')?.({
+                    inlineQuery: { id, query: 'test', from: { id: 55555 } }
+                });
+
+            sendQuery('q-a');
+            sendQuery('q-b');
+            releaseCallbacks.forEach((release) => release());
+            await processor.waitForProcessing();
+
+            expect(mockApi.getEnqueueCallCount()).toBe(1);
+            expect(
+                (mockApi.getEnqueueLastArgs() as InlineQueryResponse[])[0]
+                    .queryId
+            ).toBe('q-b');
+        });
+
         test('should emit inlineProcessingFinished after processing completes', () => {
             const localEventEmitter = new TypedEventEmitter();
             const localProcessor = new InlineQueryActionProcessor(

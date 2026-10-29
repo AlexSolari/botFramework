@@ -28,6 +28,8 @@ This file was reconstructed from the git history and `package.json` version bump
 - Calling `stopBots()` a second time never finished, for example after starting bots again or from a second shutdown signal: stopped bots stayed in `botOrchestrator.bots` and were stopped again, and closing the storage a second time waited forever. Stopped bots are now removed, and `BotInstance.stop()` and `JsonFileStorage.close()` return the first call's promise when called again.
 - A cooldown started with `startCustomCooldown()` was kept only in memory, so a restart replaced it with the action's cooldown, and an action shared between two bots shared it for chats with the same id. `startCustomCooldown(0)` was ignored, and the action's cooldown applied instead. The custom cooldown is now saved in the chat's action state, in a new optional `customCooldown` field of `IActionState`, and 0 is honored.
 - `reply.andQuote.withImage()` and `reply.andQuote.withVideo()` replied without quoting anything. They now quote the trigger text, or the given quote, as `reply.andQuote.withText()` does. If Telegram rejects the quote, the image or video is sent without the reply, as text is.
+- An inline action built without `.on(...)` didn't match the empty query Telegram sends when the user types only the bot's username, although the JSDoc said it matched everything. It now matches every query.
+- An inline query replaced by a newer one from the same user was still answered if its handlers returned instead of throwing an `AbortError`, spending a request on an answer Telegram no longer shows. Aborted queries are no longer answered.
 
 ## [0.9.1] - 2026-10-09
 

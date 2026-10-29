@@ -412,6 +412,10 @@ const searchCommand = new InlineQueryActionBuilder('Search')
     .build();
 ```
 
+Without `.on(...)`, an action matches every query, including the empty one Telegram sends when the user has typed only the bot's username.
+
+When the same user types again while a query is still being processed, that query's `ctx.abortSignal` is aborted and the query isn't answered, even if its handlers finish. Pass the signal to `fetch` and other slow calls, so they stop early.
+
 You can also use the builder’s built-in `withConfiguration` and `disabled()` helpers to toggle the action at runtime.
 
 ### Response Queue

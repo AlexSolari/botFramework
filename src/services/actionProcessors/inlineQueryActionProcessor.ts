@@ -64,17 +64,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                         }
                     );
 
-                    try {
-                        queryBeingProcessed.abortController.abort();
-                    } catch {
-                        this.eventEmitter.emit(
-                            BotEventType.inlineProcessingAborted,
-                            {
-                                abortedQuery: queryBeingProcessed,
-                                traceId: query.traceId
-                            }
-                        );
-                    }
+                    queryBeingProcessed.abortController.abort();
                     queriesInProcessing.delete(query.userId);
                 }
 
@@ -138,7 +128,7 @@ export class InlineQueryActionProcessor extends BaseActionProcessor {
                     );
                     const answer = this.mergeInlineAnswers(responses);
 
-                    if (answer) {
+                    if (answer && !query.abortController.signal.aborted) {
                         this.api.enqueueBatchedResponses([answer]);
                         this.api.flushResponses();
                     }

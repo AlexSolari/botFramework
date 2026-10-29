@@ -15,6 +15,7 @@ import {
 import { IncomingInlineQuery } from '../../../src/dtos/incomingQuery';
 import { ChatInfo } from '../../../src/dtos/chatInfo';
 import { TraceId } from '../../../src/types/trace';
+import { InlineQueryActionBuilder } from '../../../src/helpers/builders/inlineQueryActionBuilder';
 
 function createMockInlineContext(
     queryText: string,
@@ -320,6 +321,32 @@ describe('InlineQueryActionInternal', () => {
             await action.exec(ctx);
 
             expect(ctx.matchResults.length).toBe(1);
+        });
+    });
+
+    describe('default pattern', () => {
+        test('should match the empty query sent for a bare bot username', async () => {
+            const action = new InlineQueryActionBuilder(
+                'default-pattern'
+            ).build() as InlineQueryActionInternal;
+
+            const result = await action.exec(createMockInlineContext(''));
+
+            expect(result).toHaveLength(1);
+        });
+
+        test('should match any other query once', async () => {
+            const action = new InlineQueryActionBuilder(
+                'default-pattern'
+            ).build() as InlineQueryActionInternal;
+            const ctx = createMockInlineContext('cats and dogs');
+
+            const result = await action.exec(ctx);
+
+            expect(result).toHaveLength(1);
+            expect(ctx.matchResults.map((match) => match[0])).toEqual([
+                'cats and dogs'
+            ]);
         });
     });
 
