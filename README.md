@@ -313,7 +313,7 @@ ctx.reply
     .captureReplies({ persistent: guessCapture, data: { secret: 42, attempts: 0 } });
 ```
 
-- `data` must be JSON-serializable. It is copied through JSON when the capture starts, so it behaves the same before and after a restart: a `Date` becomes a string, and functions and `undefined` values are dropped.
+- `data` must be JSON-serializable. It is copied through JSON when the capture starts, so it behaves the same before and after a restart: a `Date` becomes a string, and functions and `undefined` values are dropped. Values a handler sets later are not copied: keep them to JSON values too (strings, numbers, booleans, `null`, arrays and plain objects), or they come back changed after a restart, for example a `Date` stays a `Date` until then and becomes a string after.
 - Each reply's handler gets its own copy of `data`. Its changes are saved after it finishes; if it throws, they are discarded.
 - By default, replies to the same capture can be handled at the same time. Each starts from `data` as saved by the last handler that finished, and the one that finishes last overwrites the others' changes. Use `withRatelimit(1)` to handle them one at a time, for example when the handler counts replies. Then `stopCapture()` is final: replies still waiting when the handler stops the capture are skipped, so two people answering at the same moment can't both get a "Correct!". Like `withRatelimit` on commands, `0` (the default) means unlimited.
 - A capture can track several messages. In its handler, pass `{ continueCapture: true }` to `captureReplies` on a message the handler sends, and replies to that message are handled by the same capture, with the same `data`. Using `continueCapture` anywhere else throws an error.
@@ -383,7 +383,7 @@ const counterCommand = new CommandActionBuilderWithState<MyCustomState>(
     .build();
 ```
 
-State is mutable and all changes to it will be saved after execution of action is finished. If the same command can run concurrently in one chat, the last execution to finish overwrites the others' changes; use `withRatelimit(1)` to prevent that (see [Command Actions](#command-actions)).
+State is mutable and all changes to it will be saved after execution of action is finished. The default `JsonFileStorage` saves it as JSON, so keep its values to strings, numbers, booleans, `null`, arrays and plain objects: a `Date` stays a `Date` in memory but comes back as a string after a restart, a `Map` or `Set` comes back as an empty object, and a class instance as a plain object without its methods. If the same command can run concurrently in one chat, the last execution to finish overwrites the others' changes; use `withRatelimit(1)` to prevent that (see [Command Actions](#command-actions)).
 
 If writing the state fails, for example because the disk is full or was remounted read-only, the action fails: the error is reported as an `error` event and its responses are dropped. The new state is still kept in memory, so cooldowns still apply, and it reaches the file with the next save of the same action.
 
