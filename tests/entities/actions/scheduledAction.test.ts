@@ -3,6 +3,7 @@ import {
     test,
     expect,
     mock,
+    spyOn,
     setSystemTime,
     afterEach,
     beforeAll,
@@ -319,6 +320,52 @@ describe('ScheduledActionInternal', () => {
 
             expect(seenByFirst).toBe('shared-value');
             expect(seenBySecond).toBe('shared-value');
+            expect(factory).toHaveBeenCalledTimes(1);
+        });
+
+        test('should call the factory again once the value expires', async () => {
+            const now = spyOn(performance, 'now').mockReturnValue(1000);
+            try {
+                const factory = mock(() => Promise.resolve('value'));
+                const action = buildScheduledAction({
+                    name: 'ScheduledActionTest.CacheExpiry',
+                    cachedStateFactories: new Map([
+                        ['key', new CachedStateFactory(factory, 1 as Hours)]
+                    ]),
+                    handler: async (_ctx, getCached) => {
+                        await getCached('key');
+                    }
+                });
+
+                await action.exec(createContext(action).ctx);
+                now.mockReturnValue(1000 + 3_599_999);
+                await action.exec(createContext(action).ctx);
+                expect(factory).toHaveBeenCalledTimes(1);
+
+                now.mockReturnValue(1000 + 3_600_000);
+                await action.exec(createContext(action).ctx);
+                expect(factory).toHaveBeenCalledTimes(2);
+            } finally {
+                now.mockRestore();
+            }
+        });
+
+        test('should keep a value whose timeout is longer than a timer allows', async () => {
+            const factory = mock(() => Promise.resolve('value'));
+            const action = buildScheduledAction({
+                name: 'ScheduledActionTest.LongTimeout',
+                cachedStateFactories: new Map([
+                    ['key', new CachedStateFactory(factory, 1000 as Hours)]
+                ]),
+                handler: async (_ctx, getCached) => {
+                    await getCached('key');
+                }
+            });
+
+            await action.exec(createContext(action).ctx);
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            await action.exec(createContext(action).ctx);
+
             expect(factory).toHaveBeenCalledTimes(1);
         });
 

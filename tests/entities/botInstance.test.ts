@@ -35,21 +35,6 @@ describe('BotInstance', () => {
             expect(callsBeforeProcessingStop).toBe(1);
         });
 
-        test('should cancel the tasks created by the processing in progress', async () => {
-            const { bot, storage, cancelAllTasks } = createBot();
-            let callsBeforeClose = 0;
-            bot['actionProcessingService'].stop = mock(() => Promise.resolve());
-            storage.close = mock(() => {
-                callsBeforeClose = cancelAllTasks.mock.calls.length;
-
-                return Promise.resolve();
-            });
-
-            await bot.stop();
-
-            expect(callsBeforeClose).toBe(2);
-        });
-
         test('should stop only once when called again', async () => {
             const { bot, storage } = createBot();
             const stopProcessing = mock(() => Promise.resolve());

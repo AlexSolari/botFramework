@@ -110,10 +110,6 @@ export class BotInstance {
 
         this.scheduler.cancelAllTasks();
         await this.actionProcessingService.stop();
-
-        // Scheduled actions still running may have created tasks, e.g. to drop a cached value.
-        this.scheduler.cancelAllTasks();
-
         await this.storage.close();
     }
 }

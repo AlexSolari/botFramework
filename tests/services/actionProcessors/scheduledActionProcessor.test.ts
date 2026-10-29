@@ -12,7 +12,10 @@ import { IStorageClient } from '../../../src/types/storage';
 import { Seconds } from '../../../src/types/timeValues';
 import { ScheduledActionProcessor } from '../../../src/services/actionProcessors/scheduledActionProcessor';
 import { ActionKey } from '../../../src/types/action';
-import type { ScheduledAction } from '../../../src/entities/actions/scheduledAction';
+import {
+    ScheduledActionInternal,
+    type ScheduledAction
+} from '../../../src/entities/actions/scheduledAction';
 import type { IActionState } from '../../../src/types/actionState';
 import { ScheduledActionBuilder } from '../../../src/helpers/builders/scheduledActionBuilder';
 import {
@@ -26,7 +29,8 @@ import {
 function createMockScheduledAction(): ScheduledAction<IActionState> {
     return {
         key: 'scheduled:test-action' as ActionKey,
-        exec: mock(() => Promise.resolve([]))
+        exec: mock(() => Promise.resolve([])),
+        clearSharedCache: () => {}
     } as unknown as ScheduledAction<IActionState>;
 }
 
@@ -265,7 +269,8 @@ describe('ScheduledActionProcessor', () => {
             const execMock = mock(() => Promise.resolve([]));
             const action = {
                 key: 'scheduled:multi-action' as ActionKey,
-                exec: execMock
+                exec: execMock,
+                clearSharedCache: () => {}
             } as unknown as ScheduledAction<IActionState>;
 
             localProcessor.initialize(mockApi, [action], 3600 as Seconds);
@@ -350,7 +355,8 @@ describe('ScheduledActionProcessor', () => {
                 const execMock = mock(() => Promise.resolve([]));
                 const action = {
                     key: 'scheduled:startup-action' as ActionKey,
-                    exec: execMock
+                    exec: execMock,
+                    clearSharedCache: () => {}
                 } as unknown as ScheduledAction<IActionState>;
 
                 const localProcessor = new ScheduledActionProcessor(
@@ -442,6 +448,38 @@ describe('ScheduledActionProcessor', () => {
                 expect(localScheduler.createTaskCallCount()).toBe(1);
             } finally {
                 setSystemTime(); // restore real time
+            }
+        });
+    });
+
+    describe('shared cache', () => {
+        test('should drop the shared cache values of its actions on start', () => {
+            const factory = () => Promise.resolve('value');
+            const ownAction = new ScheduledActionBuilder('CacheOnStart.Own')
+                .withSharedCache('first', factory)
+                .withSharedCache('second', factory)
+                .build();
+            const otherAction = new ScheduledActionBuilder('CacheOnStart.Other')
+                .withSharedCache('first', factory)
+                .build();
+            const cache = ScheduledActionInternal.sharedCache;
+            const entry = { value: 'old', expiresAt: Infinity };
+            cache.set(`${ownAction.key}:first`, entry);
+            cache.set(`${ownAction.key}:second`, entry);
+            cache.set(`${otherAction.key}:first`, entry);
+
+            try {
+                processor.initialize(
+                    createMockTelegramApi(),
+                    [ownAction],
+                    3600 as Seconds
+                );
+
+                expect(cache.has(`${ownAction.key}:first`)).toBe(false);
+                expect(cache.has(`${ownAction.key}:second`)).toBe(false);
+                expect(cache.get(`${otherAction.key}:first`)).toBe(entry);
+            } finally {
+                cache.delete(`${otherAction.key}:first`);
             }
         });
     });
@@ -554,8 +592,16 @@ describe('ScheduledActionProcessor', () => {
             const slowExec = mock(() => slow.handler().then(() => []));
             const fastExec = mock(() => Promise.resolve([]));
             const actions = [
-                { key: 'scheduled:slow-action', exec: slowExec },
-                { key: 'scheduled:fast-action', exec: fastExec }
+                {
+                    key: 'scheduled:slow-action',
+                    exec: slowExec,
+                    clearSharedCache: () => {}
+                },
+                {
+                    key: 'scheduled:fast-action',
+                    exec: fastExec,
+                    clearSharedCache: () => {}
+                }
             ] as unknown as ScheduledAction<IActionState>[];
 
             const localProcessor = new ScheduledActionProcessor(

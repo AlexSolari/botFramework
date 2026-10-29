@@ -18,14 +18,17 @@ import { BotEventType } from '../../types/events';
 
 export type ScheduledAction<TActionState extends IActionState> = Omit<
     ScheduledActionInternal<TActionState>,
-    'exec'
+    'exec' | 'clearSharedCache'
 >;
 
 export class ScheduledActionInternal<
     TActionState extends IActionState
 > implements IActionWithState<TActionState>, IExecutableAction {
     static readonly locks = new Map<string, Semaphore>();
-    static readonly sharedCache = new Map<string, unknown>();
+    static readonly sharedCache = new Map<
+        string,
+        { value: unknown; expiresAt: number }
+    >();
     static readonly semaphoreFactory: () => Semaphore = () => new Semaphore(1);
 
     readonly name: string;
@@ -112,6 +115,17 @@ export class ScheduledActionInternal<
         return ctx.responses;
     }
 
+    /** Drops the shared cache values of this action, so they are created again on their next use. */
+    clearSharedCache() {
+        for (const key of this.cachedStateFactories.keys()) {
+            ScheduledActionInternal.sharedCache.delete(this.cacheKeyFor(key));
+        }
+    }
+
+    private cacheKeyFor(key: string) {
+        return `${this.key}:${key}`;
+    }
+
     private async getCachedValue<TResult>(
         key: string,
         ctx: ChatContextInternal<TActionState>
@@ -132,9 +146,10 @@ export class ScheduledActionInternal<
         await semaphore.acquire();
 
         try {
-            const cacheKey = `${this.key}:${key}`;
-            if (ScheduledActionInternal.sharedCache.has(cacheKey)) {
-                return ScheduledActionInternal.sharedCache.get(cacheKey) as TResult;
+            const cacheKey = this.cacheKeyFor(key);
+            const cached = ScheduledActionInternal.sharedCache.get(cacheKey);
+            if (cached && performance.now() < cached.expiresAt) {
+                return cached.value as TResult;
             }
 
             ctx.observability.eventEmitter.emit(
@@ -148,18 +163,14 @@ export class ScheduledActionInternal<
             );
             const value = await cachedItemFactory.getValue();
 
-            ScheduledActionInternal.sharedCache.set(cacheKey, value);
-
-            ctx.scheduler.createOnetimeTask(
-                `Drop cached value [${this.name} : ${key}]`,
-                () => {
-                    ScheduledActionInternal.sharedCache.delete(cacheKey);
-                },
-                hoursToMilliseconds(
-                    cachedItemFactory.invalidationTimeoutInHours
-                ),
-                ctx.botName
-            );
+            ScheduledActionInternal.sharedCache.set(cacheKey, {
+                value,
+                expiresAt:
+                    performance.now() +
+                    hoursToMilliseconds(
+                        cachedItemFactory.invalidationTimeoutInHours
+                    )
+            });
 
             return value as TResult;
         } finally {

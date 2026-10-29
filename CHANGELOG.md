@@ -30,6 +30,7 @@ This file was reconstructed from the git history and `package.json` version bump
 - `reply.andQuote.withImage()` and `reply.andQuote.withVideo()` replied without quoting anything. They now quote the trigger text, or the given quote, as `reply.andQuote.withText()` does. If Telegram rejects the quote, the image or video is sent without the reply, as text is.
 - An inline action built without `.on(...)` didn't match the empty query Telegram sends when the user types only the bot's username, although the JSDoc said it matched everything. It now matches every query.
 - An inline query replaced by a newer one from the same user was still answered if its handlers returned instead of throwing an `AbortError`, spending a request on an answer Telegram no longer shows. Aborted queries are no longer answered.
+- A shared cache value set with `withSharedCache()` and a timeout over about 596 hours was dropped after 1 millisecond, as the timeout overflowed the timer, so the factory ran on every use. Its drop timer also belonged to the bot that created the value, so after that bot stopped, other bots kept the value forever. The value now stores when it expires and is replaced on the first use after that, without a timer. Starting a bot also drops the cached values of its scheduled actions.
 
 ## [0.9.1] - 2026-10-09
 

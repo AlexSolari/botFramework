@@ -212,7 +212,7 @@ How scheduling works:
 - `scheduledPeriod` controls how often the bot checks for due actions. The bot checks once at startup, then at the top of the next hour, then every period.
 - `runAt(hour)` (0-23, server local time, default `0`) means "run at the first check at or after this hour, if the action hasn't already run today". With the default 1 hour period it fires shortly after the hour.
 - Keep the period at 1 hour or less. With a longer one, some hours get no check, so an action due in one of them runs at the next check of the same day, or not at all if the day has none left, for example `runAt(23)` with checks at 22:00 and 00:00.
-- The scheduled handler also receives a cache accessor and the state: `.do((ctx, getCached, state) => ...)`. Values are registered with `.withSharedCache(key, factory, invalidationHours)`; they are shared process-wide and refreshed after the timeout (20 hours by default).
+- The scheduled handler also receives a cache accessor and the state: `.do((ctx, getCached, state) => ...)`. Values are registered with `.withSharedCache(key, factory, invalidationHours)`; they are shared process-wide, and the first use after the timeout (20 hours by default) creates a new value. Starting a bot drops the values of its scheduled actions, so a bot started again in the same process doesn't reuse values from before.
 
 ### Replies and message sending
 

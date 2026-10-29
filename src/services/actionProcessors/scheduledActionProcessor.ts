@@ -47,6 +47,10 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
         this.initializeDependencies(api);
         this.scheduled = scheduled as ScheduledActionInternal<IActionState>[];
 
+        for (const action of this.scheduled) {
+            action.clearSharedCache();
+        }
+
         if (this.scheduled.length > 0) {
             this.scheduler.createOnetimeTask(
                 'ScheduledProcessing_Startup',
