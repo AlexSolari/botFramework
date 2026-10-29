@@ -33,6 +33,9 @@ This file was reconstructed from the git history and `package.json` version bump
 - A shared cache value set with `withSharedCache()` and a timeout over about 596 hours was dropped after 1 millisecond, as the timeout overflowed the timer, so the factory ran on every use. Its drop timer also belonged to the bot that created the value, so after that bot stopped, other bots kept the value forever. The value now stores when it expires and is replaced on the first use after that, without a timer. Starting a bot also drops the cached values of its scheduled actions.
 - `scheduledActionExecuted` wasn't emitted when a scheduled handler threw, so a listener pairing it with `scheduledActionExecuting` never saw the run end. It is now emitted either way, as `commandActionExecuted` and `inlineActionExecuted` are.
 - `/help` listed every command with help text, including disabled ones and ones limited to other chats or users, and sent all of it as one message, which Telegram rejected once it passed 4096 characters. It now lists only the commands that can run in the chat for the user who asked, checked when `/help` runs, and splits the help into several messages between readmes when needed.
+- Two commands, or two scheduled actions, whose names differ only by `.` and `-`, such as `Greet.Hello` and `Greet-Hello`, got the same key and silently shared their state. The bot now doesn't start, with an error naming both, and an action registered twice is rejected the same way.
+- With the default storage, actions whose names differ only in case shared one state file on Windows and macOS. `JsonFileStorage` now rejects them when the bot starts, on every OS, so a bot that works on Linux doesn't break when moved.
+- The key of an inline action replaced only the first dot in its name with `-`, unlike other actions. All dots are replaced now. Inline actions have no stored state, so only traces and events see the change.
 
 ## [0.9.1] - 2026-10-09
 

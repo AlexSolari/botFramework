@@ -387,6 +387,8 @@ State is mutable and all changes to it will be saved after execution of action i
 
 If writing the state fails, for example because the disk is full or was remounted read-only, the action fails: the error is reported as an `error` event and its responses are dropped. The new state is still kept in memory, so cooldowns still apply, and it reaches the file with the next save of the same action.
 
+`JsonFileStorage` keeps the state of each action in `<storagePath>/<bot name>/<action kind>/<action name>.json`, with dots in the action name replaced by `-`. Use letters, digits, `-`, `_` and `.` in bot and action names: `/`, `\` and `:` create subfolders, and `<`, `>`, `"`, `|`, `?` and `*` aren't allowed in file names on Windows, so the storage fails to start there. A bot doesn't start when two of its commands, or two of its scheduled actions, get the same key, such as `Greet.Hello` and `Greet-Hello`, as they would share their state. With `JsonFileStorage` it also doesn't start when two names differ only in case, as Windows and macOS would store them in one file.
+
 ### Inline Queries
 
 The framework provides support for handling inline queries with type-safe builders:

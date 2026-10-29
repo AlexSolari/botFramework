@@ -12,6 +12,24 @@ import { BotEventType, TypedEventEmitter } from '../types/events';
 import { createTrace } from '../helpers/traceFactory';
 import { IncomingMessage } from '../dtos/incomingMessage';
 import { PersistentReplyCapture } from './persistentReplyCapture';
+import { ActionKey } from '../types/action';
+
+function assertUniqueKeys(actions: { name: string; key: ActionKey }[]) {
+    const names = new Map<ActionKey, string>();
+
+    for (const action of actions) {
+        const registered = names.get(action.key);
+        if (registered !== undefined) {
+            throw new Error(
+                registered == action.name
+                    ? `Action ${action.name} is registered more than once.`
+                    : `Actions ${registered} and ${action.name} have the same key ${action.key}, so they would share their state. Rename one of them.`
+            );
+        }
+
+        names.set(action.key, action.name);
+    }
+}
 
 export class BotInstance {
     private readonly storage: IStorageClient;
@@ -38,6 +56,11 @@ export class BotInstance {
             eventEmitter?: TypedEventEmitter<Record<string, unknown>>;
         };
     }) {
+        assertUniqueKeys([
+            ...options.actions.commands,
+            ...options.actions.scheduled
+        ]);
+
         const actions = [
             ...options.actions.commands,
             ...options.actions.scheduled,

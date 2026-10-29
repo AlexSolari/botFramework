@@ -27,7 +27,7 @@ export class InlineQueryActionInternal implements IExecutableAction {
         this.isActiveProvider = activeProvider;
         this.pattern = pattern;
 
-        this.key = `inline:${this.name.replace('.', '-')}` as ActionKey;
+        this.key = `inline:${this.name.replaceAll('.', '-')}` as ActionKey;
     }
 
     async exec(ctx: InlineQueryContextInternal) {

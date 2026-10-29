@@ -96,8 +96,7 @@ describe('InlineQueryActionInternal', () => {
                 /test/
             );
 
-            // Note: only first dot is replaced due to String.replace behavior
-            expect(action.key).toBe('inline:my-action.name' as ActionKey);
+            expect(action.key).toBe('inline:my-action-name' as ActionKey);
         });
 
         test('should store handler', () => {

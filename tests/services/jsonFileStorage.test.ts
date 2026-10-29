@@ -540,6 +540,25 @@ describe('JsonFileStorage', () => {
         });
     });
 
+    describe('constructor', () => {
+        test('should reject actions whose files differ only in case', () => {
+            const upper = createTestAction('command:Greet');
+            const lower = createTestAction('command:greet');
+
+            expect(
+                () =>
+                    new JsonFileStorage(
+                        TEST_BOT_NAME,
+                        [upper, lower],
+                        TEST_STORAGE_PATH
+                    )
+            ).toThrow('Actions command:Greet and command:greet differ only in case');
+            expect(
+                existsSync(buildPath(TEST_STORAGE_PATH, TEST_BOT_NAME, 'command:Greet'))
+            ).toBe(false);
+        });
+    });
+
     describe('close', () => {
         test('should have close method defined', () => {
             const localStorage = new JsonFileStorage(

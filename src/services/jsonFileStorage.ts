@@ -36,6 +36,24 @@ class CachedDataSource {
             });
         }
 
+        const keysByPath = new Map<string, ActionKey>();
+        for (const action of actions) {
+            const filePath = buildPath(
+                this.storagePath,
+                this.botName,
+                action.key
+            );
+
+            const caseInsensitivePath = filePath.toLowerCase();
+            const otherKey = keysByPath.get(caseInsensitivePath);
+            if (otherKey !== undefined && otherKey != action.key) {
+                throw new Error(
+                    `Actions ${otherKey} and ${action.key} differ only in case, so they would share the storage file ${filePath} on Windows and macOS. Rename one of them.`
+                );
+            }
+            keysByPath.set(caseInsensitivePath, action.key);
+        }
+
         for (const action of actions) {
             const filePath = buildPath(
                 this.storagePath,

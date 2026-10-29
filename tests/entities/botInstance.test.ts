@@ -4,6 +4,11 @@ import {
     createMockScheduler,
     createMockStorage
 } from '../services/actionProcessors/processorTestHelpers';
+import { CommandActionBuilder } from '../../src/helpers/builders/commandActionBuilder';
+import { ScheduledActionBuilder } from '../../src/helpers/builders/scheduledActionBuilder';
+import { IActionState } from '../../src/types/actionState';
+import { CommandAction } from '../../src/entities/actions/commandAction';
+import { ScheduledAction } from '../../src/entities/actions/scheduledAction';
 
 function createBot() {
     const storage = createMockStorage();
@@ -19,7 +24,56 @@ function createBot() {
     return { bot, storage, cancelAllTasks };
 }
 
+function createBotWith(actions: {
+    commands?: CommandAction<IActionState>[];
+    scheduled?: ScheduledAction<IActionState>[];
+}) {
+    return new BotInstance({
+        name: 'TestBot',
+        actions: {
+            commands: actions.commands ?? [],
+            scheduled: actions.scheduled ?? [],
+            inlineQueries: []
+        },
+        chats: {},
+        services: {
+            storageClient: createMockStorage(),
+            scheduler: createMockScheduler()
+        }
+    });
+}
+
 describe('BotInstance', () => {
+    describe('constructor', () => {
+        test('should reject commands whose names give the same key', () => {
+            const commands = [
+                new CommandActionBuilder('Greet.Hello').on('/a').build(),
+                new CommandActionBuilder('Greet-Hello').on('/b').build()
+            ];
+
+            expect(() => createBotWith({ commands })).toThrow(
+                'Actions Greet.Hello and Greet-Hello have the same key command:Greet-Hello'
+            );
+        });
+
+        test('should reject a scheduled action registered twice', () => {
+            const action = new ScheduledActionBuilder('Daily').build();
+
+            expect(() =>
+                createBotWith({ scheduled: [action, action] })
+            ).toThrow('Action Daily is registered more than once.');
+        });
+
+        test('should accept a command and a scheduled action with the same name', () => {
+            expect(() =>
+                createBotWith({
+                    commands: [new CommandActionBuilder('Daily').on('/a').build()],
+                    scheduled: [new ScheduledActionBuilder('Daily').build()]
+                })
+            ).not.toThrow();
+        });
+    });
+
     describe('stop', () => {
         test('should cancel the scheduled tasks before waiting for the processing in progress', async () => {
             const { bot, cancelAllTasks } = createBot();
