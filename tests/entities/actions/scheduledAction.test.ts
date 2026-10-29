@@ -14,7 +14,7 @@ import { CachedStateFactory } from '../../../src/entities/cachedStateFactory';
 import { ChatContextInternal } from '../../../src/entities/context/chatContext';
 import { ActionStateBase } from '../../../src/entities/states/actionStateBase';
 import { ChatInfo } from '../../../src/dtos/chatInfo';
-import { TypedEventEmitter } from '../../../src/types/events';
+import { BotEventType, TypedEventEmitter } from '../../../src/types/events';
 import { ScheduledActionProviders } from '../../../src/dtos/propertyProviderSets';
 import { ScheduledHandler } from '../../../src/types/handlers';
 import { IActionState } from '../../../src/types/actionState';
@@ -259,6 +259,39 @@ describe('ScheduledActionInternal', () => {
 
             expect(await runsAt(2, new Date(2026, 2, 29, 1, 30), ranAt)).toBe(false);
             expect(await runsAt(2, new Date(2026, 2, 29, 3, 0, 5), ranAt)).toBe(true);
+        });
+    });
+
+    describe('exec - events', () => {
+        test('should emit scheduledActionExecuted after the handler finishes', async () => {
+            const action = buildScheduledAction();
+            const { ctx } = createContext(action);
+            const executed = mock(() => {});
+            ctx.observability.eventEmitter.on(
+                BotEventType.scheduledActionExecuted,
+                executed
+            );
+
+            await action.exec(ctx);
+
+            expect(executed).toHaveBeenCalledTimes(1);
+        });
+
+        test('should emit scheduledActionExecuted when the handler throws', async () => {
+            const action = buildScheduledAction({
+                handler: () => Promise.reject(new Error('handler failed'))
+            });
+            const { ctx, storage } = createContext(action);
+            const executed = mock(() => {});
+            ctx.observability.eventEmitter.on(
+                BotEventType.scheduledActionExecuted,
+                executed
+            );
+
+            await expect(action.exec(ctx)).rejects.toThrow('handler failed');
+
+            expect(executed).toHaveBeenCalledTimes(1);
+            expect(storage.saveActionExecutionResult).not.toHaveBeenCalled();
         });
     });
 

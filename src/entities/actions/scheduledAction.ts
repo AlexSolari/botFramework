@@ -88,31 +88,34 @@ export class ScheduledActionInternal<
             }
         );
 
-        await this.handler(
-            ctx,
-            <TResult>(key: string) => this.getCachedValue<TResult>(key, ctx),
-            state
-        );
-
-        state.lastExecutedDate = Date.now();
-
-        await ctx.storage.saveActionExecutionResult(
-            this,
-            ctx.chatInfo.id,
-            state
-        );
-
-        ctx.observability.eventEmitter.emit(
-            BotEventType.scheduledActionExecuted,
-            {
-                action: this,
+        try {
+            await this.handler(
                 ctx,
-                state,
-                traceId: ctx.observability.traceId
-            }
-        );
+                <TResult>(key: string) =>
+                    this.getCachedValue<TResult>(key, ctx),
+                state
+            );
 
-        return ctx.responses;
+            state.lastExecutedDate = Date.now();
+
+            await ctx.storage.saveActionExecutionResult(
+                this,
+                ctx.chatInfo.id,
+                state
+            );
+
+            return ctx.responses;
+        } finally {
+            ctx.observability.eventEmitter.emit(
+                BotEventType.scheduledActionExecuted,
+                {
+                    action: this,
+                    ctx,
+                    state,
+                    traceId: ctx.observability.traceId
+                }
+            );
+        }
     }
 
     /** Drops the shared cache values of this action, so they are created again on their next use. */
