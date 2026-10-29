@@ -4,7 +4,10 @@ import { IStorageClient } from '../types/storage';
 import { TelegramApiService } from './telegramApi';
 import { InlineQueryAction } from '../entities/actions/inlineQueryAction';
 import { IActionState } from '../types/actionState';
-import { CommandAction } from '../entities/actions/commandAction';
+import {
+    CommandAction,
+    CommandActionInternal
+} from '../entities/actions/commandAction';
 import { ScheduledAction } from '../entities/actions/scheduledAction';
 import { buildHelpCommand } from '../builtin/helpAction';
 import { CommandActionProcessor } from './actionProcessors/commandActionProcessor';
@@ -101,9 +104,7 @@ export class ActionProcessingService {
             actions.commands.length > 0
                 ? [
                       buildHelpCommand(
-                          actions.commands
-                              .map((x) => x.readmeFactory(botInfo.username))
-                              .filter((x) => !!x),
+                          actions.commands as CommandActionInternal<IActionState>[],
                           botInfo.username
                       ),
                       ...actions.commands

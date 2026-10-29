@@ -8,7 +8,10 @@ import {
     ActionKey,
     IExecutableAction
 } from '../../types/action';
-import { MessageContextInternal } from '../context/messageContext';
+import {
+    MessageContext,
+    MessageContextInternal
+} from '../context/messageContext';
 import { CommandTrigger } from '../../types/commandTrigger';
 import { Noop } from '../../helpers/noop';
 import { Sema as Semaphore } from 'async-sema';
@@ -24,7 +27,7 @@ import { getMatchResults } from '../../helpers/matchTriggers';
 
 export type CommandAction<TActionState extends IActionState> = Omit<
     CommandActionInternal<TActionState>,
-    'exec'
+    'exec' | 'canExecuteIn'
 >;
 
 export class CommandActionInternal<TActionState extends IActionState>
@@ -124,7 +127,8 @@ export class CommandActionInternal<TActionState extends IActionState>
         }
     }
 
-    private canExecuteIn(ctx: MessageContextInternal<TActionState>): boolean {
+    /** Checks whether the action is active and allowed for the chat and user of `ctx`. */
+    canExecuteIn(ctx: MessageContext<IActionState>): boolean {
         if (!ctx.userInfo.id || !this.isActiveProvider(ctx)) return false;
 
         const chatsBlacklist = this.chatsBlacklistProvider(ctx);

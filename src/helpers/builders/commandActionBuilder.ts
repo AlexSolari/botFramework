@@ -108,8 +108,10 @@ export class CommandActionBuilderWithState<TActionState extends IActionState> {
 
     /**
      * Sets factory method for readme (shown on /help) for this action.
-     * The readmes of all commands are sent as one MarkdownV2 message, so escape their special characters
-     * (see `withText`); one unescaped character makes Telegram reject the whole /help reply.
+     * /help shows the readmes of the commands that can run in the chat for the user who asked,
+     * packed into as few messages as fit Telegram's limit of 4096 characters; a readme is never split, so keep each one shorter.
+     * Readmes are sent as MarkdownV2, so escape their special characters (see `withText`);
+     * one unescaped character makes Telegram reject the whole message it is in.
      * @param readmeFactory readme factory
      */
     withHelp(readmeFactory: (botName: string) => string) {

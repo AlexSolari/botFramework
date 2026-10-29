@@ -169,7 +169,7 @@ A string trigger matches the whole message exactly, a `RegExp` triggers on a mat
 | `when(condition)`         | Extra condition, checked last (after the trigger, access and cooldown checks) |
 | `withCooldown({...})`     | Cooldown in seconds with an optional message                               |
 | `withRatelimit(n)`        | Max simultaneous executions per chat (0 = unlimited)                       |
-| `withHelp(factory)`       | Text shown by the built-in `/help` command (active once any command provides help text) |
+| `withHelp(factory)`       | Text shown by the built-in `/help` command (active once any command provides help text), only where the command can run |
 | `withConfiguration(...)`  | Use runtime-changeable providers instead of static values                  |
 | `disabled()`              | Marks the action as disabled                                               |
 
@@ -234,7 +234,7 @@ Depending on the type of action, you will have access to the following interacti
 
 `send.*` and `reply.with*` (except `withReaction`) return a controller with post-send operations: `pin()`, `deleteAfter(ms)` and `captureReplies(options)` (handle replies to the sent message; triggers work like command triggers, including message types such as `MessageType.Any`). Text messages accept `disableWebPreview` and an inline `keyboard` as options.
 
-Text is sent as Telegram [MarkdownV2](https://core.telegram.org/bots/api#markdownv2-style): `send.text`, `reply.withText`, `reply.andQuote.withText`, cooldown messages and `/help` readmes. Outside formatting, the characters `_`, `*`, `[`, `]`, `(`, `)`, `~`, `` ` ``, `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!` and `\` must be escaped with a preceding `\`; inside `pre` and `code`, only `` ` `` and `\`. The framework doesn't escape anything, so a message with an unescaped character is rejected by Telegram with "can't parse entities", reported as an `error` event and not sent. In a string literal the backslash is doubled, as in `ctx.reply.withText('Done\\!')`. Escape text you don't control too, such as user names or message text. All `/help` readmes are sent as one message, so one unescaped character in any of them breaks the whole reply.
+Text is sent as Telegram [MarkdownV2](https://core.telegram.org/bots/api#markdownv2-style): `send.text`, `reply.withText`, `reply.andQuote.withText`, cooldown messages and `/help` readmes. Outside formatting, the characters `_`, `*`, `[`, `]`, `(`, `)`, `~`, `` ` ``, `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!` and `\` must be escaped with a preceding `\`; inside `pre` and `code`, only `` ` `` and `\`. The framework doesn't escape anything, so a message with an unescaped character is rejected by Telegram with "can't parse entities", reported as an `error` event and not sent. In a string literal the backslash is doubled, as in `ctx.reply.withText('Done\\!')`. Escape text you don't control too, such as user names or message text. `/help` packs several readmes into one message, so one unescaped character breaks the other readmes in that message too.
 
 Keep in mind that reply sending is deferred until action execution finishes and is queued in the order it was added. Telegram rate limits still apply between queued sends, so the framework inserts spacing between responses rather than promising strict real-time ordering.
 

@@ -14,4 +14,5 @@ export const TELEGRAM_ERROR_MESSAGE_TO_DELETE_NOT_FOUND =
     'message to delete not found';
 export const INLINE_QUERY_FAKE_CHAT_ID = -1;
 export const INLINE_QUERY_RESULTS_LIMIT = 50;
+export const TELEGRAM_MESSAGE_LENGTH_LIMIT = 4096;
 export const MAX_TIMEOUT_DELAY = 2_147_483_647 as Milliseconds;
