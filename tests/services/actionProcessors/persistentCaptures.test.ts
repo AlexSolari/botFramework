@@ -173,12 +173,18 @@ async function startCapture(
     await processor.waitForProcessing();
 }
 
+/** Silences the error the framework logs for a handler that throws on purpose. */
+function silenceLoggedErrors() {
+    return spyOn(console, 'error').mockImplementation(() => {});
+}
+
 describe('persistent reply captures', () => {
     beforeEach(() => {
         STORAGE_PATH = `${STORAGE_ROOT}/${++testRun}`;
     });
 
     afterEach(() => {
+        mock.restore();
         rmSync(STORAGE_ROOT, { recursive: true, force: true });
     });
 
@@ -448,6 +454,7 @@ describe('persistent reply captures', () => {
     });
 
     test('should discard data changes of a handler that throws', async () => {
+        const loggedErrors = silenceLoggedErrors();
         const definition = buildGuessCapture((_ctx, data) => {
             data.attempts++;
             if (_ctx.messageInfo.text == '9') throw new Error('Handler failed');
@@ -460,6 +467,7 @@ describe('persistent reply captures', () => {
 
         expect(readCaptures('guess')[PARENT_MESSAGE_ID].data).toEqual({ secret: 5, attempts: 1 });
         await bot.stop();
+        expect(loggedErrors).toHaveBeenCalledTimes(1);
     });
 
     test.each([
@@ -476,6 +484,7 @@ describe('persistent reply captures', () => {
             }
         ]
     ])('should not save changes of a handler that throws when %s while it runs', async (_, saveCapture) => {
+        const loggedErrors = silenceLoggedErrors();
         let release: () => void = () => undefined;
         const released = new Promise<void>((resolve) => {
             release = resolve;
@@ -504,9 +513,11 @@ describe('persistent reply captures', () => {
         await bot.receive(replyMessage('2', 43));
         expect(readCaptures('guess')[PARENT_MESSAGE_ID].data).toEqual({ secret: 5, attempts: 2 });
         await bot.stop();
+        expect(loggedErrors).toHaveBeenCalledTimes(1);
     });
 
     test('should discard data changes of a handler that throws while another reply is handled', async () => {
+        const loggedErrors = silenceLoggedErrors();
         const definition = buildGuessCapture(async (ctx, data) => {
             data.attempts += Number(ctx.messageInfo.text);
             if (ctx.messageInfo.text == '9') {
@@ -524,6 +535,7 @@ describe('persistent reply captures', () => {
 
         expect(readCaptures('guess')[PARENT_MESSAGE_ID].data).toEqual({ secret: 5, attempts: 1 });
         await bot.stop();
+        expect(loggedErrors).toHaveBeenCalledTimes(1);
     });
 
     test('should stop an expired capture without waiting for a message', async () => {
@@ -595,6 +607,7 @@ describe('persistent reply captures', () => {
     });
 
     test('should not save unfinished data changes when another capture of the same definition is saved', async () => {
+        const loggedErrors = silenceLoggedErrors();
         const definition = buildGuessCapture(async (_ctx, data) => {
             data.attempts++;
             if (data.secret == 1) {
@@ -614,6 +627,7 @@ describe('persistent reply captures', () => {
         expect(readCaptures('guess')[42].data).toEqual({ secret: 1, attempts: 0 });
         expect(readCaptures('guess')[43].data).toEqual({ secret: 2, attempts: 1 });
         await bot.stop();
+        expect(loggedErrors).toHaveBeenCalledTimes(1);
     });
 
     test('should throw when two capture names have the same storage key', () => {

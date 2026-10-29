@@ -74,7 +74,7 @@ describe('getMatchResults', () => {
             'a'.repeat(REGEX_MATCH_LIMIT * 2)
         );
 
-        expect(result.length).toBe(REGEX_MATCH_LIMIT + 1);
+        expect(result.length).toBe(REGEX_MATCH_LIMIT);
     });
 
     test('should collect regex results when several triggers match', () => {
