@@ -26,6 +26,13 @@ import {
     type MockScheduler
 } from './processorTestHelpers';
 
+function topOfHour() {
+    return Temporal.Now.zonedDateTimeISO().round({
+        smallestUnit: 'hour',
+        roundingMode: 'floor'
+    });
+}
+
 function createMockScheduledAction(): ScheduledAction<IActionState> {
     return {
         key: 'scheduled:test-action' as ActionKey,
@@ -346,9 +353,7 @@ describe('ScheduledActionProcessor', () => {
         });
 
         test('should run a check at startup, before the first top of the hour', async () => {
-            const alignedTime = new Date();
-            alignedTime.setMinutes(30, 0, 0);
-            setSystemTime(alignedTime);
+            setSystemTime(topOfHour().add({ minutes: 30 }).epochMilliseconds);
 
             try {
                 const localScheduler = createMockScheduler();
@@ -387,9 +392,7 @@ describe('ScheduledActionProcessor', () => {
         });
 
         test('should start the periodic checks at the next hour when initialized at the top of the hour', () => {
-            const alignedTime = new Date();
-            alignedTime.setMinutes(0, 0, 0);
-            setSystemTime(alignedTime);
+            setSystemTime(topOfHour().epochMilliseconds);
 
             try {
                 const localScheduler = createMockScheduler();
@@ -419,10 +422,11 @@ describe('ScheduledActionProcessor', () => {
         });
 
         test('should fire the onetime task setTimeout callback when delay is short', async () => {
-            // Set system time to just before the minute boundary so delay ≈ 1ms
-            const justBeforeBoundary = new Date();
-            justBeforeBoundary.setMinutes(59, 59, 999);
-            setSystemTime(justBeforeBoundary);
+            // Set system time to just before the hour boundary so delay ≈ 1ms
+            setSystemTime(
+                topOfHour().add({ hours: 1 }).subtract({ milliseconds: 1 })
+                    .epochMilliseconds
+            );
 
             try {
                 const localEventEmitter = new TypedEventEmitter();

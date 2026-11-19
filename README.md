@@ -108,7 +108,7 @@ async function main() {
         bot.eventEmitter.onEach(
             (e: string, timestamp: number, data: unknown) => {
                 console.log(
-                    `${new Date(timestamp).toISOString()} - ${e} - ${JSON.stringify(data)}`
+                    `${Temporal.Instant.fromEpochMilliseconds(timestamp)} - ${e} - ${JSON.stringify(data)}`
                 );
             }
         );
@@ -140,7 +140,7 @@ main().catch(console.error);
 bun index.ts
 ```
 
-The library itself does not depend on Bun-specific APIs; any TypeScript runner (or compiled JavaScript on Node.js) works. The bot receives updates via Telegram `getUpdates` long polling.
+The library itself does not depend on Bun-specific APIs; any TypeScript runner (or compiled JavaScript on Node.js) works, as long as the runtime provides the global `Temporal` API (tested on Bun 1.4 and Node.js 26). The bot receives updates via Telegram `getUpdates` long polling.
 
 ## Core Concepts
 

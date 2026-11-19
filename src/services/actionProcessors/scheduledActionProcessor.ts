@@ -59,20 +59,12 @@ export class ScheduledActionProcessor extends BaseActionProcessor {
                 this.botName
             );
 
-            const now = new Date();
-            const nextExecutionTime = new Date(now);
-            nextExecutionTime.setMinutes(0, 0, 0);
-
-            if (nextExecutionTime.getTime() <= now.getTime()) {
-                nextExecutionTime.setTime(
-                    nextExecutionTime.getTime() + 3600000
-                );
-            }
-
-            const delay = Math.max(
-                0,
-                nextExecutionTime.getTime() - now.getTime()
-            ) as Milliseconds;
+            const now = Temporal.Now.zonedDateTimeISO();
+            const nextHour = now
+                .round({ smallestUnit: 'hour', roundingMode: 'floor' })
+                .add({ hours: 1 });
+            const delay = (nextHour.epochMilliseconds -
+                now.epochMilliseconds) as Milliseconds;
 
             this.scheduler.createOnetimeTask(
                 'ScheduledProcessing_OneTime',

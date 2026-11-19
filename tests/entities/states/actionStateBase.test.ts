@@ -44,7 +44,7 @@ describe('ActionStateBase', () => {
     describe('lastExecutedDate', () => {
         test('should allow setting timestamp', () => {
             const state = new ActionStateBase();
-            const now = Date.now();
+            const now = Temporal.Now.instant().epochMilliseconds;
             state.lastExecutedDate = now;
 
             expect(state.lastExecutedDate).toBe(now);
@@ -93,7 +93,7 @@ describe('ActionStateBase', () => {
             state.customProperty = 'modified';
             state.counter = 5;
             state.pinnedMessages = [1, 2];
-            state.lastExecutedDate = Date.now();
+            state.lastExecutedDate = Temporal.Now.instant().epochMilliseconds;
 
             expect(state.customProperty).toBe('modified');
             expect(state.counter).toBe(5);

@@ -5,7 +5,7 @@ import { ChatInfo } from '../chatInfo';
 
 export class DeleteMessageResponse implements IChatResponse {
     readonly kind = BotResponseTypes.deleteMessage;
-    readonly createdAt = Date.now();
+    readonly createdAt = Temporal.Now.instant().epochMilliseconds;
 
     readonly messageId: number;
     readonly chatInfo: ChatInfo;

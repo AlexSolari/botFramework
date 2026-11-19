@@ -86,14 +86,14 @@ describe('PinResponse', () => {
         });
 
         test('should record createdAt timestamp', () => {
-            const before = Date.now();
+            const before = Temporal.Now.instant().epochMilliseconds;
             const response = new PinResponse(
                 1,
                 createMockChatInfo(),
                 createMockTraceId(),
                 createMockAction()
             );
-            const after = Date.now();
+            const after = Temporal.Now.instant().epochMilliseconds;
 
             expect(response.createdAt).toBeGreaterThanOrEqual(before);
             expect(response.createdAt).toBeLessThanOrEqual(after);

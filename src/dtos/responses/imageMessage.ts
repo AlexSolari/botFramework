@@ -11,7 +11,7 @@ import { InputFile } from '../../types/inputFile';
 
 export class ImageMessage implements IReplyResponseWithContent<InputFile> {
     readonly kind = BotResponseTypes.image;
-    readonly createdAt = Date.now();
+    readonly createdAt = Temporal.Now.instant().epochMilliseconds;
     readonly postSendOperations: PostSendOperation[] = [];
 
     readonly content: InputFile;

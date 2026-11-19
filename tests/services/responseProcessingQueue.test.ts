@@ -90,7 +90,7 @@ describe('ResponseProcessingQueue', () => {
     describe('flushReadyItems', () => {
         test('should process items with priority <= current time', async () => {
             const processed: number[] = [];
-            const now = Date.now();
+            const now = Temporal.Now.instant().epochMilliseconds;
 
             queue.enqueue({
                 priority: now - 100, // Past - should process
@@ -114,7 +114,7 @@ describe('ResponseProcessingQueue', () => {
         });
 
         test('should set isFlushing during processing', async () => {
-            const now = Date.now();
+            const now = Temporal.Now.instant().epochMilliseconds;
             let wasFlushing = false;
 
             queue.enqueue({
@@ -133,7 +133,7 @@ describe('ResponseProcessingQueue', () => {
 
         test('should not start new flush if already flushing', async () => {
             const processed: number[] = [];
-            const now = Date.now();
+            const now = Temporal.Now.instant().epochMilliseconds;
 
             queue.enqueue({
                 priority: now - 100,
@@ -152,7 +152,7 @@ describe('ResponseProcessingQueue', () => {
 
         test('should process items in priority order', async () => {
             const processed: number[] = [];
-            const now = Date.now();
+            const now = Temporal.Now.instant().epochMilliseconds;
 
             queue.enqueue({
                 priority: now - 50,
@@ -193,7 +193,7 @@ describe('ResponseProcessingQueue', () => {
 
         test('should handle timestamp-based priorities', async () => {
             const processed: string[] = [];
-            const baseTime = Date.now() - 100;
+            const baseTime = Temporal.Now.instant().epochMilliseconds - 100;
 
             // Simulate responses with offsets (delays)
             queue.enqueue({
@@ -225,26 +225,26 @@ describe('ResponseProcessingQueue', () => {
 
         test('should respect rate limiting between items', async () => {
             const timestamps: number[] = [];
-            const now = Date.now();
+            const now = Temporal.Now.instant().epochMilliseconds;
 
             queue.enqueue({
                 priority: now - 100,
                 callback: () => {
-                    timestamps.push(Date.now());
+                    timestamps.push(Temporal.Now.instant().epochMilliseconds);
                     return Promise.resolve();
                 }
             });
             queue.enqueue({
                 priority: now - 50,
                 callback: () => {
-                    timestamps.push(Date.now());
+                    timestamps.push(Temporal.Now.instant().epochMilliseconds);
                     return Promise.resolve();
                 }
             });
             queue.enqueue({
                 priority: now - 25,
                 callback: () => {
-                    timestamps.push(Date.now());
+                    timestamps.push(Temporal.Now.instant().epochMilliseconds);
                     return Promise.resolve();
                 }
             });
@@ -263,7 +263,7 @@ describe('ResponseProcessingQueue', () => {
     describe('concurrent enqueue and flush', () => {
         test('should handle items added during flush', async () => {
             const processed: number[] = [];
-            const now = Date.now();
+            const now = Temporal.Now.instant().epochMilliseconds;
 
             queue.enqueue({
                 priority: now - 100,
@@ -289,7 +289,7 @@ describe('ResponseProcessingQueue', () => {
 
         test('should send an item enqueued right after a flush drains the queue', async () => {
             const processed: number[] = [];
-            const now = Date.now();
+            const now = Temporal.Now.instant().epochMilliseconds;
 
             queue.enqueue({
                 priority: now - 100,
@@ -322,7 +322,8 @@ describe('ResponseProcessingQueue', () => {
 
         test('should support batched responses with delays', async () => {
             const sentMessages: string[] = [];
-            const baseCreatedAt = Date.now() - 200;
+            const baseCreatedAt =
+                Temporal.Now.instant().epochMilliseconds - 200;
 
             // Simulate enqueueBatchedResponses behavior
             type TestResponse =
@@ -358,7 +359,7 @@ describe('ResponseProcessingQueue', () => {
         });
 
         test('should handle high volume of items', async () => {
-            const now = Date.now();
+            const now = Temporal.Now.instant().epochMilliseconds;
             const itemCount = 100;
             let processedCount = 0;
 
@@ -385,7 +386,7 @@ describe('ResponseProcessingQueue', () => {
         test('should send due items, drop the rest and wait for the sent ones', async () => {
             const sent: string[] = [];
             let isFirstDone = false;
-            const now = Date.now();
+            const now = Temporal.Now.instant().epochMilliseconds;
 
             queue.enqueue({
                 priority: now,
@@ -412,7 +413,7 @@ describe('ResponseProcessingQueue', () => {
 
         test('should wake a flush that waits for a delayed item', async () => {
             const sent: string[] = [];
-            const start = Date.now();
+            const start = Temporal.Now.instant().epochMilliseconds;
 
             queue.enqueue({
                 priority: start + 10_000,
@@ -427,7 +428,9 @@ describe('ResponseProcessingQueue', () => {
             await flush;
 
             expect(sent).toEqual([]);
-            expect(Date.now() - start).toBeLessThan(1000);
+            expect(
+                Temporal.Now.instant().epochMilliseconds - start
+            ).toBeLessThan(1000);
         });
     });
 
@@ -447,7 +450,7 @@ describe('ResponseProcessingQueue', () => {
                 }
             });
             const sent: string[] = [];
-            const start = Date.now();
+            const start = Temporal.Now.instant().epochMilliseconds;
 
             queue.enqueue({
                 priority: start + 300,
@@ -456,13 +459,15 @@ describe('ResponseProcessingQueue', () => {
             await queue.flushReadyItems();
 
             expect(sent).toEqual(['delayed']);
-            expect(Date.now() - start).toBeGreaterThanOrEqual(290);
+            expect(
+                Temporal.Now.instant().epochMilliseconds - start
+            ).toBeGreaterThanOrEqual(290);
             expect(limiterCalls).toBe(1);
         });
 
         test('should send an item enqueued during the wait right away', async () => {
             const sent: string[] = [];
-            const now = Date.now();
+            const now = Temporal.Now.instant().epochMilliseconds;
 
             queue.enqueue({
                 priority: now + 300,
@@ -485,9 +490,9 @@ describe('ResponseProcessingQueue', () => {
 
         test('should send an earlier delayed item enqueued during the wait when it is due', async () => {
             const sentAt: Record<string, number> = {};
-            const start = Date.now();
+            const start = Temporal.Now.instant().epochMilliseconds;
             const recordTime = (name: string) => () => {
-                sentAt[name] = Date.now() - start;
+                sentAt[name] = Temporal.Now.instant().epochMilliseconds - start;
                 return Promise.resolve();
             };
 

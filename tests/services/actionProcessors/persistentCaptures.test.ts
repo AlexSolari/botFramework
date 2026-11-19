@@ -83,7 +83,7 @@ function continuingGuessHandler(ctx: ReplyContext<IActionState>, data: GuessData
 function replyMessage(text: string, replyTo = PARENT_MESSAGE_ID): Message {
     return {
         message_id: 100,
-        date: Math.floor(Date.now() / 1000),
+        date: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
         chat: { id: CHAT_ID, type: 'private' as const },
         from: { id: 1, is_bot: false, first_name: 'User' },
         text,
@@ -275,13 +275,14 @@ describe('persistent reply captures', () => {
                             parentMessageIds: [PARENT_MESSAGE_ID],
                             data: { secret: 5, attempts: 0 },
                             chatName: 'Test Chat',
-                            createdAt: Date.now() - 5000
+                            createdAt:
+                                Temporal.Now.instant().epochMilliseconds - 5000
                         },
                         43: {
                             parentMessageIds: [43],
                             data: { secret: 6, attempts: 0 },
                             chatName: 'Test Chat',
-                            createdAt: Date.now()
+                            createdAt: Temporal.Now.instant().epochMilliseconds
                         }
                     }
                 }

@@ -616,14 +616,14 @@ describe('ChatContextInternal', () => {
 
         test('should record createdAt timestamp', () => {
             const chatInfo = new ChatInfo(12345, 'Test Chat', []);
-            const before = Date.now();
+            const before = Temporal.Now.instant().epochMilliseconds;
             const response = new DeleteMessageResponse(
                 1,
                 chatInfo,
                 'trace-1' as TraceId,
                 createMockAction()
             );
-            const after = Date.now();
+            const after = Temporal.Now.instant().epochMilliseconds;
 
             expect(response.createdAt).toBeGreaterThanOrEqual(before);
             expect(response.createdAt).toBeLessThanOrEqual(after);

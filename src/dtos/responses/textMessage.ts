@@ -12,7 +12,7 @@ import { InlineKeyboardButton } from '../../types/botApi.generated';
 
 export class TextMessage implements IReplyResponseWithContent<string> {
     readonly kind = BotResponseTypes.text;
-    readonly createdAt = Date.now();
+    readonly createdAt = Temporal.Now.instant().epochMilliseconds;
     readonly postSendOperations: PostSendOperation[] = [];
 
     readonly content: string;

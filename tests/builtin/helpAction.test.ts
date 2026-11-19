@@ -38,7 +38,7 @@ async function runHelp(commands: CommandActionInternal<IActionState>[]) {
     const message = new IncomingMessage(
         {
             message_id: 1,
-            date: Math.floor(Date.now() / 1000),
+            date: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
             chat: { id: CHAT_ID, type: 'group' },
             from: { id: USER_ID, is_bot: false, first_name: 'Tester' },
             text: '/help'

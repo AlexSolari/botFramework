@@ -252,7 +252,7 @@ export class TypedEventEmitter<
         event: K,
         ...args: ListenerArgs<FullEventMap<TCustomEvents>, K>
     ): void {
-        const timestamp = Date.now();
+        const timestamp = Temporal.Now.instant().epochMilliseconds;
         const specific = this.listeners.get(event);
         if (specific) {
             for (const fn of specific) {

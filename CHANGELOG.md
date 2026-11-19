@@ -8,6 +8,14 @@ This file was reconstructed from the git history and `package.json` version bump
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-11-20
+
+### Changed
+
+- **Breaking:** The library now uses the `Temporal` API instead of `Date`, so it needs a runtime with a global `Temporal`, such as Bun 1.4 or Node.js 26. Timestamps in action state, persistent captures, responses and events are still milliseconds since the epoch, so saved storage files and the public types don't change.
+
+## [0.9.2] - 2026-10-29
+
 ### Changed
 
 - **Breaking:** `IScheduler.stopAll()` is renamed to `cancelAllTasks()`, as it cancels the tasks created so far but doesn't stop new ones from being scheduled. Custom schedulers passed in `services.scheduler` must rename the method.
@@ -257,7 +265,9 @@ Initial development releases (0.0.16 through 0.0.54).
 - Delay option for responses and reworked message sending.
 - Tracing and verbose logging.
 
-[Unreleased]: https://github.com/AlexSolari/botFramework/compare/3e9f6f2...HEAD
+[Unreleased]: https://github.com/AlexSolari/botFramework/compare/180237a...HEAD
+[0.9.3]: https://github.com/AlexSolari/botFramework/compare/180237a...HEAD
+[0.9.2]: https://github.com/AlexSolari/botFramework/compare/3e9f6f2...180237a
 [0.9.1]: https://github.com/AlexSolari/botFramework/compare/7636d82...3e9f6f2
 [0.9.0]: https://github.com/AlexSolari/botFramework/compare/1b93667...7636d82
 [0.8.3]: https://github.com/AlexSolari/botFramework/compare/fffec5c...1b93667

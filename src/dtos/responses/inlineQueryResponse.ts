@@ -5,7 +5,7 @@ import { TraceId } from '../../types/trace';
 
 export class InlineQueryResponse {
     readonly kind = BotResponseTypes.inlineQuery;
-    readonly createdAt = Date.now();
+    readonly createdAt = Temporal.Now.instant().epochMilliseconds;
 
     readonly queryId: string;
     readonly traceId: TraceId;

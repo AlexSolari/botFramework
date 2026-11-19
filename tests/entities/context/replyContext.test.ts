@@ -55,7 +55,7 @@ function createReplyContext(
 
     const telegramMessage: Message = {
         message_id: 200,
-        date: Math.floor(Date.now() / 1000),
+        date: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
         chat: { id: 99999, type: 'private' as const },
         from: {
             id: options.fromId ?? 123,

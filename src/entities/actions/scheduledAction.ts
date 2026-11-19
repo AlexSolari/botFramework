@@ -96,7 +96,7 @@ export class ScheduledActionInternal<
                 state
             );
 
-            state.lastExecutedDate = Date.now();
+            state.lastExecutedDate = Temporal.Now.instant().epochMilliseconds;
 
             await ctx.storage.saveActionExecutionResult(
                 this,
@@ -194,15 +194,16 @@ export class ScheduledActionInternal<
         state: IActionState,
         ctx: ChatContextInternal<TActionState>
     ): boolean {
-        const now = new Date();
-        const startOfToday = new Date(now);
-        startOfToday.setHours(0, 0, 0, 0);
-        const scheduledTime = new Date(now);
-        scheduledTime.setHours(this.timeinHoursProvider(ctx), 0, 0, 0);
+        const now = Temporal.Now.zonedDateTimeISO();
+        const startOfToday = now.startOfDay();
+        const scheduledTime = now.withPlainTime({
+            hour: this.timeinHoursProvider(ctx)
+        });
 
-        const isAllowedToTrigger = now >= scheduledTime;
+        const isAllowedToTrigger =
+            Temporal.ZonedDateTime.compare(now, scheduledTime) >= 0;
         const hasTriggeredToday =
-            state.lastExecutedDate > startOfToday.getTime();
+            state.lastExecutedDate > startOfToday.epochMilliseconds;
 
         return isAllowedToTrigger && !hasTriggeredToday;
     }

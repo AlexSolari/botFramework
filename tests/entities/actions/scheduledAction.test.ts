@@ -142,9 +142,10 @@ describe('ScheduledActionInternal', () => {
         });
 
         test('should return NoResponse when the scheduled time has not arrived yet today', async () => {
-            const noon = new Date();
-            noon.setHours(12, 0, 0, 0);
-            setSystemTime(noon);
+            setSystemTime(
+                Temporal.Now.zonedDateTimeISO().withPlainTime({ hour: 12 })
+                    .epochMilliseconds
+            );
 
             const handler = mock(() => Promise.resolve());
             const action = buildScheduledAction({
@@ -160,9 +161,10 @@ describe('ScheduledActionInternal', () => {
         });
 
         test('should return NoResponse when already executed today', async () => {
-            const noon = new Date();
-            noon.setHours(12, 0, 0, 0);
-            setSystemTime(noon);
+            setSystemTime(
+                Temporal.Now.zonedDateTimeISO().withPlainTime({ hour: 12 })
+                    .epochMilliseconds
+            );
 
             const handler = mock(() => Promise.resolve());
             const action = buildScheduledAction({
@@ -170,7 +172,10 @@ describe('ScheduledActionInternal', () => {
                 providers: { timeinHoursProvider: () => 0 as HoursOfDay }
             });
             const { ctx } = createContext(action, {
-                state: { lastExecutedDate: Date.now(), pinnedMessages: [] }
+                state: {
+                    lastExecutedDate: Temporal.Now.instant().epochMilliseconds,
+                    pinnedMessages: []
+                }
             });
 
             const result = await action.exec(ctx);
@@ -180,9 +185,10 @@ describe('ScheduledActionInternal', () => {
         });
 
         test('should execute and save state when the scheduled time has arrived and it has not run today', async () => {
-            const noon = new Date();
-            noon.setHours(12, 0, 0, 0);
-            setSystemTime(noon);
+            setSystemTime(
+                Temporal.Now.zonedDateTimeISO().withPlainTime({ hour: 12 })
+                    .epochMilliseconds
+            );
 
             const handler = mock(() => Promise.resolve());
             const action = buildScheduledAction({
@@ -221,8 +227,12 @@ describe('ScheduledActionInternal', () => {
             setSystemTime();
         });
 
-        async function runsAt(hour: number, now: Date, lastExecutedDate: Date) {
-            setSystemTime(now);
+        const berlin = (dateTime: string) =>
+            Temporal.ZonedDateTime.from(`${dateTime}[Europe/Berlin]`)
+                .epochMilliseconds;
+
+        async function runsAt(hour: number, now: string, ranAt: string) {
+            setSystemTime(berlin(now));
             const handler = mock(() => Promise.resolve());
             const action = buildScheduledAction({
                 handler,
@@ -230,7 +240,7 @@ describe('ScheduledActionInternal', () => {
             });
             const { ctx } = createContext(action, {
                 state: {
-                    lastExecutedDate: lastExecutedDate.getTime(),
+                    lastExecutedDate: berlin(ranAt),
                     pinnedMessages: []
                 }
             });
@@ -241,24 +251,22 @@ describe('ScheduledActionInternal', () => {
         }
 
         test('should run a late action on the day clocks move forward', async () => {
-            const ranAt = new Date(2026, 2, 28, 23, 0, 5);
-            const now = new Date(2026, 2, 29, 23, 0, 5);
-
-            expect(await runsAt(23, now, ranAt)).toBe(true);
+            expect(
+                await runsAt(23, '2026-03-29T23:00:05', '2026-03-28T23:00:05')
+            ).toBe(true);
         });
 
         test('should not run an early action twice on the day clocks move back', async () => {
-            const ranAt = new Date(2026, 9, 25, 0, 0, 5);
-            const now = new Date(2026, 9, 25, 12, 0, 0);
-
-            expect(await runsAt(0, now, ranAt)).toBe(false);
+            expect(
+                await runsAt(0, '2026-10-25T12:00:00', '2026-10-25T00:00:05')
+            ).toBe(false);
         });
 
         test('should run an action scheduled in the skipped hour once the clocks have moved forward', async () => {
-            const ranAt = new Date(2026, 2, 28, 2, 0, 5);
+            const ranAt = '2026-03-28T02:00:05';
 
-            expect(await runsAt(2, new Date(2026, 2, 29, 1, 30), ranAt)).toBe(false);
-            expect(await runsAt(2, new Date(2026, 2, 29, 3, 0, 5), ranAt)).toBe(true);
+            expect(await runsAt(2, '2026-03-29T01:30:00', ranAt)).toBe(false);
+            expect(await runsAt(2, '2026-03-29T03:00:05', ranAt)).toBe(true);
         });
     });
 

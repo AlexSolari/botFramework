@@ -5,7 +5,7 @@ import { TraceId } from '../../types/trace';
 
 export class PinResponse implements IChatResponse {
     readonly kind = BotResponseTypes.pin;
-    readonly createdAt = Date.now();
+    readonly createdAt = Temporal.Now.instant().epochMilliseconds;
 
     readonly messageId: number;
     readonly chatInfo: ChatInfo;

@@ -193,7 +193,7 @@ export class ReplyCaptureRegistry implements TelegramApiCallbacks {
             parentMessageIds: [parentMessageId],
             data: capture.data,
             chatName: chatInfo.name,
-            createdAt: Date.now()
+            createdAt: Temporal.Now.instant().epochMilliseconds
         };
 
         const persistentCapture = this.addPersistentCapture(
@@ -339,7 +339,7 @@ export class ReplyCaptureRegistry implements TelegramApiCallbacks {
         if (expiresAt == undefined) return;
 
         const delay = Math.min(
-            Math.max(expiresAt - Date.now(), 0),
+            Math.max(expiresAt - Temporal.Now.instant().epochMilliseconds, 0),
             MAX_TIMEOUT_DELAY
         );
         this.expiryTimers.set(

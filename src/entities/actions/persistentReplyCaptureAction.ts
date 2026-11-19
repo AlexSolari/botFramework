@@ -56,7 +56,10 @@ export class PersistentReplyCaptureActionInternal<
     get isExpired() {
         const expiresAt = this.expiresAt;
 
-        return expiresAt != undefined && Date.now() >= expiresAt;
+        return (
+            expiresAt != undefined &&
+            Temporal.Now.instant().epochMilliseconds >= expiresAt
+        );
     }
 
     tracksMessage(messageId: number | undefined) {

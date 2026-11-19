@@ -41,7 +41,7 @@ function createMockReplyContext(
     if (messageType === MessageType.Photo) {
         telegramMessage = {
             message_id: 100,
-            date: Math.floor(Date.now() / 1000),
+            date: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
             chat: { id: 12345, type: 'private' },
             from: { id: 123, is_bot: false, first_name: 'TestUser' },
             photo: [
@@ -61,7 +61,7 @@ function createMockReplyContext(
         // Default to Text message
         telegramMessage = {
             message_id: 100,
-            date: Math.floor(Date.now() / 1000),
+            date: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
             chat: { id: 12345, type: 'private' },
             from: { id: 123, is_bot: false, first_name: 'TestUser' },
             text: messageText,

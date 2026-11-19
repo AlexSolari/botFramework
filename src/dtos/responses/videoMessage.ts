@@ -11,7 +11,7 @@ import { InputFile } from '../../types/inputFile';
 
 export class VideoMessage implements IReplyResponseWithContent<InputFile> {
     readonly kind = BotResponseTypes.video;
-    readonly createdAt = Date.now();
+    readonly createdAt = Temporal.Now.instant().epochMilliseconds;
     readonly postSendOperations: PostSendOperation[] = [];
 
     readonly content: InputFile;

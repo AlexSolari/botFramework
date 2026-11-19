@@ -49,7 +49,7 @@ export class ResponseProcessingQueue {
     }
 
     async finish() {
-        const now = Date.now();
+        const now = Temporal.Now.instant().epochMilliseconds;
         const firstNotDue = this.items.findIndex((item) => item.priority > now);
         if (firstNotDue != -1) {
             this.items.length = firstNotDue;
@@ -68,7 +68,9 @@ export class ResponseProcessingQueue {
     private async sendItems() {
         try {
             while (this.items.length > 0) {
-                const delay = this.items[0].priority - Date.now();
+                const delay =
+                    this.items[0].priority -
+                    Temporal.Now.instant().epochMilliseconds;
                 if (delay > 0) {
                     await this.sleep(delay);
                     continue;

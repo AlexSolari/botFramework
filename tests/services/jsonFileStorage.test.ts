@@ -665,13 +665,14 @@ describe('JsonFileStorage', () => {
             });
 
             // Perform many concurrent reads - should complete quickly without blocking
-            const startTime = Date.now();
+            const startTime = Temporal.Now.instant().epochMilliseconds;
             const readPromises = Array.from({ length: 100 }, () =>
                 Promise.resolve(localStorage.load(testAction))
             );
 
             const results = await Promise.all(readPromises);
-            const elapsed = Date.now() - startTime;
+            const elapsed =
+                Temporal.Now.instant().epochMilliseconds - startTime;
 
             // All reads should return the same cached data
             for (const result of results) {
@@ -811,7 +812,7 @@ describe('JsonFileStorage', () => {
             // Step 2: Modify state (simulating action execution)
             const newState: TestActionState = {
                 ...initialState,
-                lastExecutedDate: Date.now(),
+                lastExecutedDate: Temporal.Now.instant().epochMilliseconds,
                 customField: 'executed'
             };
 
@@ -1023,7 +1024,7 @@ describe('JsonFileStorage', () => {
                 TEST_STORAGE_PATH
             );
 
-            const timestamp = Date.now();
+            const timestamp = Temporal.Now.instant().epochMilliseconds;
 
             await storage.saveActionExecutionResult(testAction, 123, {
                 lastExecutedDate: timestamp,

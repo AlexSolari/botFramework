@@ -7,7 +7,7 @@ import { ChatInfo } from '../chatInfo';
 
 export class DelayResponse implements IChatResponse {
     readonly kind = BotResponseTypes.delay;
-    readonly createdAt = Date.now();
+    readonly createdAt = Temporal.Now.instant().epochMilliseconds;
 
     readonly chatInfo: ChatInfo;
     readonly traceId: TraceId;

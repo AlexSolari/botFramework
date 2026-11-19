@@ -77,7 +77,7 @@ function createContext(
 
     const telegramMessage = {
         message_id: 1,
-        date: Math.floor(Date.now() / 1000),
+        date: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
         chat: { id: options.chatId ?? 555, type: 'private' },
         from:
             options.hasUser === false
@@ -278,7 +278,7 @@ describe('CommandActionInternal', () => {
             });
             const { ctx } = createContext(action, {
                 storage: createMockStorage({
-                    lastExecutedDate: Date.now(),
+                    lastExecutedDate: Temporal.Now.instant().epochMilliseconds,
                     pinnedMessages: []
                 })
             });
@@ -300,7 +300,7 @@ describe('CommandActionInternal', () => {
             });
             const { ctx } = createContext(action, {
                 storage: createMockStorage({
-                    lastExecutedDate: Date.now(),
+                    lastExecutedDate: Temporal.Now.instant().epochMilliseconds,
                     pinnedMessages: []
                 })
             });
@@ -321,7 +321,8 @@ describe('CommandActionInternal', () => {
             });
             const { ctx } = createContext(action, {
                 storage: createMockStorage({
-                    lastExecutedDate: Date.now() - 5000,
+                    lastExecutedDate:
+                        Temporal.Now.instant().epochMilliseconds - 5000,
                     pinnedMessages: []
                 })
             });
@@ -347,7 +348,7 @@ describe('CommandActionInternal', () => {
             const { ctx } = createContext(action, {
                 text: '/foo',
                 storage: createMockStorage({
-                    lastExecutedDate: Date.now(),
+                    lastExecutedDate: Temporal.Now.instant().epochMilliseconds,
                     pinnedMessages: []
                 })
             });
@@ -395,7 +396,7 @@ describe('CommandActionInternal', () => {
 
             const { ctx: firstCtx } = createContext(action, { storage });
             await action.exec(firstCtx);
-            state.lastExecutedDate = Date.now();
+            state.lastExecutedDate = Temporal.Now.instant().epochMilliseconds;
 
             const { ctx: secondCtx } = createContext(action, { storage });
             await action.exec(secondCtx);

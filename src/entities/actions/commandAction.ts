@@ -157,7 +157,8 @@ export class CommandActionInternal<TActionState extends IActionState>
             state.customCooldown ?? this.cooldownInfoProvider(ctx).cooldown
         );
         const onCooldown =
-            Date.now() - state.lastExecutedDate < cooldownInMilliseconds;
+            Temporal.Now.instant().epochMilliseconds - state.lastExecutedDate <
+            cooldownInMilliseconds;
 
         if (!onCooldown) return null;
 
@@ -198,7 +199,8 @@ export class CommandActionInternal<TActionState extends IActionState>
 
             if (ctx.startCooldown) {
                 state.customCooldown = ctx.customCooldown;
-                state.lastExecutedDate = Date.now();
+                state.lastExecutedDate =
+                    Temporal.Now.instant().epochMilliseconds;
             }
 
             await ctx.storage.saveActionExecutionResult(

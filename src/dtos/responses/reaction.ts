@@ -6,7 +6,7 @@ import { ReactionTypeEmoji } from '../../types/botApi.generated';
 
 export class Reaction implements IChatResponse {
     readonly kind = BotResponseTypes.react;
-    readonly createdAt = Date.now();
+    readonly createdAt = Temporal.Now.instant().epochMilliseconds;
 
     readonly chatInfo: ChatInfo;
     readonly messageId: number;

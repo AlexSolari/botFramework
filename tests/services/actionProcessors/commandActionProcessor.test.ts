@@ -83,7 +83,7 @@ function createTelegramMessage(
 ): Message {
     return {
         message_id: 42,
-        date: Math.floor(Date.now() / 1000),
+        date: Math.floor(Temporal.Now.instant().epochMilliseconds / 1000),
         chat: { id: chatId, type: 'private' as const },
         from: { id: 1, is_bot: false, first_name: 'User' },
         text
@@ -649,7 +649,9 @@ describe('CommandActionProcessor', () => {
             // Trigger a message that is a reply to message 42 with matching text
             const replyMessage = {
                 message_id: 100,
-                date: Math.floor(Date.now() / 1000),
+                date: Math.floor(
+                    Temporal.Now.instant().epochMilliseconds / 1000
+                ),
                 chat: { id: 12345, type: 'private' as const },
                 from: { id: 1, is_bot: false, first_name: 'User' },
                 text: 'reply text',
@@ -705,7 +707,9 @@ describe('CommandActionProcessor', () => {
 
             await mockTelegram.triggerMessage({
                 message_id: 100,
-                date: Math.floor(Date.now() / 1000),
+                date: Math.floor(
+                    Temporal.Now.instant().epochMilliseconds / 1000
+                ),
                 chat: { id: 12345, type: 'private' as const },
                 from: { id: 1, is_bot: false, first_name: 'User' },
                 text: 'reply text',
@@ -757,7 +761,9 @@ describe('CommandActionProcessor', () => {
 
             await mockTelegram.triggerMessage({
                 message_id: 100,
-                date: Math.floor(Date.now() / 1000),
+                date: Math.floor(
+                    Temporal.Now.instant().epochMilliseconds / 1000
+                ),
                 chat: { id: 12345, type: 'private' as const },
                 from: { id: 1, is_bot: false, first_name: 'User' },
                 text: 'reply text',
